@@ -148,6 +148,23 @@ STATUS UPDATE 2026-08-02 — the local labs had already run most of this
   the local market-data-brain earnings cache into TRACK and the book scanner
   (z-score no-entry + force-exit rules live).
 
+- GAP WIDEN PULLED FROM THE SCANNER 2026-08-02 (user decision). The local
+  gapwiden-lab's own results were collected off the Mac and do not support the
+  book's published 51.9%/51.5% hybrid CAGR: faithful replication 23.0% at
+  -64.6% DD (PF 1.10); OBJECTIVE universe 3.3%; POINT-IN-TIME 5.1% faithful and
+  -14.3% at an honest 15bp spread; DEEP OOS -4.2% and -22.2%. A 24-cell
+  parameter grid spans -25.2% to +47.4%, and the lab's own hindsight 'oracle'
+  top-150 list returns 309% - the selection-bias ceiling. The qualified/scan
+  tiers the dashboard traded were themselves chosen for having 5+ profitable
+  trades. x46 reached the same conclusion independently (deep 2011-2018 ~0%
+  faithful, -3.26% at the program's 0.05%/side standard).
+  Effect: scan_book_signals.py no longer emits GAPW rows (SL_SCAN_GAPW=1
+  re-enables for research), GAPW rows stripped from BOOKSIG, both books marked
+  PAPER RESEARCH ONLY with the published headline retired as unreproduced, and
+  the Today tab tiers them PULLED. Open shadow positions are left to exit on
+  their own rules. Z-Score is now the only book the scanner drives.
+  Artifact: data/gapwiden_lab_own_results.json.
+
 The standard being matched (what RSI2 has): in-sample result, execution-basis
 match, deep out-of-sample + era decomposition, a selection-bias control
 (walk-forward / causal fold), per-name stats, a validated exit class, and a
