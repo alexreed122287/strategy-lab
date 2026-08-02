@@ -38,16 +38,20 @@ if [ -n "$GWLAB" ] && [ ! -d "$GWLAB" ]; then
   GWLAB=""
 fi
 if [ -z "$GWLAB" ]; then
-  for d in "$HOME/Projects/gap_widen_lab" "$HOME/repos/gap_widen_lab" \
+  for d in "$HOME/Projects/gapwiden-lab" "$HOME/repos/gapwiden-lab" \
+           "$HOME/Projects/gap_widen_lab" "$HOME/repos/gap_widen_lab" \
            "$HOME/gap_widen_lab" "$HOME/repos/gap-widen-lab" \
-           "$HOME/Projects/gap-widen-lab" "$BRAIN/../gap_widen_lab"; do
+           "$HOME/Projects/gap-widen-lab" "$HOME/Projects/gapwiden_lab" \
+           "$HOME/repos/strategy-lab-dashboard/gap_widen_lab" \
+           "$BRAIN/../gap_widen_lab"; do
     [ -n "$d" ] && [ -d "$d" ] && GWLAB="$(cd "$d" && pwd)" && break
   done
 fi
 # Last resort: look for the lab by its results signature.
 if [ -z "$GWLAB" ]; then
-  cand="$(find "$HOME/repos" "$HOME/Projects" -maxdepth 3 -name "moc_results.json" \
-          -o -maxdepth 3 -name "moo_results.json" 2>/dev/null | head -1)"
+  cand="$(find "$HOME/repos" "$HOME/Projects" -maxdepth 4 \
+          \( -name "moc_results.json" -o -name "moo_results.json" \
+             -o -name "VERDICT_gapwiden*" -o -name "gapwiden_lib.py" \) 2>/dev/null | head -1)"
   [ -n "$cand" ] && GWLAB="$(cd "$(dirname "$(dirname "$cand")")" && pwd)" && \
     echo "found a lab by its results signature: $GWLAB"
 fi
