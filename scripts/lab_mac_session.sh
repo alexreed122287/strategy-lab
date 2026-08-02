@@ -16,7 +16,7 @@ set -uo pipefail
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OUT="$REPO/data/lab_collect"
 mkdir -p "$OUT"
-BRANCH="lab/mac-collect-$(date +%Y%m%d)"
+BRANCH="lab/mac-collect-$(date +%Y%m%d-%H%M%S)"   # unique per run: a re-run must not collide with an already-pushed branch
 # daily_build.sh does `git pull --ff-only origin main` on step 0, so this script
 # MUST hand the repo back on whatever branch it found it on.
 START_BRANCH="$(git -C "$(dirname "${BASH_SOURCE[0]}")/.." rev-parse --abbrev-ref HEAD 2>/dev/null || echo main)"
