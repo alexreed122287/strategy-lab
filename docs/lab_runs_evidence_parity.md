@@ -45,6 +45,20 @@ STATUS UPDATE 2026-08-02 — the local labs had already run most of this
   entries were. Full artifact: data/x43_results.json. PROVISIONAL pending the
   lab panel: the dashboard keeps the MOO x0.71 display basis until co-signed;
   real-money wiring stays killed (x40) regardless.
+- x44 SESSION (2026-08-02): the user's MIO screenshots verified the z spec
+  matches exactly and revealed [000 z score] = the 410-name universe list.
+  Replication on its 143 runnable names (prereg
+  docs/x44_session_prereg_zscore_mio_universe.md, lab engine): 43.5% CAGR
+  idealized / PF 3.24 / 608 trades / every year positive (claim: 67.2%/4.15/
+  608 on all 410); executable ladder MOC-full 38.6% [35.2-41.2], worst-case
+  next-open 24.5% — vs 13.8% on the neutral wide universe. Causal fold:
+  tier-curation on 2019-22 earned 19.8% in 2023-26 vs 45.6% for the full
+  list — curation hurts, x40 confirmed. ALL GATES PASS -> z book UN-KILLED
+  TO ACTIVE PAPER scanning the runnable MIO list. Real money stays gated on:
+  fetching the 263 missing names into the brain (decisive next lab step),
+  the list's assembly date (check the MIO screen's creation date), 20+
+  forward paper trades, and panel co-signs of x43/x44. Artifact:
+  data/x44_results.json.
 - SPEC A (Gap Widen deep-OOS/eras): STILL OPEN — the one spec with no data yet.
 - Earnings wiring: DONE — daily_build.sh now feeds next-confirmed dates from
   the local market-data-brain earnings cache into TRACK and the book scanner
