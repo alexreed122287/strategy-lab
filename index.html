@@ -510,6 +510,36 @@ renderScan();
     3:45-exit-armed, pending MOC vs the 3:48 ET submission deadline) activates when the
     local generator emits daily rows for these strategy ids; this build carries specs and
     validated results. They join the per-arm Signals ranking when arm records exist.</p></div>`;
+  // Evidence Parity matrix (tracks each book vs the RSI2/MFI standard;
+  // cells flip as the lab run-specs in docs/lab_runs_evidence_parity.md land)
+  const EVC=["In-sample","Basis match","Deep OOS / eras","Selection control","Per-name stats","Exit class","Forward n>=20"];
+  const EVR=[
+    ["RSI2 Live-16",["y","y","y","y","y","y","live"]],
+    ["MFI",["y","y","y","p","y","y","n"]],
+    ["Gap Widen RSI2",["y","y","n","p","y","y","n"]],
+    ["Gap Widen RSI14",["y","y","n","p","y","y","n"]],
+    ["Z-Score",["y","n","n","p","n","n","n"]],
+    ["BB Rubber Band",["n","n","n","n","n","n","n"]]];
+  const evc=v=>v==="y"?'<span class="chip take">has it</span>'
+    :v==="live"?'<span class="chip take">LIVE</span>'
+    :v==="p"?'<span class="chip watch">partial</span>'
+    :'<span class="chip gray">needed</span>';
+  h+=`<div class="card"><h3>Evidence parity - each book vs the RSI2 standard</h3>
+    <div class="tablewrap"><table>
+    <tr><th class="l">Book</th>${EVC.map(c=>`<th class="l">${c}</th>`).join("")}</tr>`+
+    EVR.map(([name,cells])=>`<tr><td class="l">${name}</td>${
+      cells.map(v=>`<td class="l">${evc(v)}</td>`).join("")}</tr>`).join("")+
+    `</table></div>
+    <p class="small">The seven cells are the program's own evidential standard.
+    Yellow/gray cells map to the lab run-specs in
+    docs/lab_runs_evidence_parity.md: SPEC A fills Gap Widen's deep-OOS/era
+    cells, SPEC B fills Z-Score's basis (MOO re-run replaces the same-close
+    numbers), selection (causal fold), and per-name cells, SPEC C is BB's first
+    honest validation (it currently has only MIO's idealized claim). MFI's
+    "partial" selection cell reflects its own record: survived four independent
+    attacks, full gauntlet still listed as owed. Forward cells flip at 20
+    closed paper trades per book. This matrix updates by repo edit as results
+    land - it is the to-do list for evidence parity.</p></div>`;
   // Per-strategy cards
   const vehCell=e=>e.trade!==e.signal
     ?`${esc(e.signal)} <span class="chip info">via ${esc(e.trade)}</span>`:esc(e.signal);
