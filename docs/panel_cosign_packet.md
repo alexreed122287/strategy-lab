@@ -22,6 +22,20 @@ Supporting, not requiring co-sign: `docs/x45_provenance_and_data_hygiene.md`
 (provenance + Robinhood padding fix), `data/x45d_provenance_test.json`,
 `data/x45c_earnings_sensitivity.json`, `data/bench_own_universe.json`.
 
+## OWNER ANSWERS (recorded 2026-08-02, alexreed122287)
+1. **Displayed basis** — "whichever is more profitable reflecting" → use the basis
+   that reflects the actual mechanism. x43 measured x0.87 for the 3:45 threshold
+   entry the book actually uses; the x0.71 MOO figure describes a mechanism it
+   does not use. ACTION: adopt x0.87 as the displayed executable basis, with x0.71
+   retained on the card as the conservative floor.
+2. **Curation** — "no, don't curate" → the book trades the FULL list. Confirmed
+   three times independently (x40, x44, x48b): performance-selecting inside the
+   list destroys the edge.
+3. **Tradier re-run** — "yes, re-run" → the 68.5% headline must be recomputed on
+   the refreshed brain before co-sign. OPEN, needs the Mac.
+4. **Survivorship** — "that is sufficient" → x45d's point-in-time check accepted;
+   no point-in-time data purchase required.
+
 ## Specific questions for the panel
 1. **x43** — the displayed basis stays at MOO ×0.71 while x43 measured ×0.87.
    Is the conservative basis still correct, or should the book display ×0.87?
