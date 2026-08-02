@@ -244,7 +244,7 @@ const SCANHELP={sym:"Signal symbol - the name the entry rule is computed on.",
  vehicle:"1x-vs-levered pointer: green = validated mapping, yellow = liquid twin candidate (unvalidated), 1x otherwise.",
  vetted:"Passed the quality bar: 20+ trades, PF>=1.3, win>=60%, profitable in both eras. GW rows: on the lab priority-25. Z-BOOK/BB-KILLED rows are research records and are never vetted.",
  score:"Rank score 0-100: percentile blend of PF + win % + avg/trade WITHIN your current filter and window. Relative standing - re-ranks as you change filters; not an absolute measure.",
- pf:"Profit factor = gross wins / gross losses. 2 = wins twice losses. '-' on GW rows (lab reports n/win/avg only); Z-Score/BB book rows show their research-run PF.",
+ pf:"Profit factor = gross wins / gross losses. 2 = wins twice losses. '-' on GW rows until the lab's per-name run emits PF (spec'd in docs/lab_runs_evidence_parity.md - the page picks it up automatically); Z-Score/BB book rows show their research-run PF, capped at 99 when a small sample has zero losing trades.",
  win:"Share of historical trades that made money.",
  avg:"Average net return per trade over the selected window. Z-Score/BB book rows are IDEALIZED same-close research numbers (hover the Strategy cell for the basis; z executable estimate is x0.71).",
  n:"Sample size. Default filter 30 = the program reliability floor; 20 = hard vetted minimum.",
@@ -335,7 +335,7 @@ if(typeof BOOKS!=="undefined"&&BOOKS.strategies)for(const s of BOOKS.strategies)
   const prio=new Set((s.universe.priority_25||[]).map(e=>e.signal));
   for(const e of (s.universe.qualified||[])){
     rows.push({sym:e.signal, grade:"GW", strat:key,
-      st:{n:e.n, pf:null, win_pct:+(e.win*100).toFixed(1),
+      st:{n:e.n, pf:e.pf??null, win_pct:+(e.win*100).toFixed(1),
           avg_pct:+(e.avg_net*100).toFixed(2), vetted:prio.has(e.signal),
           gwv:e.trade!==e.signal?e.trade:"1x"},
       bh:null, cagr:null, expo:null, vehicle:e.trade!==e.signal?e.trade:"",
@@ -714,7 +714,7 @@ function armStats(sym, strat){
   });
   if(typeof BOOKSIG!=="undefined"&&BOOKSIG&&BOOKSIG.rows)for(const r of BOOKSIG.rows){
     if(r.strat==="BB")continue; // KILLED 2026-08-01 (x41 fill-mode gate) - scanner off
-    let n=r.n??null, win=r.win??null, avg=r.avg??null, pf=null, note="";
+    let n=r.n??null, win=r.win??null, avg=r.avg??null, pf=r.pf??null, note="";
     if(r.strat==="ZSCORE"){
       const e=ZBOOK.get(r.sym);
       if(e){n=e.n; win=+(e.win*100).toFixed(1); pf=e.pf??null;
