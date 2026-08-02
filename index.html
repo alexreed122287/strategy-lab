@@ -103,7 +103,7 @@ tr:hover td { background: var(--surface-2); }
       <option value="V" selected>Vetted only</option>
       <option value="A">All grade-A arms (research)</option>
     </select></label>
-    <label>Min trades <input type="number" id="f-minn" value="20" style="width:64px"></label>
+    <label>Min trades <input type="number" id="f-minn" value="30" style="width:64px"></label>
     <label>Rank window <select id="f-win">
       <option value="full" selected>Full (2019+)</option>
       <option value="w3y">Last 3 years</option>
@@ -138,7 +138,15 @@ tr:hover td { background: var(--surface-2); }
   PF 0.43). <b>Vehicle guidance</b>: green = program-validated leveraged mapping;
   yellow = liquid twin + strong vetted arm (PF&gt;=1.5), a candidate pending the
   beta/drag validation sweep; "1x" = no twin, illiquid twin, or thin edge
-  (leverage amplifies thin edges into losses - KRE/DPST).</p></div>
+  (leverage amplifies thin edges into losses - KRE/DPST).
+  <b>Gap Widen arms</b>: per-name records from the validated GW lab backtest rank
+  here too (grade GW; PF/era columns are "-" because the lab reports n/win/avg).
+  Vetted = on the lab's priority-25 list. GW per-name samples are small by design
+  (the book fires rarely per name; the BOOK-level validation carries the
+  evidence), so choosing a GAPW strategy auto-drops Min trades to 5.
+  <b>Min trades defaults to 30</b> - the program's own reliability floor (its
+  honesty protocol requires n&gt;=30 per window, and x38's kill bar rejected a
+  sample of 22 for exactly this); 20 is the hard vetted minimum.</p></div>
 </section>
 
 <section id="tab-reference">
@@ -241,6 +249,9 @@ function vehGuide(sym, st){
   return {cls:"gray", txt:v.e+" exists", title:"Arm unvetted - research only. "+v.e+" "+mm(v.t)};
 }
 function vehChip(sym, st){
+  if(st&&st.gwv)return st.gwv==="1x"
+    ?`<span class="small" title="Gap Widen lab trades this name at 1x">1x (lab)</span>`
+    :`<span class="chip info" title="Gap Widen lab trade vehicle for this signal">${st.gwv} lab</span>`;
   const g=vehGuide(sym, st);
   return g.cls?`<span class="chip ${g.cls}" title="${g.title}">${g.txt}</span>`
               :`<span class="small" title="${g.title}">${g.txt}</span>`;
@@ -256,6 +267,19 @@ for (const [sym, rec] of Object.entries(SCAN.tickers)) {
       vetted: !!st.vetted,
       pf1922: st.era_1922 ? st.era_1922.pf : null,
       pf2326: st.era_2326 ? st.era_2326.pf : null});
+  }
+}
+if(typeof BOOKS!=="undefined"&&BOOKS.strategies)for(const s of BOOKS.strategies){
+  const key=s.id==="gap_widen_rsi2"?"GAPW_RSI2":s.id==="gap_widen_rsi14"?"GAPW_RSI14":null;
+  if(!key)continue;
+  const prio=new Set((s.universe.priority_25||[]).map(e=>e.signal));
+  for(const e of (s.universe.qualified||[])){
+    rows.push({sym:e.signal, grade:"GW", strat:key,
+      st:{n:e.n, pf:null, win_pct:+(e.win*100).toFixed(1),
+          avg_pct:+(e.avg_net*100).toFixed(2), vetted:prio.has(e.signal),
+          gwv:e.trade!==e.signal?e.trade:"1x"},
+      bh:null, cagr:null, expo:null, vehicle:e.trade!==e.signal?e.trade:"",
+      vetted:prio.has(e.signal), pf1922:null, pf2326:null});
   }
 }
 function winStats(row, w){
@@ -281,7 +305,7 @@ function renderScan(){
   // percentile rank score within filter + selected window
   const pct = (arr,v)=>arr.filter(a=>a<v).length/Math.max(arr.length-1,1)*100;
   const pfs=r.map(x=>x.pf), wins=r.map(x=>x.win??0), avgs=r.map(x=>x.avg??-99);
-  r.forEach(x=>{x.score=Math.round((pct(pfs,x.pf)+pct(wins,x.win??0)+pct(avgs,x.avg??-99))/3);});
+  r.forEach(x=>{x.score=Math.round(((x.pf!=null?pct(pfs.filter(v=>v!=null),x.pf):pct(wins,x.win??0))+pct(wins,x.win??0)+pct(avgs,x.avg??-99))/3);});
   r.sort((a,b)=>((a[sortKey]??-1e9)<(b[sortKey]??-1e9)?1:-1)*sortDir);
   const cols=[["sym","Ticker","l"],["strat","Strategy","l"],["vehicle","Vehicle guidance","l"],
     ["vetted","Vetted","l"],["score","Rank score"],["pf","PF"],["win","Win %"],
@@ -290,9 +314,9 @@ function renderScan(){
   let h="<tr>"+cols.map(c=>`<th class="${c[2]||""}" data-k="${c[0]}">${c[1]}${sortKey===c[0]?(sortDir>0?" v":" ^"):""}</th>`).join("")+"</tr>";
   h+=r.slice(0,400).map(x=>`<tr><td>${x.sym}</td><td>${x.strat}</td><td style="white-space:normal">${vehChip(x.sym,x.st)}</td>`+
     `<td>${x.vetted?'<span class="chip take">VETTED</span>':'<span class="chip gray">no</span>'}</td>`+
-    `<td><b>${x.score}</b></td><td>${x.pf}</td><td>${x.win??""}</td>`+
+    `<td><b>${x.score}</b></td><td>${x.pf??"-"}</td><td>${x.win??""}</td>`+
     `<td>${x.avg??""}</td><td>${x.n}</td><td>${x.cagr??""}</td><td>${x.bh??""}</td>`+
-    `<td>${x.expo}</td><td>${x.pf1922??""}</td><td>${x.pf2326??""}</td></tr>`).join("");
+    `<td>${x.expo??""}</td><td>${x.pf1922??""}</td><td>${x.pf2326??""}</td></tr>`).join("");
   const t=document.getElementById("scan-table"); t.innerHTML=h;
   t.querySelectorAll("th").forEach(th=>th.onclick=()=>{
     const k=th.dataset.k;
@@ -308,6 +332,10 @@ function renderScan(){
 });
 ["f-strat","f-grade","f-minn","f-win","f-sym"].forEach(id=>
   document.getElementById(id).addEventListener("input",renderScan));
+document.getElementById("f-strat").addEventListener("change",()=>{
+  const v=document.getElementById("f-strat").value, mn=document.getElementById("f-minn");
+  if(v.startsWith("GAPW")&&+mn.value>5){mn.value=5;}
+});
 document.getElementById("uni-count").textContent=Object.keys(SCAN.tickers).length;
 renderScan();
 
@@ -536,15 +564,16 @@ function armStats(sym, strat){
   const seen=new Set(), top4=[];
   for(const x of takes){ if(!seen.has(x.sym)){ seen.add(x.sym); top4.push(x);
     if(top4.length===4) break; } }
-  let h=`<div class="card"><h3>Daily flow</h3><p class="small">
+  const dailyFlowCard=`<div class="card"><h3>Daily flow</h3><p class="small">
     <b>Evening</b> (after the 4:00 ET close): review the ranked TAKEs below; queue
     MOO orders for Gap Widen / Z-Score entries. <b>Morning</b> by ~9:28 ET: MOO
     orders in; fills at the 9:30 open. <b>3:40-3:45 ET</b>: Positions-tab sell
     flags, confirm on live prints, MOC by 3:48. <b>Then</b>: log fills and closes
     in Positions - the forward test accrues automatically. Nothing here places
     orders.</p></div>`;
+  let top4Card="";
   if(top4.length){
-    h+=`<div class="card okbox"><h3>Top 4 buys today by expectancy (as of ${top4[0].as_of})</h3>
+    top4Card=`<details><summary class="small"><b>Top 4 buys today by expectancy</b> (as of ${top4[0].as_of}) - open for the picks</summary><div class="card okbox">
       <div class="tiles">`+top4.map((b,i)=>
       `<div class="tile"><div class="k">#${i+1}${b.new_today?' - NEW TODAY':''}</div>
        <div class="v">${b.sym}</div>
@@ -557,32 +586,32 @@ function armStats(sym, strat){
       days mean the setup has been live (and untriggered exits) for that many bars.
       Runners-up: ${takes.slice(top4.length, top4.length+4).map(x=>
       `${x.sym} ${x.strat} (win ${x.hwin}%, PF ${x.hpf})`).join("; ")||"none"}.
-      Confirm against live quotes; decision support, not an order.</p></div>`;
+      Confirm against live quotes; decision support, not an order.</p></div></details>`;
   }
   // STRONGEST PER STRATEGY - side-by-side for cross-book sizing decisions
   const stratsPresent=[...new Set(takes.map(x=>x.strat))];
-  h+=`<div class="card"><h3>Strongest qualifying signal per strategy (today)</h3>
+  let strongestCard=`<details><summary class="small"><b>Strongest qualifying signal per strategy</b> - open to compare books</summary><div class="card">
     <div class="tiles">`;
   for(const sn of stratsPresent){
     const b=takes.find(x=>x.strat===sn);
-    h+=`<div class="tile"><div class="k">${sn} - overall rank #${b.rank}</div>
+    strongestCard+=`<div class="tile"><div class="k">${sn} - overall rank #${b.rank}</div>
       <div class="v">${b.sym}</div>
       <div class="d">strength ${b.score} | win ${b.hwin}% | PF ${b.hpf} | n ${b.hn}<br>
       avg ${b.havg}%/trade | depth ${b.depth} | close ${b.close}</div></div>`;
   }
   const zN=all.filter(x=>x.strat==="ZSCORE").length;
-  h+=`<div class="tile"><div class="k">ZSCORE - book-level only</div>
+  strongestCard+=`<div class="tile"><div class="k">ZSCORE - book-level only</div>
     <div class="v">0 vetted</div>
     <div class="d">${zN} trigger${zN===1?"":"s"} today, all excluded from per-arm
     ranking (zero of 335 arms vetted; x40/x42). The curated Core-15/Ext-31
     z-score books validated 07/29-30 - see Strategy Books.</div></div>`;
-  h+=`</div><p class="small">The strength score is the same scale for every
+  strongestCard+=`</div><p class="small">The strength score is the same scale for every
     strategy, so these tiles compare directly when deciding which book gets a
     slot. Sizing caution from the record: concurrent books draw on the same
     settled cash - x40 showed reserve discipline for the primary book is
-    load-bearing, so never let a secondary book starve the primary one.</p></div>`;
+    load-bearing, so never let a secondary book starve the primary one.</p></div></details>`;
   // What qualifies, and how ranking works
-  h+=`<div class="card"><h3>What qualifies, and how the ranking works</h3>
+  const qualifiesCard=`<div class="card"><h3>What qualifies, and how the ranking works</h3>
     <p>Universe-wide: every (ticker, strategy) arm that passed the VETTED bar -
     at least 20 trades, PF at least 1.3, win rate at least 60 percent, profitable
     in BOTH eras (an arm with no closed trades in one era cannot be vetted).
@@ -595,7 +624,12 @@ function armStats(sym, strat){
     ranking when the scan pipeline emits arm records for them. Intraday 3:45
     entries stay banned - adversely selected (the RSI14 variant collapses to
     20.7% CAGR). Any strategy the research pipeline later vets appears here
-    automatically.</p>
+    automatically. <b>Why only RSI2 and MFI rows today:</b> this table lists
+    TODAY'S fired signals, and only strategies the local generator scans daily
+    produce rows - currently those two. Gap Widen's proven per-name records rank
+    on the Scan tab (strategy filter GAPW_RSI2 / GAPW_RSI14) and its book results
+    live on Strategy Books; its daily TAKE rows join this table when the local
+    scanner starts emitting them. Z-score's evidence is book-level only.</p>
     <p><b>Rank</b> = strength order among today's qualifying TAKE signals across
     the whole universe. <b>Strength</b> = avg/trade x n/(n+10), the
     trailing-expectancy rule the Daily Optimal backtest validated; ranking by
@@ -604,16 +638,38 @@ function armStats(sym, strat){
     bar. WATCH = one notch away. Nothing on this page places orders and there is
     no brokerage connection - decision support only.</p></div>`;
   // Controls + ranked table
-  h+=`<div class="controls">
+  let h=`<div class="controls">
     <label>Strategy <select id="s-strat"><option value="ALL">All</option>
       ${stratsPresent.map(x=>`<option>${x}</option>`).join("")}</select></label>
     <label>State <select id="s-state">
       <option value="TAKE" selected>TAKE only</option>
       <option value="ALL">All vetted (incl. WATCH)</option></select></label>
-    <label>Min trades <input type="number" id="s-minn" value="20" style="width:64px"></label>
+    <label>Min trades <input type="number" id="s-minn" value="30" style="width:64px"></label>
     <label>Ticker <input type="text" id="s-sym" placeholder="search" style="width:90px"></label>
     <span class="small" id="s-count"></span></div>
     <div class="tablewrap"><table id="signals-table"></table></div>`;
+  const gl=(c,m)=>`<tr><td class="l">${c}</td><td class="l" style="white-space:normal">${m}</td></tr>`;
+  const glossary=`<details style="margin-top:10px"><summary class="small">What each column means - and how to use it</summary>
+    <div class="tablewrap"><table style="max-width:900px">
+    <tr><th class="l">Column</th><th class="l">Meaning - and how to use it</th></tr>`+
+    gl("Rank","Order among today's qualifying TAKE signals, strongest first, across the whole universe. Rank 1 = the best expected trade by the validated rule.")+
+    gl("Strength","avg/trade x n/(n+10) - expectancy shrunk toward zero for small samples. <b>Yes, this is the right sort for picking buys</b>: it is the exact rule the Daily Optimal study validated (17.8%/yr, vs 2.2%/yr sorting by Depth). Sort by other columns to inspect, not to pick.")+
+    gl("State","TAKE = entry rule true on the newest bar (actionable). WATCH = one notch away (not actionable, just heads-up).")+
+    gl("New","The entry first fired on the latest bar. An older Signal day means the setup has been live for that many bars without exiting.")+
+    gl("Ticker","The SIGNAL symbol - log this one in Positions; exit rules evaluate the 1x base even when you trade a levered vehicle.")+
+    gl("Strategy / Exit","Which book fired, and that book's exact sell rule.")+
+    gl("Vehicle","1x-vs-levered pointer: green = program-validated leveraged mapping; yellow = liquid twin, a candidate NOT yet validated; plain 1x = no twin, illiquid twin, or thin edge.")+
+    gl("Win %","Share of this arm's historical trades that made money.")+
+    gl("PF","Profit factor = gross wins / gross losses. 2 means wins totaled twice the losses. The vetted floor is 1.3.")+
+    gl("Avg/trade %","Average net return per trade over the full window.")+
+    gl("Trades","Sample size. The filter defaults to 30 - the program's own reliability floor (its kill bar rejects samples under 30); 20 is the hard vetted minimum. GW per-name samples are small by design - their book-level validation carries the evidence.")+
+    gl("PF 19-22 / 23-26","Profit factor split by era. Both should be healthy - that is era-robustness, not one lucky regime.")+
+    gl("Depth","How hard the trigger fired (RSI level / z-score). Context only - ranking by Depth tested far worse than Strength.")+
+    gl("Close / As of","Last scan close (also the Positions auto-fill entry price) and the bar it came from.")+
+    gl("Buy date / Signal day","When the entry first fired, and how many bars it has been active.")+
+    gl("Earnings","yes = report soon. The z-score book skips these entries by rule; treat as caution elsewhere.")+
+    `</table></div></details>`;
+  h+=glossary;
   // Triggered but did not qualify (research visibility, zero rank credibility)
   const exReason=x=>x.hn===null?"no arm record in scan":
     (x.strat==="ZSCORE"?"zero z-score arms vetted (x40/x42)":"arm below the vetted bar");
@@ -627,6 +683,7 @@ function armStats(sym, strat){
     ex.map(x=>`<tr><td>${x.sym}</td><td>${x.strat}</td><td>${chip(x.state)}</td>
       <td>${x.depth}</td><td>${x.close}</td><td>${x.as_of}</td>
       <td class="l">${exReason(x)}</td></tr>`).join("")+`</table></div></details>`;
+  h+=top4Card+strongestCard+qualifiesCard+dailyFlowCard;
   el.innerHTML=h;
   // Ranked table rendering with sortable headers (numeric descending-first,
   // rank ascending-first, text ascending-first)
