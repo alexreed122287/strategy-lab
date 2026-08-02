@@ -8,8 +8,8 @@
 # previous build keeps serving.
 set -euo pipefail
 
-REPO="$HOME/repos/strategy-lab"        # FILL IN: local clone of alexreed122287/strategy-lab
-WORK="$HOME/repos/agentic-cron"        # FILL IN: where your generators + data caches live
+REPO="$HOME/repos/strategy-lab-site"   # local clone of alexreed122287/strategy-lab (per publish.sh)
+WORK="$HOME/repos/strategy-lab-dashboard"  # where the builder + caches live
 TMP="$(mktemp -d)"
 LOG="$REPO/.daily_build.log"
 trap 'rm -rf "$TMP"' EXIT
