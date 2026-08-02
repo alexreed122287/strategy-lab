@@ -59,6 +59,26 @@ STATUS UPDATE 2026-08-02 — the local labs had already run most of this
   the list's assembly date (check the MIO screen's creation date), 20+
   forward paper trades, and panel co-signs of x43/x44. Artifact:
   data/x44_results.json.
+- x45 SESSION (2026-08-02): universe completion per the user's instruction
+  ("remove the delisted tickers altogether but incorporate the live tickers
+  not already included in the brain"). The 267 missing/corrupt MIO names were
+  session-fetched from Robinhood (split-adjusted daily 2018->2026-07-31,
+  anchored vs Tradier parquets on overlaps: 8/10 p99<0.2%, GE/OHI-class
+  spin-off/dividend divergences flagged); 218 live clean names joined the 143
+  brain names (AIG/CSX repaired, JMIA/NBIS/SKIN rescued, FCEL excluded),
+  48 dead names removed — survivorship bias stated up front. Replication on
+  the 361-name LIVE universe (prereg
+  docs/x45_session_prereg_zscore_universe_completion.md, lab engine,
+  merged brain+RH store) PASSED all gates: 68.5% CAGR idealized / PF 3.12 /
+  789 trades / every year positive — MATCHING MIO's claimed 67.2%; universe
+  breadth, not hidden sauce, was the x44 gap. Executable ladder MOC-full
+  55.5% [46.3-64.1], hybrid 46.4%, worst-case next-open 34.8%. Causal fold
+  again: curation 21.4% vs full 91.2% forward. Scanner now scans the live
+  list (mio_universe_live); per-name rows for the 218 RH names joined BOOKS
+  as src=rh-session. Real money stays gated on: MIO screen-creation-date
+  provenance, Tradier re-fetch + earnings backfill of the RH-basis names
+  into the brain, 20+ forward paper trades, and panel co-signs of
+  x43/x44/x45. Artifact: data/x45_results.json.
 - SPEC A (Gap Widen deep-OOS/eras): STILL OPEN — the one spec with no data yet.
 - Earnings wiring: DONE — daily_build.sh now feeds next-confirmed dates from
   the local market-data-brain earnings cache into TRACK and the book scanner

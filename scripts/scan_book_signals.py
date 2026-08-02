@@ -195,9 +195,11 @@ def main():
     zuni = S["zscore_000"]["universe"]
     zstats = {e["signal"]: e for e in zuni.get("per_name", [])}
     zfactor = S["zscore_000"].get("exec_basis_factor") or 1.0
-    # x44 (2026-08-02): the paper book scans the ACTUAL MIO universe's runnable
-    # names; Ext-31 remains the fallback if the list is absent from the blob.
-    zscan = zuni.get("mio_universe_runnable") or zuni.get("extended_31", [])
+    # x44/x45 (2026-08-02): the paper book scans the ACTUAL MIO universe -
+    # preferring the x45 live list (delisted removed, session-fetched names
+    # included), then the x44 runnable subset, then Ext-31 as last fallback.
+    zscan = (zuni.get("mio_universe_live") or zuni.get("mio_universe_runnable")
+             or zuni.get("extended_31", []))
     cands = []
     for sym in zscan:
         b = bars.get(sym)
