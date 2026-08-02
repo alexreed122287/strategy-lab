@@ -280,7 +280,10 @@ def main():
                     queue(r["strat"], r["sym"], r.get("close"))
         for x in signals.get("signals", []):
             if (x.get("state") == "TAKE" and x.get("new_today")
-                    and x.get("as_of") == as_of and x.get("strat") in ("RSI2", "MFI")):
+                    and x.get("as_of") == as_of
+                    # RSI2 pulled 2026-08-02 by x47 (lost to buy-and-hold of its
+                    # own names in 2023-26 under every universe). MFI continues.
+                    and x.get("strat") in ("MFI",)):
                 st = (scan["tickers"].get(x["sym"], {}).get("strats", {})
                       .get(x["strat"]))
                 if st and st.get("vetted") and (st.get("n") or 0) >= 30:
