@@ -17,6 +17,9 @@ REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OUT="$REPO/data/lab_collect"
 mkdir -p "$OUT"
 BRANCH="lab/mac-collect-$(date +%Y%m%d)"
+# daily_build.sh does `git pull --ff-only origin main` on step 0, so this script
+# MUST hand the repo back on whatever branch it found it on.
+START_BRANCH="$(git -C "$(dirname "${BASH_SOURCE[0]}")/.." rev-parse --abbrev-ref HEAD 2>/dev/null || echo main)"
 STATUS=()
 say(){ printf '\n\033[1m== %s\033[0m\n' "$1"; }
 ok(){  STATUS+=("OK   $1"); }
@@ -82,7 +85,7 @@ col = {"lab_path": lab, "results": {}, "configs": {}, "listing": []}
 for p in sorted(glob.glob(f"{lab}/**/*.json", recursive=True)):
     rel = os.path.relpath(p, lab)
     col["listing"].append(rel)
-    if os.path.getsize(p) > 4_000_000:
+    if os.path.getsize(p) > 1_500_000:      # keep git history lean
         continue
     try:
         d = json.load(open(p))
@@ -92,7 +95,10 @@ for p in sorted(glob.glob(f"{lab}/**/*.json", recursive=True)):
     col[tgt][rel] = clean(d)
 json.dump(col, open(f"{out}/gw_lab_config.json", "w"), indent=1, default=str)
 n = len(col["results"]) + len(col["configs"])
-print(f"collected {n} json files ({len(col['listing'])} seen) -> data/lab_collect/gw_lab_config.json")
+json.dump(col, open(f"{out}/gw_lab_config.json", "w"), indent=1, default=str)
+mb = os.path.getsize(f"{out}/gw_lab_config.json") / 1e6
+print(f"collected {n} json files ({len(col['listing'])} seen) -> "
+      f"data/lab_collect/gw_lab_config.json ({mb:.1f} MB)")
 # surface the numbers the reproduction gap hinges on
 for rel, d in list(col["results"].items()):
     s = json.dumps(d)
@@ -167,6 +173,13 @@ session cannot reach. Credentials are redacted by the collector."
     ok "pushed branch $BRANCH"
   else
     bad "push failed - commit is local on $BRANCH"
+  fi
+  # hand the repo back where we found it, or the nightly build breaks
+  if git checkout "$START_BRANCH" >/dev/null 2>&1; then
+    echo "returned to branch $START_BRANCH"
+  else
+    echo "WARNING: could not return to $START_BRANCH - you are on $BRANCH."
+    echo "         run: git checkout $START_BRANCH   before tonight's build"
   fi
 else
   echo "nothing new to commit."
