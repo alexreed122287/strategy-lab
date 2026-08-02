@@ -1,4 +1,24 @@
 # What to run on the Mac — consolidated checklist
+
+## TL;DR — one command does all of it
+
+    cd ~/path/to/strategy-lab && bash scripts/lab_mac_session.sh
+
+It runs the Tradier re-fetch + earnings backfill, collects the `gap_widen_lab`
+config needed to resolve the RSI14 reproduction gap, collects your generator's
+RSI2/MFI arm definitions so the benchmark gate can be extended to them, then
+commits and pushes the artifacts on a `lab/mac-collect-<date>` branch. Every
+step is fail-soft and safe to re-run; credential lines are redacted before
+anything is written to the repo, and nothing in it trades.
+
+If a path is not auto-detected, re-run with it supplied:
+
+    GWLAB=/path/to/gap_widen_lab GEN=/path/to/generator bash scripts/lab_mac_session.sh
+
+Then tell your Claude session "the lab collect branch is pushed".
+
+The detail for each step follows, if you'd rather run them individually.
+
 Last updated 2026-08-02. Everything here needs either a broker token or a lab
 engine that only exists on your machine; none of it can run from a session.
 Ordered by value. Nothing here is urgent enough to interrupt a day.
