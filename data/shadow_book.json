@@ -1,0 +1,7 @@
+{
+ "as_of": null,
+ "started": null,
+ "positions": [],
+ "closed": [],
+ "note": "Shadow forward book ledger - seeded 2026-08-02, accumulates automatically from the next daily build. Committed by daily_build.sh so the forward record survives machines."
+}

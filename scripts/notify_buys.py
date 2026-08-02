@@ -127,14 +127,18 @@ def collect(page_path):
         ranked.append(b)
     gw_book.sort(key=lambda x: (x["strat"], x["rank"] or 99))
     paper.sort(key=lambda x: -(x["score"] if x["score"] is not None else -1e9))
-    return as_of, ranked, gw_book, paper
+
+    # shadow-book exits that hit their rule at today's close (sell side)
+    shadow = blob(html, "SHADOW") or {}
+    exits = list(shadow.get("exits_today") or []) if shadow.get("as_of") == (as_of or shadow.get("as_of")) else []
+    return as_of, ranked, gw_book, paper, exits
 
 
 def fmt(v, suffix=""):
     return ("-" if v is None else str(v) + suffix)
 
 
-def compose(as_of, ranked, gw_book, paper, url):
+def compose(as_of, ranked, gw_book, paper, exits, url):
     lines = ["Strategy Lab - new buys for " + (as_of or "latest scan"), ""]
     if ranked:
         lines.append("RANKED (vetted arms, 30+ trades, one best arm per ticker - the Top-4 pool):")
@@ -162,14 +166,22 @@ def compose(as_of, ranked, gw_book, paper, url):
                 f"  - {b['sym']:<6} {b['strat']:<7} {b['entry']}"
                 f" | close {fmt(b['close'])} | win {fmt(b['win'],'%')}"
                 f" | avg {fmt(b['avg'],'%')} (exec est) | n {fmt(b['n'])}")
+    if exits:
+        lines.append("")
+        lines.append("SELLS - shadow-book positions whose exit rule hit at today's close:")
+        for x in exits:
+            net = ("%+.2f%%" % (x["net"] * 100)) if x.get("net") is not None else "-"
+            lines.append(f"  - {x.get('sym',''):<6} {x.get('book',''):<11} {x.get('why','')} | {net}")
+        lines.append("  (If you hold these manually, check your own sell flags on the Positions tab.)")
     lines += ["",
               "Exits: each book's rule is on the Positions tab (sell flags run daily).",
               "Numbers are backtest-derived decision support - nothing here places orders.",
               "Dashboard: " + (url or "(set dashboard_url in the notify config)")]
-    subject = ("Strategy Lab %s: %d ranked buy%s%s%s" % (
+    subject = ("Strategy Lab %s: %d ranked buy%s%s%s%s" % (
         as_of or "", len(ranked), "" if len(ranked) == 1 else "s",
         (", %d gap-widen" % len(gw_book)) if gw_book else "",
-        (", %d paper" % len(paper)) if paper else ""))
+        (", %d paper" % len(paper)) if paper else "",
+        (", %d sell%s" % (len(exits), "" if len(exits) == 1 else "s")) if exits else ""))
     return subject, "\n".join(lines)
 
 
@@ -262,9 +274,9 @@ def main():
                          "Wiring works. Daily new-buy alerts will arrive after "
                          "each green build.")
     else:
-        as_of, ranked, gw_book, paper = collect(page)
-        if not ranked and not gw_book and not paper:
-            print("notify: no new buys for", as_of or "latest scan", "- nothing sent")
+        as_of, ranked, gw_book, paper, exits = collect(page)
+        if not ranked and not gw_book and not paper and not exits:
+            print("notify: no new buys or sells for", as_of or "latest scan", "- nothing sent")
             return
         state = {}
         if os.path.exists(state_path):
@@ -275,7 +287,7 @@ def main():
         if not force and state.get("last_sent") == as_of and as_of:
             print("notify: already sent for", as_of, "- skipping (--force to resend)")
             return
-        subject, body = compose(as_of, ranked, gw_book, paper, cfg.get("dashboard_url"))
+        subject, body = compose(as_of, ranked, gw_book, paper, exits, cfg.get("dashboard_url"))
 
     if dry:
         print("--- DRY RUN (nothing sent) ---")
