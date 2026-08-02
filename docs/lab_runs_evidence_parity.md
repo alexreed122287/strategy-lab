@@ -117,7 +117,33 @@ STATUS UPDATE 2026-08-02 — the local labs had already run most of this
     the brain's own refresh_earnings.py.
   Real money REMAINS OFF. The two gates that cannot be shortcut are
   unchanged: 20+ forward paper trades, and lab panel co-sign of x43/x44/x45.
-- SPEC A (Gap Widen deep-OOS/eras): STILL OPEN — the one spec with no data yet.
+- SPEC A (Gap Widen deep-OOS/eras): EXECUTED 2026-08-02 as x46 (prereg
+  docs/x46_session_prereg_gapwiden_deep_oos.md, results
+  docs/x46_results_gapwiden_deep_oos.md). gap_widen_rsi2 -> FAIL on SPEC A's
+  own first clause: deep-era 2011-2018 CAGR is NEGATIVE at the program's
+  published 0.05%/side execution standard (-3.26%; +0.21% at 0.01%/side,
+  -15.22% at the 0.2% sensitivity), on 1,043 trades over 276 names, DD -39.7%,
+  PF 1.05. Survivorship-neutral kicker: equal-weight buy-and-hold of the SAME
+  names over the SAME window returned +10.75%/yr at -24.9% DD, so the book lost
+  to simply owning its universe by ~10.5pp/yr with more drawdown. Per SPEC A
+  this does NOT kill the book - it stays tradeable, bands now use the deep-era
+  floor, sizing stays at forward-test scale. gap_widen_rsi14 -> UNANCHORED: the
+  session harness reproduces 38.8% vs the published 51.6% at full coverage and
+  no published tier closes the gap, so its deep numbers are recorded but not
+  binding and its parity cell STAYS OPEN.
+  Verified adversarially before publication (4 agents): harness-bug and
+  data-quality attacks failed to refute; the ANCHOR CLAIM WAS REFUTED (the
+  +-6pp tolerance passes 14/20 randomly mutilated universes and passes specs
+  with entry conditions deleted, so reproducing 57.26% vs 58.0% is not
+  validation); the survivorship argument was struck as unsupported (the
+  IPO-exclusion bias runs ~14pp the OTHER way). Two claims were removed from
+  the dashboard as overstated: "the edge does not exist pre-2019" (CI spans
+  ~-12% to +15%) and "survivorship makes the fail decisive". The coded FAIL
+  originally fired on a DEGENERATE era-concentration metric (per-year shares of
+  1423% because total log growth is ~0.017); the verdict was re-grounded on the
+  level and the concentration gate is recorded INCONCLUSIVE.
+  Resolving RSI14 and re-running with the real vehicles/sizing needs the
+  gap_widen_lab engine - see docs/mac_handoff_checklist.md.
 - Earnings wiring: DONE — daily_build.sh now feeds next-confirmed dates from
   the local market-data-brain earnings cache into TRACK and the book scanner
   (z-score no-entry + force-exit rules live).
