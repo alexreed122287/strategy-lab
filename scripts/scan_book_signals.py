@@ -177,7 +177,8 @@ def main():
                 cands.append({"sym": sym, "strat": strat, "state": "TAKE", **m,
                               "vehicle": veh.get(sym),
                               "n": e and e["n"], "win": e and round(e["win"] * 100, 1),
-                              "avg": e and round(e["avg_net"] * 100, 2)})
+                              "avg": e and round(e["avg_net"] * 100, 2),
+                              "pf": e and e.get("pf")})
         cands.sort(key=lambda x: -(x["rs252"] if x["rs252"] is not None else -1e9))
         for i, x in enumerate(cands):
             x["book_rank"] = i + 1

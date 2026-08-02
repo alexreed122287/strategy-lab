@@ -99,6 +99,23 @@ Dashboard deliverable: validated_metrics for bb_rubber_band in the BOOKS blob
 label lifts only when the exit gate AND this validation both pass.
 
 --------------------------------------------------------------------------
+## SPEC A addendum — Gap Widen per-name PF emission (added 2026-08-02)
+The Scan tab shows "-" for PF on GW rows because the per-name arm run only
+emits n / win / avg_net / med / cum (per_ticker_RSI2.csv / per_ticker_RSI14.csv).
+PF cannot be reconstructed from those aggregates, and it cannot be taken from
+results/trades_RSI2_*.csv / trades_RSI14_*.csv: those are the PORTFOLIO sim's
+slot-taken trades — a different object (JBLU: 5 portfolio trades vs 19 in the
+per-name arm record). Mixing the two would mislabel the published stats.
+Deliverable (one-line change in the per-name arm loop):
+  - per_ticker_*.csv gains a `pf` column = gross wins / -gross losses per name,
+    capped at 99 when a name has zero losing trades (small-sample artifact cap,
+    same convention as the z-score/BB research tables).
+  - When splicing the BOOKS blob, each qualified/priority entry gains
+    "pf": <value> alongside n/win/avg_net.
+The dashboard is already wired: GW Scan rows and GW signal rows render `pf`
+the moment the entries carry it — no page change needed on receipt.
+
+--------------------------------------------------------------------------
 ## Quick wiring item (not a backtest)
 Z-score earnings force-exits are OFF until the daily build gets a
 confirmed-earnings feed: emit {"SYM": "YYYY-MM-DD"} to $TMP/earnings.json in
