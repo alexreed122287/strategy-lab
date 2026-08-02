@@ -22,6 +22,18 @@ STATUS UPDATE 2026-08-02 — the local labs had already run most of this
   retention 0.096 = FAIL; era flag fired. Per the pre-registered gate BB is
   OUT of the nightly scanner; a 402-name per-name research table (session run,
   same anchored harness) stays on the dashboard for reference.
+  RE-VET 2026-08-02 (user's MIO screenshot): the ACTUAL MIO entry is
+  rsi(2)<10, not the rsi(3)<20 the port encoded. Corrected-spec re-run with
+  MIO's own mechanics ($100k, 40%/trade, 3 slots, lowest-RSI3 ranking, close
+  fills, 0.02% spread, 2019->present, no earnings rules) on the 451-name clean
+  universe: 9.1% CAGR / PF 1.27 / 0.39%/trade / -38.5% DD, 2025 AND 2026
+  negative; earnings-aware variant 8.9%/1.23; executable next-open 3.6%/1.10.
+  MIO claims 73.5% / PF 3.38 / 1.96%/trade / -15% DD on 577 trades. KILL
+  STANDS under the corrected spec. Unresolved in MIO's favor and re-openable
+  only by a lab run: whole-exchange universe breadth (thousands of names vs
+  our 451 large caps) and the unverified [000 bb rubber band] embedded screen
+  (the same pitfall the z-score handoff flagged). Per-name table on the
+  dashboard replaced with the corrected-spec run (402 names, 4,912 trades).
 - SPEC A (Gap Widen deep-OOS/eras): STILL OPEN — the one spec with no data yet.
 - Earnings wiring: DONE — daily_build.sh now feeds next-confirmed dates from
   the local market-data-brain earnings cache into TRACK and the book scanner
