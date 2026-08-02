@@ -34,6 +34,17 @@ STATUS UPDATE 2026-08-02 — the local labs had already run most of this
   our 451 large caps) and the unverified [000 bb rubber band] embedded screen
   (the same pitfall the z-score handoff flagged). Per-name table on the
   dashboard replaced with the corrected-spec run (402 names, 4,912 trades).
+- x43 SESSION (2026-08-02): the z-score 3:45 threshold-entry reopening test
+  (prereg docs/x43_session_prereg_zscore_moc_entry.md, lab fillmode_sim.py
+  engine unmodified, anchors exact) PASSED all three x42 reopening gates:
+  Ext-31 moc-entry 30.7% mean [28.5-33.0] vs hybrid 24.9% (+5.76pp paired,
+  10/10 seeds), wide direction +2.79pp with the missing next-open true-signal
+  control (17.0% vs 3.5%), delta era-clean (max year 21%). Per-trade keep-rate
+  x0.87 vs idealized (vs x0.71 MOO); false fires remain profitable (+1.11%
+  avg) — threshold entries are not adversely selected the way structural
+  entries were. Full artifact: data/x43_results.json. PROVISIONAL pending the
+  lab panel: the dashboard keeps the MOO x0.71 display basis until co-signed;
+  real-money wiring stays killed (x40) regardless.
 - SPEC A (Gap Widen deep-OOS/eras): STILL OPEN — the one spec with no data yet.
 - Earnings wiring: DONE — daily_build.sh now feeds next-confirmed dates from
   the local market-data-brain earnings cache into TRACK and the book scanner
