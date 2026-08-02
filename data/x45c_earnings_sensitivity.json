@@ -1,0 +1,40 @@
+{
+ "brain143_with_earnings": {
+  "cagr": 43.51,
+  "trades": 608,
+  "win": 76.5,
+  "avg": 1.34,
+  "pf": 3.24,
+  "maxdd": -14.1
+ },
+ "brain143_no_earnings": {
+  "cagr": 43.22,
+  "trades": 605,
+  "win": 76.5,
+  "avg": 1.38,
+  "pf": 3.25,
+  "maxdd": -14.4
+ },
+ "all358_partial_earnings": {
+  "cagr": 68.52,
+  "trades": 788,
+  "win": 77.2,
+  "avg": 1.54,
+  "pf": 3.24,
+  "maxdd": -19.9
+ },
+ "all358_no_earnings": {
+  "cagr": 69.01,
+  "trades": 783,
+  "win": 77.3,
+  "avg": 1.55,
+  "pf": 3.24,
+  "maxdd": -19.0
+ },
+ "deltas": {
+  "brain143_rule_cost_cagr_pp": 0.29,
+  "brain143_trades_blocked": -3,
+  "all358_rule_cost_cagr_pp": -0.49,
+  "all358_trades_blocked": -5
+ }
+}
