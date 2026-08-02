@@ -28,12 +28,14 @@ cd "$WORK"
 # FILL IN, e.g.:
 # python3 build_dashboard.py --out "$REPO/index.html"
 
-# 3) Emit the TRACK inputs:
-#    closes.json  = {"SYM": [["YYYY-MM-DD", close], ...]} ascending, ~60 bars,
-#                   for every scan ticker + the four books' universes + holdings.
-#    earnings.json = {"SYM": "YYYY-MM-DD"} next confirmed report (optional).
-# FILL IN, e.g.:
-# python3 dump_closes.py --closes "$TMP/closes.json" --earnings "$TMP/earnings.json"
+# 3) Emit the TRACK inputs - READY TO RUN: closes fetched straight from
+#    Tradier for every scan ticker + book-universe symbol parsed off the page.
+#    Token: TRADIER_TOKEN env var or ~/.tradier_token file. ~6 min for ~700 names.
+python3 "$REPO/scripts/dump_closes.py" --index "$REPO/index.html" \
+  --out "$TMP/closes.json" --days 90
+# earnings.json (z-score force-exit dates) - OPTIONAL FILL IN if you have a
+# confirmed-earnings feed; empty file just disables earnings flags:
+[ -f "$TMP/earnings.json" ] || echo '{}' > "$TMP/earnings.json"
 
 # 4) Splice the TRACK indicator snapshot into the page (ready to run).
 python3 "$REPO/scripts/track_snapshot_reference.py" "$TMP/closes.json" \
