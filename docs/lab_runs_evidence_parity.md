@@ -79,6 +79,44 @@ STATUS UPDATE 2026-08-02 — the local labs had already run most of this
   provenance, Tradier re-fetch + earnings backfill of the RH-basis names
   into the brain, 20+ forward paper trades, and panel co-signs of
   x43/x44/x45. Artifact: data/x45_results.json.
+- x45 FOLLOW-THROUGH (2026-08-02, docs/x45_provenance_and_data_hygiene.md):
+  the user asked for the remaining gates to be closed now. Three of the four
+  were addressed in-session; two are genuinely closed.
+  * PROVENANCE (x45d): MarketInOut is not reachable from the session, so the
+    list was interrogated instead of its UI. It is provably CUMULATIVE - it
+    contains 48 names dead since 2021-25 AND names first traded in 2024-26,
+    which no single-moment export can. Rather than assert, the risk was
+    tested: restricted to the 323 names already trading at the 2019 start,
+    the book earns 65.5% (774 trades, PF 3.16, MOC-full 50.5%) vs 68.5% on
+    all 358; the 35 late listings contribute ~3pp. The edge is NOT an
+    artifact of late additions. Residual manual check (screen creation date)
+    survives but can no longer overturn the result.
+    Artifact: data/x45d_provenance_test.json.
+  * DATA HYGIENE (x45 v2): Robinhood pads pre-listing history with
+    zero-volume flat-price bars - 29,856 across 37 names (up to 2,137 on one
+    name). All removed, NBIS/PS/UN dropped (splice / <300 real bars), 41
+    series truncated; universe 361 -> 358. Re-run reproduced the headline
+    EXACTLY (68.52% -> 68.52%) with better executable legs (MOC-full 55.5 ->
+    57.3%, next-open 34.8 -> 39.0%, PF 3.12 -> 3.24): the fake bars never
+    fired signals because zero-volume fails the 1M ADV gate. All gates still
+    PASS. Artifact: data/x45v2_results.json (now the book's basis).
+  * EARNINGS (x45c): Yahoo and Tradier are both proxy-blocked here, so the
+    rule's WORTH was measured rather than the history fetched: running the
+    same universes with and without earnings files moves CAGR by +0.29pp
+    (143 names) and -0.49pp (358 names), blocking 3-5 of ~790 trades. The
+    missing backfill does not bias the backtest; it is live single-trade
+    risk control. Wired anyway: data/earnings_seed/ (213 files, 81 confirmed
+    dates from a Robinhood calendar snapshot), next_earnings.py --seed-dir
+    merging UNDER the brain feed, daily_build.sh passing it - coverage
+    145 -> 220 of 358. Artifact: data/x45c_earnings_sensitivity.json.
+  * TRADIER RE-FETCH: impossible in-session (no token by design, host
+    blocked). Packaged as one Mac command - scripts/lab_refetch_new_names.py
+    re-fetches the 215 RH-basis names into the brain, applies the same
+    zero-volume hygiene, diffs Tradier vs Robinhood per symbol (median/p99/
+    worst day, flags p99 > 0.5%), and with --earnings seeds files and runs
+    the brain's own refresh_earnings.py.
+  Real money REMAINS OFF. The two gates that cannot be shortcut are
+  unchanged: 20+ forward paper trades, and lab panel co-sign of x43/x44/x45.
 - SPEC A (Gap Widen deep-OOS/eras): STILL OPEN — the one spec with no data yet.
 - Earnings wiring: DONE — daily_build.sh now feeds next-confirmed dates from
   the local market-data-brain earnings cache into TRACK and the book scanner
