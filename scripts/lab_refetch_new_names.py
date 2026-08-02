@@ -172,6 +172,24 @@ def main():
 
         df = pd.DataFrame(days)[["date", "open", "high", "low", "close", "volume"]]
         df["date"] = pd.to_datetime(df["date"]).dt.strftime("%Y-%m-%d")
+        # Tradier returns the string "NaN" for missing OHLC on some bars, which
+        # leaves an object-dtype column that parquet refuses to write. Coerce to
+        # numbers, drop bars with no close, and carry the close into any missing
+        # open/high/low (a bar with no trade prints flat).
+        for col in ("open", "high", "low", "close", "volume"):
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+        bad_close = int(df["close"].isna().sum())
+        df = df.dropna(subset=["close"]).reset_index(drop=True)
+        filled = int(df[["open", "high", "low"]].isna().any(axis=1).sum())
+        for col in ("open", "high", "low"):
+            df[col] = df[col].fillna(df["close"])
+        df["volume"] = df["volume"].fillna(0.0)
+        if bad_close or filled:
+            report["flags"].append({"symbol": sym, "rows_dropped_no_close": bad_close,
+                                    "rows_ohl_filled_from_close": filled})
+        if df.empty:
+            report["unavailable"].append({"symbol": sym, "reason": "no numeric closes"})
+            continue
         df = df.sort_values("date").reset_index(drop=True)
         df["source"] = "tradier"
         # same hygiene x45 v2 applied to the RH series: no zero-volume padding
