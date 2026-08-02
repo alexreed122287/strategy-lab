@@ -17,12 +17,24 @@ result here cancels out. No assumption about dead companies is required.
 The book leg is reported at the program's own published execution standard
 (0.05%/side), not at idealized fills.
 
-## Results (2019-01 → 2026-07)
+## Results (2019-01 → 2026-07) — all five live books
 | Book | Book CAGR (0.05%/side) | Book DD | Buy-and-hold, same names | B&H DD | Excess |
 |---|---|---|---|---|---|
 | Z-Score (358 names) | 60.83% | −22.97% | 18.75% | −41.78% | **+42.08pp** |
 | Gap Widen RSI2 (340) | 50.59% | −31.50% | 19.42% | −41.82% | **+31.17pp** |
 | Gap Widen RSI14 (198) | 34.23% | −36.90% | 19.67% | −44.23% | **+14.56pp** |
+| MFI (192) | 59.50% | −26.04% | 24.13% | −37.91% | **+35.37pp** |
+| RSI2 (193) | 39.93% | −20.73% | 22.72% | −38.46% | **+17.21pp** |
+
+RSI2 and MFI were added 2026-08-02 once the arm definitions came off the Mac
+(`agentic-cron/rsi2_engine.py`, `rsi2_x9_mfi_friday.py`): RSI2 enters on
+rsi(2) < 10 with close > sma(200); MFI is the same book with mfi(3) < 10
+replacing the RSI trigger; both exit on close > sma(5) or a 10-bar stop, 3
+slots. Their legs are computed at the same 0.05%/side standard.
+
+**Every live book clears the hurdle, on return and drawdown simultaneously.**
+That is the single most reassuring fact on this dashboard, and it was unknown
+until now.
 
 All three beat their universe **on return and on drawdown simultaneously** —
 they are not simply levering the same exposure. Roughly 19% a year was available
