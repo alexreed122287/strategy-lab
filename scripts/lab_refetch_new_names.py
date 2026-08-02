@@ -94,6 +94,30 @@ def main():
     report = {"as_of": end, "start": a.start, "n_requested": len(names),
               "written": [], "unavailable": [], "diffs": {}, "flags": []}
 
+    # Fail fast on auth. Probing once beats discovering a bad token 215 requests
+    # later with the reason buried in a JSON array (which is what happened on
+    # the first real run, 2026-08-02).
+    if not a.dry_run and not a.earnings_only and token:
+        try:
+            fetch_history("AAPL", token, "2026-01-01", end)
+        except urllib.error.HTTPError as e:
+            if e.code in (401, 403):
+                sys.exit(
+                    f"\nTradier rejected the token: HTTP {e.code} on a probe request"
+                    f" to {API_BASE}.\n"
+                    "  - 401 means the token is invalid or expired. Regenerate it in the\n"
+                    "    Tradier dashboard (Account -> API Access) and re-export it.\n"
+                    "  - If your token is a SANDBOX token, also set\n"
+                    "    TRADIER_API_BASE=https://sandbox.tradier.com\n"
+                    "  - Verify with:\n"
+                    "    curl -s -o /dev/null -w '%{http_code}\\n' -H \"Authorization: Bearer $TRADIER_TOKEN\" \\\n"
+                    f"      '{API_BASE}/v1/markets/history?symbol=AAPL&interval=daily&start=2026-07-01'\n"
+                    "\nNothing was fetched or written. The earnings step is unaffected -\n"
+                    "run with --earnings-only to do just that.")
+            raise
+        except Exception:
+            pass          # non-auth hiccups are handled per-symbol below
+
     if a.earnings or a.earnings_only:
         # refresh_earnings.py only iterates symbols that ALREADY have a file,
         # so seed empties first; then Yahoo fills real history (limit=40).

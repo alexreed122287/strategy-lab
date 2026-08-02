@@ -31,11 +31,26 @@ for d in "$HOME/Projects/market-data-brain" "$HOME/repos/market-data-brain" \
          "$HOME/market-data-brain"; do
   [ -d "$d" ] && BRAIN="$d" && break
 done
-GWLAB=""
-for d in "$HOME/Projects/gap_widen_lab" "$HOME/repos/gap_widen_lab" \
-         "$HOME/gap_widen_lab" "$BRAIN/../gap_widen_lab"; do
-  [ -n "$d" ] && [ -d "$d" ] && GWLAB="$(cd "$d" && pwd)" && break
-done
+# Honor a caller-supplied path FIRST - only search if none was given.
+GWLAB="${GWLAB:-}"
+if [ -n "$GWLAB" ] && [ ! -d "$GWLAB" ]; then
+  echo "WARNING: GWLAB=$GWLAB does not exist - falling back to a search."
+  GWLAB=""
+fi
+if [ -z "$GWLAB" ]; then
+  for d in "$HOME/Projects/gap_widen_lab" "$HOME/repos/gap_widen_lab" \
+           "$HOME/gap_widen_lab" "$HOME/repos/gap-widen-lab" \
+           "$HOME/Projects/gap-widen-lab" "$BRAIN/../gap_widen_lab"; do
+    [ -n "$d" ] && [ -d "$d" ] && GWLAB="$(cd "$d" && pwd)" && break
+  done
+fi
+# Last resort: look for the lab by its results signature.
+if [ -z "$GWLAB" ]; then
+  cand="$(find "$HOME/repos" "$HOME/Projects" -maxdepth 3 -name "moc_results.json" \
+          -o -maxdepth 3 -name "moo_results.json" 2>/dev/null | head -1)"
+  [ -n "$cand" ] && GWLAB="$(cd "$(dirname "$(dirname "$cand")")" && pwd)" && \
+    echo "found a lab by its results signature: $GWLAB"
+fi
 echo "repo   : $REPO"
 echo "brain  : ${BRAIN:-NOT FOUND}"
 echo "gw lab : ${GWLAB:-NOT FOUND}"
@@ -110,8 +125,9 @@ fi
 
 # ---------- 3. Collect the RSI2 / MFI generator arm definitions -------------
 say "3/3  Collect the generator's RSI2 / MFI arm definitions (for the benchmark gate)"
-GEN=""
-for d in "$HOME/Projects/agentic-cron" "$HOME/repos/agentic-cron" "$HOME/agentic-cron" \
+GEN="${GEN:-}"
+[ -n "$GEN" ] && [ ! -d "$GEN" ] && echo "WARNING: GEN=$GEN does not exist - searching." && GEN=""
+[ -z "$GEN" ] && for d in "$HOME/Projects/agentic-cron" "$HOME/repos/agentic-cron" "$HOME/agentic-cron" \
          "$HOME/Projects/strategy-generator" "$HOME/repos/strategy-generator"; do
   [ -d "$d" ] && GEN="$(cd "$d" && pwd)" && break
 done
