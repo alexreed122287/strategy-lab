@@ -83,6 +83,9 @@ tr:hover td { background: var(--surface-2); }
 .controls button, .card button, details button { background: var(--surface-2);
   color: var(--text-primary); border: 1px solid var(--border); border-radius: 6px;
   padding: 5px 10px; font-size: 13px; cursor: pointer; }
+tr.subrow td { opacity: .72; background: var(--surface-2); }
+button.exp { background: none; border: 1px solid var(--border); border-radius: 4px;
+  color: var(--text-secondary); font-size: 11px; padding: 0 4px; cursor: pointer; }
 </style>
 </head>
 <body>
@@ -658,6 +661,7 @@ function armStats(sym, strat){
   }
   // STRONGEST PER STRATEGY - side-by-side for cross-book sizing decisions
   const stratsPresent=[...new Set(takes.map(x=>x.strat))];
+  const stratOptions=[...new Set(s.map(x=>x.strat))].sort();
   let strongestCard=`<details><summary class="small"><b>Strongest qualifying signal per strategy</b> (30+ trade arms) - open to compare books</summary><div class="card">
     <div class="tiles">`;
   for(const sn of stratsPresent){
@@ -711,7 +715,7 @@ function armStats(sym, strat){
   // Controls + ranked table
   let h=`<div class="controls">
     <label>Strategy <select id="s-strat"><option value="ALL">All</option>
-      ${stratsPresent.map(x=>`<option>${x}</option>`).join("")}</select></label>
+      ${stratOptions.map(x=>`<option>${x}</option>`).join("")}</select></label>
     <label>State <select id="s-state">
       <option value="TAKE" selected>TAKE only</option>
       <option value="ALL">All vetted (incl. WATCH)</option></select></label>
@@ -724,7 +728,7 @@ function armStats(sym, strat){
   const glossary=`<details style="margin-top:10px"><summary class="small">What each column means - and how to use it</summary>
     <div class="tablewrap"><table style="max-width:900px">
     <tr><th class="l">Column</th><th class="l">Meaning - and how to use it</th></tr>`+
-    gl("Rank","Order among today's qualifying TAKE signals, strongest first, across the whole universe. Rank 1 = the best expected trade by the validated rule.")+
+    gl("Rank","One rank per TICKER - its best-strength arm, strongest first across the whole universe. When several strategies fired on the same name, the extras are collapsed behind the \u25b8 button on the ranked row.")+
     gl("Strength","avg/trade x n/(n+10) - expectancy shrunk toward zero for small samples. <b>Yes, this is the right sort for picking buys</b>: it is the exact rule the Daily Optimal study validated (17.8%/yr, vs 2.2%/yr sorting by Depth). Sort by other columns to inspect, not to pick.")+
     gl("State","TAKE = entry rule true on the newest bar (actionable). WATCH = one notch away (not actionable, just heads-up).")+
     gl("New","The entry first fired on the latest bar. An older Signal day means the setup has been live for that many bars without exiting.")+
@@ -775,8 +779,11 @@ function armStats(sym, strat){
     const fstate=document.getElementById("s-state").value;
     const mn=+document.getElementById("s-minn").value||0;
     const q=document.getElementById("s-sym").value.trim().toUpperCase();
-    const ranked=takesAll.filter(x=>(x.hn??0)>=mn&&x.score!=null);
     takesAll.forEach(x=>{x.rank=null;});
+    const seenR=new Set(); const ranked=[];
+    for(const x of takesAll){
+      if((x.hn??0)>=mn&&x.score!=null&&!seenR.has(x.sym)){
+        seenR.add(x.sym); ranked.push(x); } }
     ranked.forEach((x,i)=>{x.rank=i+1;});
     let r=s.filter(x=>(fs==="ALL"||x.strat===fs)&&
       (fstate==="ALL"||x.state===fstate)&&
@@ -789,7 +796,12 @@ function armStats(sym, strat){
       return (av<bv?1:-1)*sd;
     });
     let t="<tr>"+cols.map(c=>`<th class="${c[2]||""}" data-k="${c[0]}" title="${SIGHELP[c[0]]||""}">${c[1]}${sk===c[0]?(sd>0?" v":" ^"):""}</th>`).join("")+"</tr>";
-    t+=r.map(x=>`<tr><td>${x.rank??"-"}</td><td>${chip(x.state)}</td>
+    const grouped=[]; const gseen=new Map();
+    for(const x of r){
+      if(gseen.has(x.sym)) gseen.get(x.sym).push(x);
+      else { const g=[x]; gseen.set(x.sym,g); grouped.push(g); } }
+    const rowHtml=(x,sub,subCount)=>`<tr${sub?` class="subrow" data-psym="${x.sym}" style="display:none"`:""}><td>${
+      sub?"&middot;":(x.rank??"-")}${!sub&&subCount?` <button class="exp" data-sym="${x.sym}" title="${subCount} more strateg${subCount===1?"y":"ies"} fired on ${x.sym} - tap to expand">&#9656;${subCount}</button>`:""}</td><td>${chip(x.state)}</td>
       <td>${x.new_today?'<span class="chip info">NEW</span>':""}</td>
       <td>${x.sym}</td>
       <td title="Entry: ${ENTRYBASIS[x.strat]||""}">${x.strat}${x.bookNote?'<br><span class="small">'+x.bookNote+'</span>':""}</td>
@@ -799,21 +811,35 @@ function armStats(sym, strat){
       <td>${x.havg??""}</td><td>${x.hn??""}</td><td>${x.pf1922??""}</td>
       <td>${x.pf2326??""}</td><td>${x.depth}</td><td>${x.close}</td>
       <td>${x.buy_date||""}</td><td>${x.age??""}</td><td>${x.as_of}</td>
-      <td>${x.earnings_soon?"yes":""}</td></tr>`).join("");
+      <td>${x.earnings_soon?"yes":""}</td></tr>`;
+    t+=grouped.map(g=>rowHtml(g[0],false,g.length-1)+
+      g.slice(1).map(x=>rowHtml(x,true,0)).join("")).join("");
     const tbl=document.getElementById("signals-table"); tbl.innerHTML=t;
+    tbl.querySelectorAll(".exp").forEach(b2=>b2.onclick=ev=>{
+      ev.stopPropagation();
+      const sym=b2.dataset.sym;
+      tbl.querySelectorAll(`tr[data-psym="${sym}"]`).forEach(tr=>{
+        tr.style.display=tr.style.display==="none"?"":"none";});
+      b2.innerHTML=b2.innerHTML.startsWith("\u25be")
+        ?b2.innerHTML.replace("\u25be","\u25b8"):b2.innerHTML.replace("\u25b8","\u25be");});
     tbl.querySelectorAll("th").forEach(th=>th.onclick=()=>{
       const k=th.dataset.k;
       if(sk===k)sd*=-1;
       else {sk=k; sd=(k==="rank"||textCols.includes(k))?-1:1;}
       render();});
     document.getElementById("s-count").textContent=
-      r.length+" shown | "+ranked.length+" TAKEs ranked at min "+mn+" trades | "+
-      (takesAll.length-ranked.length)+" below min or without per-name history (set min 0 to inspect)";
+      grouped.length+" tickers ("+r.length+" rows) | "+ranked.length+" tickers ranked at min "+mn+" trades | "+
+      "duplicates collapsed under the \u25b8 expander; set min 0 to see book-level rows";
   }
   ["s-strat","s-state","s-minn","s-sym"].forEach(id=>{
     const el2=document.getElementById(id);
     el2.addEventListener("input",render);
     el2.addEventListener("change",render);
+  });
+  document.getElementById("s-strat").addEventListener("change",()=>{
+    const v=document.getElementById("s-strat").value, mn2=document.getElementById("s-minn");
+    if(v.startsWith("GAPW")&&+mn2.value>5) mn2.value=5;
+    if((v==="ZSCORE"||v==="BB")&&+mn2.value>0) mn2.value=0;
   });
   document.getElementById("s-apply").onclick=render;
   render();
