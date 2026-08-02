@@ -75,11 +75,25 @@ def main():
     extra = [s for s in (opt("--extra", "") or "").upper().split(",") if s]
     global OHLCV
     OHLCV = "--ohlcv" in args
-    token = os.environ.get("TRADIER_TOKEN")
-    if not token and os.path.exists(os.path.expanduser("~/.tradier_token")):
-        token = open(os.path.expanduser("~/.tradier_token")).read().strip()
+    fp = os.path.expanduser("~/.tradier_token")
+    token, token_src = None, "~/.tradier_token"
+    if os.path.exists(fp):
+        token = open(fp).read().strip()
     if not token:
-        sys.exit("TRADIER_TOKEN not set (env var or ~/.tradier_token)")
+        token, token_src = os.environ.get("TRADIER_TOKEN"), "TRADIER_TOKEN env var"
+    if not token:
+        sys.exit("no token: put it in ~/.tradier_token (preferred) or TRADIER_TOKEN")
+    # Preflight: one probe request so an auth problem fails in 1 second with the
+    # token SOURCE named (a stale exported TRADIER_TOKEN can no longer shadow a
+    # good token file - the file now takes precedence).
+    try:
+        fetch("AAPL", token,
+              (datetime.date.today() - datetime.timedelta(days=10)).isoformat())
+        print(f"token source {token_src}: preflight OK against {API_BASE}",
+              file=sys.stderr)
+    except Exception as e:
+        sys.exit(f"fail-closed: preflight failed using {token_src} against "
+                 f"{API_BASE} -> {e!r}")
 
     syms = page_tickers(open(index).read())
     syms = sorted(set(syms) | set(extra))
