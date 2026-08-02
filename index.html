@@ -125,14 +125,13 @@ details.gloss[open] summary { margin-bottom: 8px; }
   nav button { padding: 10px 12px; }
   main { padding: 12px 10px 80px; }
   th, td { padding: 6px 6px; font-size: 12px; }
-  .controls { gap: 8px; }
+  .controls { gap: 8px; align-items: end; }
   .controls label { display: flex; flex-direction: column; gap: 3px; font-size: 11px;
-    flex: 1 1 40%; }
-  .controls label:has(#f-sym), .controls label:has(#s-sym) { flex: 1 1 100%; }
-  select, input[type=text], input[type=number] { font-size: 16px; padding: 8px 10px;
-    width: 100%; min-height: 42px; }
-  .controls button { min-height: 42px; padding: 8px 14px; font-size: 14px;
-    flex: 1 1 auto; }
+    flex: 0 1 auto; min-width: 0; }
+  select, input[type=text], input[type=number] { font-size: 16px; padding: 7px 8px;
+    min-height: 40px; max-width: 100%; }
+  .controls select { max-width: 38vw; }
+  .controls button { min-height: 40px; padding: 7px 14px; font-size: 14px; }
   .tiles { gap: 8px; }
   .tile { flex: 1 1 calc(50% - 8px); min-width: 0; padding: 10px 12px; }
   .tile .v { font-size: 19px; }
