@@ -249,11 +249,18 @@ const SCANHELP={sym:"Signal symbol - the name the entry rule is computed on.",
  expo:"Share of days the arm is in the market. Low = mostly cash.",
  pf1922:"Profit factor in the 2019-22 era.",
  pf2326:"Profit factor in the 2023-26 era. Both eras healthy = era-robust, not one lucky regime."};
+const ENTRYBASIS={RSI2:"at the close (strict: 1-day lag destroys it, x31 - the autopilot's job)",
+ RSI2_LEV:"at the close (autopilot)",
+ MFI:"validated at the close; PROVEN lag-tolerant - next-morning entry OK (x31)",
+ ZSCORE:"MOO next open (standard; sim entries were same-close - basis gap labeled)",
+ GAPW_RSI2:"MOO next 9:30 open - the validated basis (51.9% IS the MOO number)",
+ GAPW_RSI14:"MOO next 9:30 open (validated; NEVER 3:45 entries)",
+ BB:"MOO next open (paper until its gate passes)"};
 const SIGHELP={rank:"Order among today's TAKEs, strongest first (by Strength). '-' = book-level row, unranked.",
  state:"TAKE = entry rule true on newest bar (actionable). WATCH = one notch away.",
  new_today:"Entry first fired on the latest bar.",
  sym:"Signal symbol - log THIS one in Positions.",
- strat:"Which book fired (book rows show their in-book order underneath).",
+ strat:"Which book fired. HOVER GIVES ENTRY BASIS per book; book rows show their in-book order underneath.",
  exit:"That book's exact sell rule.",
  vehicle:"1x-vs-levered pointer (see Scan glossary).",
  score:"Strength = avg/trade x n/(n+10). The validated pick metric - sort by this to choose buys (17.8%/yr vs 2.2% for depth-sorting).",
@@ -473,7 +480,7 @@ renderScan();
     ["3", zs.name+" (Ext 31)", statusChip(zs.status),
      p1(mz.ext31_sim.cagr), p1(mz.ext31_sim.maxdd), mz.ext31_sim.pf, p1(mz.ext31_sim.win), "",
      mz.ext31_sim.trades,
-     "validated simulator, MIO mechanics on Tradier data; exits next-open until the noise gate passes. Core 15: "
+     "validated simulator, MIO mechanics on Tradier data (sim ENTRIES same-close; live standard is next-open MOO - basis gap until the lab validates MOO entries); exits next-open until the noise gate passes. Core 15: "
      +p1(mz.core15_sim.cagr)+"% / "+p1(mz.core15_sim.maxdd)+"% DD / PF "+mz.core15_sim.pf],
     ["-", bb.name, statusChip(bb.status), "", "", "", "", "", "",
      "no validated metrics yet; the MIO 67% claim is close-fill IDEALIZED - not rankable"]];
@@ -619,12 +626,14 @@ function armStats(sym, strat){
     if(!seen.has(x.sym)){ seen.add(x.sym); top4.push(x);
     if(top4.length===4) break; } }
   const dailyFlowCard=`<div class="card"><h3>Daily flow</h3><p class="small">
-    <b>Evening</b> (after the 4:00 ET close): review the ranked TAKEs below; queue
-    MOO orders for Gap Widen / Z-Score entries. <b>Morning</b> by ~9:28 ET: MOO
-    orders in; fills at the 9:30 open. <b>3:40-3:45 ET</b>: Positions-tab sell
-    flags, confirm on live prints, MOC by 3:48. <b>Then</b>: log fills and closes
-    in Positions - the forward test accrues automatically. Nothing here places
-    orders.</p></div>`;
+    <b>Evening</b> (after the 4:00 ET close): review the ranked TAKEs below.
+    <b>Open-basis books</b> (Gap Widen, Z-Score, BB): queue MOO orders - fills at
+    tomorrow's 9:30 open, which IS their validated basis. <b>Close-basis books</b>:
+    RSI2 fills at the close and is the autopilot's job (one day late destroys it,
+    x31); MFI is close-validated but proven lag-tolerant, so next-morning entry
+    on MFI picks is fine. <b>3:40-3:45 ET</b>: Positions-tab sell flags, confirm
+    on live prints, MOC by 3:48. <b>Then</b>: log fills and closes in Positions -
+    the forward test accrues automatically. Nothing here places orders.</p></div>`;
   let top4Card="";
   if(top4.length){
     top4Card=`<details><summary class="small"><b>Top 4 buys today by expectancy</b> (as of ${top4[0].as_of}) - open for the picks</summary><div class="card okbox">
@@ -713,7 +722,8 @@ function armStats(sym, strat){
     gl("State","TAKE = entry rule true on the newest bar (actionable). WATCH = one notch away (not actionable, just heads-up).")+
     gl("New","The entry first fired on the latest bar. An older Signal day means the setup has been live for that many bars without exiting.")+
     gl("Ticker","The SIGNAL symbol - log this one in Positions; exit rules evaluate the 1x base even when you trade a levered vehicle.")+
-    gl("Strategy / Exit","Which book fired, and that book's exact sell rule.")+
+    gl("Strategy / Exit","Which book fired, and that book's exact sell rule. Hover the Strategy cell for that book's ENTRY basis.")+
+    gl("Entry timing","Two validated bases - do not mix them. CLOSE-basis: RSI2 (strict - one day late destroys it, x31; the autopilot owns it) and MFI (close-validated but PROVEN fine entered next morning, x31). OPEN-basis: Gap Widen (51.9%/51.5% ARE next-open MOO numbers) and Z-Score/BB (MOO standard; z-score sim entries were same-close, so expect some basis drift until the lab validates MOO entries).")+
     gl("Vehicle","1x-vs-levered pointer: green = program-validated leveraged mapping; yellow = liquid twin, a candidate NOT yet validated; plain 1x = no twin, illiquid twin, or thin edge.")+
     gl("Win %","Share of this arm's historical trades that made money.")+
     gl("PF","Profit factor = gross wins / gross losses. 2 means wins totaled twice the losses. The vetted floor is 1.3.")+
@@ -772,7 +782,7 @@ function armStats(sym, strat){
     t+=r.map(x=>`<tr><td>${x.rank??"-"}</td><td>${chip(x.state)}</td>
       <td>${x.new_today?'<span class="chip info">NEW</span>':""}</td>
       <td>${x.sym}</td>
-      <td>${x.strat}${x.bookNote?'<br><span class="small">'+x.bookNote+'</span>':""}</td>
+      <td title="Entry: ${ENTRYBASIS[x.strat]||""}">${x.strat}${x.bookNote?'<br><span class="small">'+x.bookNote+'</span>':""}</td>
       <td class="l small" style="white-space:normal">${x.exit}</td>
       <td style="white-space:normal">${vehChip(x.sym, armStats(x.sym,x.strat))}</td>
       <td><b>${x.score??""}</b></td><td>${x.hwin??""}</td><td>${x.hpf??""}</td>
@@ -875,8 +885,9 @@ function armStats(sym, strat){
       <button id="p-add">Add position</button></div>
       <p class="small">Positions live in THIS browser only (localStorage) - use
       Export below to back up or move devices. Entry price auto-fills with the
-      ticker's last scan close (the ranking-time price) - override with your
-      actual fill. Sell flags evaluate each book's exact
+      ticker's last scan close - the correct paper basis for CLOSE-basis books
+      (RSI2/MFI). For OPEN-basis books (Gap Widen / Z-Score / BB) log your actual
+      MOO fill (or the next open) instead - their backtests enter at the open. Sell flags evaluate each book's exact
       exit rule against the embedded indicator snapshot${hasTrack
         ?" (as of "+esc(snapAsof)+(stale?" - STALE, refresh the build":"")+")"
         :" - none in this build yet, so only 10-bar time stops are flagged until the generator emits a TRACK snapshot (see README)"}. Log the SIGNAL ticker (exit
