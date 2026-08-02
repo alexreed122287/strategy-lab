@@ -99,21 +99,20 @@ Dashboard deliverable: validated_metrics for bb_rubber_band in the BOOKS blob
 label lifts only when the exit gate AND this validation both pass.
 
 --------------------------------------------------------------------------
-## SPEC A addendum — Gap Widen per-name PF emission (added 2026-08-02)
-The Scan tab shows "-" for PF on GW rows because the per-name arm run only
-emits n / win / avg_net / med / cum (per_ticker_RSI2.csv / per_ticker_RSI14.csv).
-PF cannot be reconstructed from those aggregates, and it cannot be taken from
-results/trades_RSI2_*.csv / trades_RSI14_*.csv: those are the PORTFOLIO sim's
-slot-taken trades — a different object (JBLU: 5 portfolio trades vs 19 in the
-per-name arm record). Mixing the two would mislabel the published stats.
-Deliverable (one-line change in the per-name arm loop):
-  - per_ticker_*.csv gains a `pf` column = gross wins / -gross losses per name,
-    capped at 99 when a name has zero losing trades (small-sample artifact cap,
-    same convention as the z-score/BB research tables).
-  - When splicing the BOOKS blob, each qualified/priority entry gains
-    "pf": <value> alongside n/win/avg_net.
-The dashboard is already wired: GW Scan rows and GW signal rows render `pf`
-the moment the entries carry it — no page change needed on receipt.
+## SPEC A addendum — Gap Widen per-name PF (added 2026-08-02) — LANDED same day
+Original problem: per_ticker_*.csv only carries n / win / avg_net aggregates,
+and trades_*.csv are the PORTFOLIO sim's slot-taken trades — a different object
+(JBLU: 5 portfolio trades vs 19 in the per-name arm record).
+RESOLUTION: the per-name arm run's own trade log turned out to already exist as
+results/events_RSI2.csv / events_RSI14.csv (ticker, entry, exit, bars, gross,
+net). Anchor check before use: recomputing n / win / avg_net per name from
+events_* reproduced EVERY published per_ticker row exactly (272/272 RSI2,
+175/175 RSI14). Per-name PF = gross wins / -gross losses over those same rows
+(99-cap when a name has zero losing trades) is spliced into the BOOKS
+qualified/priority entries and renders on the Scan tab, the signal rows, and
+the priority-25 tables.
+Remaining lab nicety (optional): emit the `pf` column directly from the arm
+loop on future re-runs so the splice needs no side computation.
 
 --------------------------------------------------------------------------
 ## Quick wiring item (not a backtest)
