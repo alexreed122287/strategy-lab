@@ -2,8 +2,30 @@
 Drafted 2026-08-02 from the strategy-lab session. Purpose: bring every dashboard
 book to the same evidential standard as RSI2/MFI, using ONLY data the local labs
 already hold. Each spec defines the dashboard deliverable so results flow back
-into the page mechanically. Status: DRAFT — adopt in the local repo under the
-program's prereg convention before computing.
+into the page mechanically.
+
+STATUS UPDATE 2026-08-02 — the local labs had already run most of this
+(results/ in market-data-brain, 07/30–08/01), and the dashboard now carries it:
+- SPEC B Q1 (basis): ANSWERED by the x41 fill-mode study + x42 — idealized
+  same-close 32.2% → executable hybrid (MOO entry + 3:45 MOC exit) 20.4% on the
+  F22 instrument; retention 0.634 = gate FAIL, failure is the ENTRY leg. The
+  dashboard shows the ladder and applies a ×0.71 per-trade executable estimate
+  to every z-score signal row. Ext-31-specific MOO re-run remains open (the
+  only unlanded piece of Q1).
+- SPEC B Q2 (selection): ANSWERED — x40 kill + causal folds in the adversarial
+  review (select-19-22/trade-23-26 = 17.2% vs SPY 20.5%; reverse 4.1%).
+  Curated numbers are labeled selection-optimistic; book is paper-only.
+- SPEC B Q3 (per-name): LANDED — audited 438-name wide screen spliced into the
+  BOOKS blob (+12 curated-book names via the session harness, anchor 432/438).
+- SPEC C (BB): EXECUTED AND KILLED 2026-08-01 — first honest baseline 8.1%
+  CAGR / PF 1.20 idealized; executable hybrid ~0.8% / PF 1.07; noise-gate
+  retention 0.096 = FAIL; era flag fired. Per the pre-registered gate BB is
+  OUT of the nightly scanner; a 402-name per-name research table (session run,
+  same anchored harness) stays on the dashboard for reference.
+- SPEC A (Gap Widen deep-OOS/eras): STILL OPEN — the one spec with no data yet.
+- Earnings wiring: DONE — daily_build.sh now feeds next-confirmed dates from
+  the local market-data-brain earnings cache into TRACK and the book scanner
+  (z-score no-entry + force-exit rules live).
 
 The standard being matched (what RSI2 has): in-sample result, execution-basis
 match, deep out-of-sample + era decomposition, a selection-bias control

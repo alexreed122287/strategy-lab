@@ -44,9 +44,16 @@ fi
 #    Token: TRADIER_TOKEN env var or ~/.tradier_token file. ~6 min for ~700 names.
 python3 "$REPO/scripts/dump_closes.py" --index "$REPO/index.html" \
   --out "$TMP/bars.json" --days 400 --ohlcv
-# earnings.json (z-score force-exit dates) - OPTIONAL FILL IN if you have a
-# confirmed-earnings feed; empty file just disables earnings flags:
-[ -f "$TMP/earnings.json" ] || echo '{}' > "$TMP/earnings.json"
+# earnings.json (z-score force-exit + no-entry dates) - sourced from the local
+# market-data-brain earnings cache (x37 fetcher format). Override the location
+# with SL_EARNINGS_DIR; a missing dir just disables earnings flags (fail-quiet).
+EARN_DIR="${SL_EARNINGS_DIR:-}"
+if [ -z "$EARN_DIR" ]; then
+  for d in "$HOME/Projects/market-data-brain/earnings" "$HOME/repos/market-data-brain/earnings"; do
+    [ -d "$d" ] && EARN_DIR="$d" && break
+  done
+fi
+python3 "$REPO/scripts/next_earnings.py" --dir "$EARN_DIR" --out "$TMP/earnings.json"
 
 # 4) Splice the TRACK indicator snapshot into the page (ready to run).
 python3 "$REPO/scripts/track_snapshot_reference.py" "$TMP/bars.json" \
@@ -54,10 +61,10 @@ python3 "$REPO/scripts/track_snapshot_reference.py" "$TMP/bars.json" \
   --splice "$REPO/index.html" \
   --source "tradier local build $(date +%F)"
 
-# 4b) Evaluate the strategy books' entry rules -> BOOKSIG (Gap Widen x2,
-#     Z-Score, BB signals join the Signals ranking).
+# 4b) Evaluate the strategy books' entry rules -> BOOKSIG (Gap Widen x2 +
+#     Z-Score paper; BB dropped 2026-08-01 per its pre-registered kill gate).
 python3 "$REPO/scripts/scan_book_signals.py" --bars "$TMP/bars.json" \
-  --page "$REPO/index.html" --splice
+  --page "$REPO/index.html" --earnings "$TMP/earnings.json" --splice
 
 # 5) Validate before publishing: every embedded blob must parse. Fail-closed.
 python3 - "$REPO/index.html" <<'PYEOF'
@@ -83,5 +90,9 @@ else
     sleep "$delay"
     git push origin main && break
   done
+  # 7) Notify (email + ntfy push) - configured via ~/.strategy_lab_notify.json,
+  #    see docs/notifications.md. Never fails the build.
+  python3 "$REPO/scripts/notify_buys.py" --page "$REPO/index.html" \
+    || echo "notify step failed (non-fatal)"
 fi
 echo "=== daily build done $(date '+%F %T') ==="

@@ -1,22 +1,30 @@
 #!/usr/bin/env python3
 """Evaluate the strategy books' entry rules on the latest bars and splice a
-BOOKSIG blob into the dashboard, so Gap Widen / Z-Score / BB signals appear in
-the Signals ranking alongside the generator's RSI2/MFI rows.
+BOOKSIG blob into the dashboard, so Gap Widen / Z-Score signals appear in the
+Signals ranking alongside the generator's RSI2/MFI rows.
 
 Implements the exact specs from the page's BOOKS blob:
   GAPW_RSI2 / GAPW_RSI14 : ema(4/10/21) ignition sequence + stack + widening +
       pullback context + liquidity + variant RSI filter, ranked by rs252 desc
-  ZSCORE_000 : close>20, avol50>1M sh, close>sma200, z50<=-1.5, rsi3<20 (Ext-31)
-  BB_RUBBER  : close>20, avol50>1M sh, close>sma200, close<bblb(20,2), rsi3<20
-      (alive_base; book still PENDING its exit gate -> rows are paper-labeled)
+  ZSCORE_000 : close>20, avol50>1M sh, close>sma200, z50<=-1.5, rsi3<20 (Ext-31,
+      paper only - book killed for real-money wiring x40/x41/x42). Rows carry
+      per-name research stats from BOOKS universe.per_name with the executable
+      basis factor applied, and respect the mandatory earnings no-entry rule
+      when --earnings is supplied.
+  BB_RUBBER  : NO LONGER SCANNED - killed 2026-08-01 by the pre-registered
+      SPEC C fill-mode gate (retention 0.096, era flag, hybrid PF ~1). The
+      meanrev_entry(use_bb=True) path is kept for reference only.
 
 Input bars.json: {"SYM": [[date, open, high, low, close, volume], ...]} ascending
 (dump_closes.py --ohlcv --days 400). Indicator math matches the specs exactly.
+Optional earnings.json: {"SYM": "YYYY-MM-DD"} next confirmed report per symbol.
 
 Usage:
-  python3 scan_book_signals.py --bars bars.json --page index.html --splice
+  python3 scan_book_signals.py --bars bars.json --page index.html
+      [--earnings earnings.json] [--splice]
   (--splice replaces the `const BOOKSIG = ...;` line; without it, prints JSON)
 """
+import datetime
 import json
 import re
 import sys
@@ -134,10 +142,23 @@ def main():
     if not bars_path or not page_path:
         sys.exit("--bars bars.json --page index.html required")
     bars = json.load(open(bars_path))
+    earnings = json.load(open(opt("--earnings"))) if opt("--earnings") else {}
     page = open(page_path).read()
     books = json.loads(re.search(r"const BOOKS = (.*?);\n", page, re.S).group(1))
     S = {s["id"]: s for s in books["strategies"]}
     as_of = max((v[-1][0] for v in bars.values() if v), default=None)
+
+    def earnings_imminent(sym):
+        """Mandatory z-score rule: no entry if a report falls on the signal day
+        or before the next session (weekend-aware). No date -> no constraint."""
+        nxt = earnings.get(sym)
+        if not nxt or not as_of:
+            return False
+        d0 = datetime.date.fromisoformat(as_of)
+        nx = d0 + datetime.timedelta(days=1)
+        while nx.weekday() >= 5:
+            nx += datetime.timedelta(days=1)
+        return as_of <= nxt <= nx.isoformat()
 
     rows = []
     for sid, strat, kind in [("gap_widen_rsi2", "GAPW_RSI2", 2),
@@ -162,21 +183,31 @@ def main():
             x["book_rank"] = i + 1
         rows += cands
 
-    for sid, strat, use_bb, universe in [
-            ("zscore_000", "ZSCORE", False, S["zscore_000"]["universe"].get("extended_31", [])),
-            ("bb_rubber_band", "BB", True, books.get("alive_base", []))]:
-        cands = []
-        for sym in universe:
-            b = bars.get(sym)
-            if not b or b[-1][0] != as_of:
-                continue
-            m = meanrev_entry(b, use_bb)
-            if m:
-                cands.append({"sym": sym, "strat": strat, "state": "TAKE", **m})
-        cands.sort(key=lambda x: x["rsi3"])
-        for i, x in enumerate(cands):
-            x["book_rank"] = i + 1
-        rows += cands
+    # Z-Score only. BB was killed 2026-08-01 (SPEC C fill-mode gate) and per the
+    # pre-registered rule drops from this scanner rather than lingering as paper.
+    zuni = S["zscore_000"]["universe"]
+    zstats = {e["signal"]: e for e in zuni.get("per_name", [])}
+    zfactor = S["zscore_000"].get("exec_basis_factor") or 1.0
+    cands = []
+    for sym in zuni.get("extended_31", []):
+        b = bars.get(sym)
+        if not b or b[-1][0] != as_of:
+            continue
+        m = meanrev_entry(b, use_bb=False)
+        if not m:
+            continue
+        if earnings_imminent(sym):
+            cands.append({"sym": sym, "strat": "ZSCORE", "state": "PASS-EARNINGS", **m})
+            continue
+        e = zstats.get(sym)
+        cands.append({"sym": sym, "strat": "ZSCORE", "state": "TAKE", **m,
+                      "n": e and e["n"], "win": e and round(e["win"] * 100, 1),
+                      "avg": e and round(e["avg_net"] * 100 * zfactor, 2),
+                      "pf": e and e.get("pf")})
+    cands.sort(key=lambda x: x["rsi3"])
+    for i, x in enumerate(cands):
+        x["book_rank"] = i + 1
+    rows += cands
 
     sig = {"as_of": as_of, "rows": rows}
     line = "const BOOKSIG = " + json.dumps(sig, separators=(",", ":")) + ";"
