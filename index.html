@@ -877,6 +877,54 @@ renderScan();
     per position, max ~3 concurrent, sequential compounding on the Positions tab.
     This site reads market data only; it never places orders anywhere.</li></ul></div>`;
 
+  const drow=(term,def)=>`<tr><td class="l"><b>${term}</b></td><td class="l" style="white-space:normal">${def}</td></tr>`;
+  const dgroup=(ttl,rows)=>`<h4 style="margin:12px 0 4px;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-secondary)">${ttl}</h4>
+    <div class="tablewrap"><table style="max-width:940px">
+    <tr><th class="l">Term</th><th class="l">What it means - and what to do with it</th></tr>${rows}</table></div>`;
+  h+=`<details class="gloss"><summary>&#9432; Dictionary - every term, chip, and column title on this site (tap to open)</summary>`+
+  dgroup("Signal states & badges",
+    drow('<span class="chip take">TAKE</span>',"The book's entry rule is TRUE on the newest daily bar - actionable NOW. Buy per that book's timing: at the close for RSI2/MFI, or queue a market-on-open order that fills at tomorrow's 9:30 open for Gap Widen / Z-Score.")+
+    drow('<span class="chip watch">WATCH</span>',"One notch away from triggering (e.g. almost oversold). NOT actionable - do nothing; it is a heads-up that it may become a TAKE in the next day or two.")+
+    drow('<span class="chip pass">PASS-EARNINGS</span>',"The entry rule fired but the trade is SKIPPED because an earnings report lands before the next session - the z-score book's mandatory no-entry rule.")+
+    drow('<span class="chip info">NEW</span>',"The entry first fired on the latest bar. A row without NEW has been live for the number shown under Signal day - the setup fired earlier and has not exited yet.")+
+    drow('<span class="chip take">VETTED</span>',"Passed the quality bar: 20+ trades, profit factor at least 1.3, win rate at least 60%, profitable in BOTH eras. Only vetted arms with 30+ trades enter the ranked list and Top-4.")+
+    drow("Book chips","VALIDATED = passed its gauntlet, basis measured. LIVE = armed with real money (RSI2 Live-16 only). PAPER = forward test only - killed for real money. KILLED = no edge under honest testing, scanner off. PENDING GATE = awaiting a validation gate."))+
+  dgroup("Performance columns",
+    drow("Strength","avg/trade &times; n/(n+10) - historical expectancy shrunk toward zero for small samples. THE number the buy ranking sorts by (validated: 17.8%/yr vs 2.2%/yr ranking by Depth). Higher = stronger arm.")+
+    drow("Rank score (Scan tab)","0-100 percentile blend of PF + win % + avg/trade measured ONLY against the rows matching your current filters. A browsing aid that re-ranks as you filter - NOT a buy signal.")+
+    drow("PF (profit factor)","Gross wins &divide; gross losses. 2 = wins totaled twice the losses. The vetted floor is 1.3; below 1.0 loses money. A 99 means zero losing trades in a small sample - an artifact cap, not a superpower.")+
+    drow("Win %","Share of the arm's historical trades that made money.")+
+    drow("Avg/trade %","Average net return per trade. On Z-Score/BB rows this is the IDEALIZED same-close research basis - z-score rows are already discounted to the x0.71 executable estimate.")+
+    drow("Trades (n)","Sample size. 30 is the program's reliability floor for ranking; treat anything under ~20 as noise, whatever the other numbers say.")+
+    drow("Arm CAGR %","What compounding ONLY this ticker's signals would earn, sitting in cash between trades. NOT the stock's return and NOT portfolio return.")+
+    drow("Stock B&H %","The stock's own buy-and-hold return over the same window - compare with Arm CAGR to see if the strategy beat just owning it.")+
+    drow("Exposure %","Share of days the arm is actually in the market. Low = mostly cash.")+
+    drow("PF 19-22 / 23-26","Profit factor split by era. Both healthy = era-robust, not one lucky regime.")+
+    drow("Worst %","The single worst trade in the sample - the gap risk you sign up for.")+
+    drow("Depth","How hard the trigger fired (RSI level, z-score). Context only - ranking by Depth tested far worse than Strength.")+
+    drow("rs252","12-month price change (relative strength). Gap Widen ranks its candidates by it, strongest first."))+
+  dgroup("Timing & trading words",
+    drow("Close-basis / open-basis","The two entry timings - never mix them. CLOSE-basis: RSI2 and MFI fill at the signal day's close. OPEN-basis: Gap Widen and Z-Score fill at the NEXT morning's 9:30 open (queue the order tonight).")+
+    drow("MOO / MOC","Market-on-open / market-on-close order types - they fill at the official opening or closing auction price. The validated way to trade the open-basis books and all exits.")+
+    drow("3:45 screen","Exits get confirmed against live prints at 3:45 ET, then submitted as MOC orders by 3:48. Entries are NEVER evaluated intraday (banned, x39/x42).")+
+    drow("10-bar time stop","If the exit rule has not fired within 10 trading days, sell anyway at that close. Every book has it.")+
+    drow("Idealized vs executable","Idealized = the backtest filled at the exact signal close, which no real order achieves. Executable = what MOO/MOC order types actually get. Every number on this site says which it is; z-score keeps ~0.71x of idealized per trade, Gap Widen ~98%.")+
+    drow("Signal day / Buy date","How many bars the setup has been live, and the day it first fired. Day 1 + NEW = fresh tonight.")+
+    drow("Earnings: yes","A report lands soon. Z-score skips these entries by rule and force-exits before reports; treat as caution elsewhere."))+
+  dgroup("Indicators",
+    drow("RSI(2) / RSI(3) / RSI(14)","0-100 oscillator: low = oversold (stretched down), high = overbought. The number in parentheses is the lookback - RSI(2) is twitchy and fast, RSI(14) slow and smooth.")+
+    drow("SMA / EMA","Simple / exponential moving average of closing prices; EMA weights recent days more. Exit rules compare the close against these (SMA5, EMA5, EMA7).")+
+    drow("z-score (z50)","How many standard deviations the price sits below its own 50-day average. -1.5 or lower = statistically stretched - the z-score book's trigger.")+
+    drow("Bollinger lower band","20-day average minus 2 standard deviations. The (killed) BB book bought closes below it.")+
+    drow("MFI","Money Flow Index - a volume-weighted cousin of RSI. Low = heavy selling pressure exhausting itself."))+
+  dgroup("Structures on this site",
+    drow("Arm","One (ticker, strategy) pair with its own backtest record - the unit the Scan tab lists and the ranking scores.")+
+    drow("Book","A strategy plus its ticker universe, exact entry/exit rules, and validation record - what the Strategy Books tab documents.")+
+    drow("Vehicle / leveraged twin","The 2x ETF mapped to a 1x name (green chip = program-validated mapping; yellow = liquid candidate, not yet validated). Exit rules always evaluate the 1x base.")+
+    drow("Paper book","Your manually logged $100k forward test on the Positions tab - for YOUR real fills.")+
+    drow("Shadow book","The automated, skip-free forward ledger the nightly build keeps - entries at validated bases, exits by rule, no human in the loop. Feeds the Evidence Parity Forward cells.")+
+    drow("Grade A","Clean, split-adjusted, survivorship-safe price data - the only kind this site ranks on."))+
+  `<p class="small">The same definitions appear under each table via the &#9432; panels - this is the one-stop version.</p></details>`;
   h+=`<div class="card"><h3>Who scans what - every tier in one table</h3>
     <p class="small">"Tier" = a named ticker list a strategy draws from. Bigger tiers
     cast a wider net; smaller tiers carry more validation per name.</p>
@@ -1160,7 +1208,7 @@ function armStats(sym, strat){
     <tr><th class="l">Column</th><th class="l">Meaning - and how to use it</th></tr>`+
     gl("Rank","One rank per TICKER - its best-strength arm, strongest first across the whole universe. When several strategies fired on the same name, the extras are collapsed behind the \u25b8 button on the ranked row.")+
     gl("Strength","avg/trade x n/(n+10) - expectancy shrunk toward zero for small samples. <b>Yes, this is the right sort for picking buys</b>: it is the exact rule the Daily Optimal study validated (17.8%/yr, vs 2.2%/yr sorting by Depth). Sort by other columns to inspect, not to pick.")+
-    gl("State","TAKE = entry rule true on the newest bar (actionable). WATCH = one notch away (not actionable, just heads-up).")+
+    gl("State","TAKE = entry rule true on the newest bar (actionable). WATCH = one notch away (not actionable, just heads-up). PASS-EARNINGS = rule fired but the entry is skipped because a report lands before the next session (z-score rule).")+
     gl("New","The entry first fired on the latest bar. An older Signal day means the setup has been live for that many bars without exiting.")+
     gl("Ticker","The SIGNAL symbol - log this one in Positions; exit rules evaluate the 1x base even when you trade a levered vehicle.")+
     gl("Strategy / Exit","Which book fired, and that book's exact sell rule. Hover the Strategy cell for that book's ENTRY basis.")+
