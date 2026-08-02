@@ -1,0 +1,107 @@
+{
+ "gap_widen_rsi2": {
+  "deep_names": 276,
+  "recent_names": 340,
+  "common": 276,
+  "deep_ladder": {
+   "0.01": {
+    "cagr": 0.21,
+    "maxdd": -39.74,
+    "pf": 1.05,
+    "trades": 1043,
+    "win": 73.7,
+    "avg": 0.058
+   },
+   "0.05": {
+    "cagr": -3.26,
+    "maxdd": -49.18,
+    "pf": 0.98,
+    "trades": 1043,
+    "win": 73.0,
+    "avg": -0.022
+   },
+   "0.20": {
+    "cagr": -15.22,
+    "maxdd": -74.69,
+    "pf": 0.76,
+    "trades": 1043,
+    "win": 66.9,
+    "avg": -0.321
+   }
+  },
+  "deep_next_open": {
+   "cagr": -1.52,
+   "maxdd": -46.58,
+   "pf": 1.02
+  },
+  "recent_matched": {
+   "cagr": 43.51,
+   "maxdd": -31.14,
+   "pf": 1.66,
+   "trades": 1172,
+   "win": 79.8,
+   "avg": 0.738
+  },
+  "recent_full": {
+   "cagr": 57.26,
+   "maxdd": -31.09,
+   "pf": 1.77,
+   "trades": 1209
+  }
+ },
+ "gap_widen_rsi14": {
+  "deep_names": 147,
+  "recent_names": 199,
+  "common": 147,
+  "deep_ladder": {
+   "0.01": {
+    "cagr": 4.01,
+    "maxdd": -43.14,
+    "pf": 1.11,
+    "trades": 837,
+    "win": 70.0,
+    "avg": 0.168
+   },
+   "0.05": {
+    "cagr": 1.12,
+    "maxdd": -45.61,
+    "pf": 1.06,
+    "trades": 837,
+    "win": 69.5,
+    "avg": 0.087
+   },
+   "0.20": {
+    "cagr": -9.01,
+    "maxdd": -63.19,
+    "pf": 0.87,
+    "trades": 837,
+    "win": 67.1,
+    "avg": -0.212
+   }
+  },
+  "deep_next_open": {
+   "cagr": 4.93,
+   "maxdd": -38.84,
+   "pf": 1.13
+  },
+  "recent_matched": {
+   "cagr": 32.3,
+   "maxdd": -37.84,
+   "pf": 1.5,
+   "trades": 891,
+   "win": 73.5,
+   "avg": 0.809
+  },
+  "recent_full": {
+   "cagr": 38.78,
+   "maxdd": -33.61,
+   "pf": 1.5,
+   "trades": 936
+  }
+ },
+ "buy_hold_deep_universe": {
+  "cagr": 10.75,
+  "maxdd": -24.9,
+  "names": 276
+ }
+}
