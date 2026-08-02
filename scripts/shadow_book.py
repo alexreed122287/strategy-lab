@@ -281,9 +281,9 @@ def main():
         for x in signals.get("signals", []):
             if (x.get("state") == "TAKE" and x.get("new_today")
                     and x.get("as_of") == as_of
-                    # RSI2 pulled 2026-08-02 by x47 (lost to buy-and-hold of its
-                    # own names in 2023-26 under every universe). MFI continues.
-                    and x.get("strat") in ("MFI",)):
+                    # RSI2 kept live 2026-08-02 by owner decision (brain evidence);
+                    # x47's contrary fold is recorded on the dashboard, not enforced.
+                    and x.get("strat") in ("RSI2", "MFI")):
                 st = (scan["tickers"].get(x["sym"], {}).get("strats", {})
                       .get(x["strat"]))
                 if st and st.get("vetted") and (st.get("n") or 0) >= 30:
