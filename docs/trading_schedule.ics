@@ -52,4 +52,15 @@ DESCRIPTION:Daily build runs (or run scripts/daily_build.sh). Review ranked T
  og today's fills and closes in the Positions tab so the forward-test card ac
  crues.
 END:VEVENT
+BEGIN:VEVENT
+UID:sl-quarterly-vehicles@strategy-lab
+DTSTART;TZID=America/Chicago:20261102T170000
+DTEND;TZID=America/Chicago:20261102T173000
+SUMMARY:Quarterly: refresh leveraged-vehicle list + review shadow book
+RRULE:FREQ=MONTHLY;INTERVAL=3;BYMONTHDAY=2
+DESCRIPTION:Re-run the leveraged-ETF dedupe/turnover gate (the twins list chu
+ rns) and refresh the VEHICLES blob. Also review the shadow forward book's re
+ alized-vs-validated gap per book (Positions tab) - see docs/lab_runs_eviden
+ ce_parity.md Maintenance cadence.
+END:VEVENT
 END:VCALENDAR

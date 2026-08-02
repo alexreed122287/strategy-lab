@@ -66,11 +66,40 @@ python3 "$REPO/scripts/track_snapshot_reference.py" "$TMP/bars.json" \
 python3 "$REPO/scripts/scan_book_signals.py" --bars "$TMP/bars.json" \
   --page "$REPO/index.html" --earnings "$TMP/earnings.json" --splice
 
+# 4c) Shadow forward book - the automated skip-free paper ledger (fills queued
+#     MOO entries, applies exit rules, logs today's qualifying TAKEs).
+python3 "$REPO/scripts/shadow_book.py" --bars "$TMP/bars.json" \
+  --page "$REPO/index.html" --earnings "$TMP/earnings.json" \
+  --ledger "$REPO/data/shadow_book.json" --splice
+
+# 4d) Pipeline health stamp shown in the page header.
+python3 - "$REPO/index.html" "$TMP/bars.json" "$TMP/earnings.json" <<'PYEOF'
+import json, re, sys, datetime
+page_path, bars_path, earn_path = sys.argv[1], sys.argv[2], sys.argv[3]
+html = open(page_path).read()
+bars = json.load(open(bars_path))
+earn = json.load(open(earn_path))
+scan = json.loads(re.search(r"const SCAN = (.*?);\n", html, re.S).group(1))
+booksig = json.loads(re.search(r"const BOOKSIG = (.*?);\n", html, re.S).group(1))
+shadow = json.loads(re.search(r"const SHADOW = (.*?);\n", html, re.S).group(1))
+uni = len(json.loads(re.search(r"const TRACK = (.*?);\n", html, re.S).group(1)).get("tickers") or {}) or len(bars)
+h = {"build": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
+     "bars_ok": len(bars), "universe": max(uni, len(bars)),
+     "earnings": len(earn), "booksig_rows": len(booksig.get("rows") or []),
+     "shadow_open": sum(1 for p in shadow.get("open") or [] if p.get("state") == "open"),
+     "shadow_closed": shadow.get("closed_total") or 0}
+line = "const HEALTH = " + json.dumps(h, separators=(",", ":")) + ";"
+html2, n = re.subn(r"const HEALTH = .*?;\n", lambda _m: line + "\n", html, count=1, flags=re.S)
+assert n == 1, "no HEALTH line"
+open(page_path, "w").write(html2)
+print("health stamped:", h)
+PYEOF
+
 # 5) Validate before publishing: every embedded blob must parse. Fail-closed.
 python3 - "$REPO/index.html" <<'PYEOF'
 import json, re, sys
 html = open(sys.argv[1]).read()
-for n in ["SCAN","BASKETS","SIGNALS","REGIME","DAILY","CALLS","TF","METHOD","BOOKS","TRACK","BOOKSIG","NOTIFY"]:
+for n in ["SCAN","BASKETS","SIGNALS","REGIME","DAILY","CALLS","TF","METHOD","BOOKS","TRACK","BOOKSIG","NOTIFY","SHADOW","HEALTH"]:
     m = re.search(r'const %s = (.*?);\n' % n, html, re.S)
     assert m, "missing blob: " + n
     json.loads(m.group(1))
@@ -79,9 +108,10 @@ assert track and track.get("tickers"), "TRACK is empty - refusing to publish"
 print("validation OK:", len(track["tickers"]), "tickers as of", track["as_of"])
 PYEOF
 
-# 6) Publish (GitHub Pages serves main, so push = deploy).
+# 6) Publish (GitHub Pages serves main, so push = deploy). The shadow ledger
+#    is committed too - the forward record must survive machines.
 cd "$REPO"
-git add index.html
+git add index.html data/shadow_book.json
 if git diff --cached --quiet; then
   echo "no changes to publish"
 else

@@ -120,6 +120,29 @@ Z-score earnings force-exits are OFF until the daily build gets a
 confirmed-earnings feed: emit {"SYM": "YYYY-MM-DD"} to $TMP/earnings.json in
 daily_build.sh step 3 (source: the same earnings data the x37 fetcher used).
 
+## SPEC E — Delisting / halt rule (owed per the PIT audit, 2026-07-30)
+The audit's one hard consequence for live use: sudden-halt-from-strength deaths
+(SIVB-class: last print 106.04, ~zero recovery) are UNREPRESENTED in every
+backtest, and the SMA200 filter is a leaky vaccine (103/937 dead names still
+fired final-year signals). Before any open-scan variant gets real size:
+  1. Position rule: if a held name is halted for more than 1 session, exit at
+     the first available print on resumption - no discretion, no averaging.
+  2. Entry rule: skip any name with a pending going-private / merger close or
+     an exchange deficiency notice (the scanner's liquidity gate does not catch
+     these). Cheapest implementation: a manual exclusion list the scanner reads.
+  3. Sizing rule (already binding): armed open-scan variants sized to survive a
+     40%+ strategy drawdown.
+Dashboard: nothing to render until the rule exists; the shadow book and manual
+book both inherit it once encoded in the scanner.
+
+## Maintenance cadence
+- QUARTERLY: re-run the leveraged-vehicle turnover gate (the 2026-08-01 list of
+  240 twins churns as new 2x ETFs list and liquidity shifts) - refresh the
+  VEHICLES blob from the dedupe script. A quarterly reminder is in
+  docs/trading_schedule.ics.
+- The shadow forward book (data/shadow_book.json) accumulates automatically;
+  review its per-book realized-vs-validated gap monthly once n >= 20.
+
 ## Order of value
 1. SPEC B Q1 (z-score MOO basis) - changes displayed numbers immediately.
 2. SPEC C (BB validation) - BB currently has no honest number at all.
