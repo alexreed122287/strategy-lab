@@ -119,19 +119,25 @@ def meanrev_entry(bars, use_bb):
     if s200 is None or close <= s200:
         return None
     r3 = rsi(c, 3)
-    if r3 is None or r3 >= 20:
-        return None
     s50, sd50 = sma(c, 50), stdev(c, 50)
     s20, sd20 = sma(c, 20), stdev(c, 20)
     z50 = (close - s50) / sd50 if sd50 else None
     if use_bb:
+        # BB (reference only - book killed): ACTUAL MIO oversold gate is
+        # rsi(2) < 10 (screenshot-verified 2026-08-02; the earlier port
+        # encoded rsi(3) < 20).
+        r2 = rsi(c, 2)
+        if r2 is None or r2 >= 10:
+            return None
         if s20 is None or sd20 is None or close >= s20 - 2 * sd20:
             return None
     else:
+        if r3 is None or r3 >= 20:
+            return None
         if z50 is None or z50 > -1.5:
             return None
     return {"close": round(close, 4), "z50": round(z50, 2) if z50 is not None else None,
-            "rsi3": round(r3, 1)}
+            "rsi3": round(r3, 1) if r3 is not None else None}
 
 
 def main():
