@@ -40,10 +40,13 @@ def page_tickers(html):
     return sorted(s for s in syms if s and re.fullmatch(r"[A-Z.]{1,6}", s))
 
 
+API_BASE = os.environ.get("TRADIER_API_BASE", "https://api.tradier.com")
+
+
 def fetch(sym, token, start):
     q = urllib.parse.urlencode({"symbol": sym, "interval": "daily", "start": start})
     req = urllib.request.Request(
-        "https://api.tradier.com/v1/markets/history?" + q,
+        API_BASE + "/v1/markets/history?" + q,
         headers={"Authorization": "Bearer " + token, "Accept": "application/json"},
     )
     with urllib.request.urlopen(req, timeout=20) as r:
@@ -74,7 +77,7 @@ def main():
     if cap:
         syms = syms[:cap]
     start = (datetime.date.today() - datetime.timedelta(days=days)).isoformat()
-    out, fails = {}, []
+    out, fails, errs = {}, [], []
     for i, s in enumerate(syms):
         try:
             series = fetch(s, token, start)
@@ -82,13 +85,26 @@ def main():
                 out[s] = series
             else:
                 fails.append(s)
-        except Exception:
+        except Exception as e:
             fails.append(s)
+            if len(errs) < 3:
+                errs.append(f"{s}: {e!r}")
         time.sleep(0.5)
+        if not out and len(fails) >= 5 and errs:
+            print("aborting early - first 5 requests ALL failed. Sample errors:",
+                  file=sys.stderr)
+            for line in errs:
+                print("  " + line, file=sys.stderr)
+            print("Hints: HTTP 401 = wrong/rotated token (put the CURRENT one in "
+                  "~/.tradier_token); a sandbox token needs "
+                  "TRADIER_API_BASE=https://sandbox.tradier.com", file=sys.stderr)
+            sys.exit("fail-closed: Tradier auth/endpoint problem")
         if (i + 1) % 50 == 0:
             print(f"...{i + 1}/{len(syms)}", file=sys.stderr)
     print(f"fetched {len(out)}/{len(syms)}; failed: {fails[:15]}"
           f"{'...' if len(fails) > 15 else ''}", file=sys.stderr)
+    for line in errs:
+        print("  error sample - " + line, file=sys.stderr)
     if len(out) < 0.8 * max(len(syms), 1):
         sys.exit("fail-closed: fewer than 80% of tickers fetched")
     json.dump(out, open(outpath, "w"))
