@@ -66,8 +66,9 @@ fi
 # repo-committed seed (Robinhood calendar snapshot) fills only those symbols -
 # the brain feed always wins where it has data. Refresh the brain side with
 # scripts/lab_refetch_new_names.py --earnings to retire the seed.
-python3 "$REPO/scripts/next_earnings.py" --dir "$EARN_DIR" \
-  --seed-dir "$REPO/data/earnings_seed" --out "$TMP/earnings.json"
+# The seed was retired 2026-08-02: the Mac's Yahoo backfill populated the brain
+# for 141 of the session-fetched names, so the brain feed now covers them.
+python3 "$REPO/scripts/next_earnings.py" --dir "$EARN_DIR" --out "$TMP/earnings.json"
 
 # 4) Splice the TRACK indicator snapshot into the page (ready to run).
 python3 "$REPO/scripts/track_snapshot_reference.py" "$TMP/bars.json" \

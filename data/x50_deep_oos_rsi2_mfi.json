@@ -1,0 +1,156 @@
+{
+ "MFI": {
+  "PIT": {
+   "book": {
+    "cagr": -3.0,
+    "maxdd": -24.41,
+    "trades": 790,
+    "win": 65.8,
+    "pf": 0.98,
+    "names": 169
+   },
+   "bh": {
+    "cagr": 4.41,
+    "maxdd": -23.31,
+    "names": 169
+   },
+   "n_names": 169,
+   "excess": -7.41
+  },
+  "CURATED": {
+   "book": {
+    "cagr": 3.55,
+    "maxdd": -29.36,
+    "trades": 705,
+    "win": 67.2,
+    "pf": 1.09,
+    "names": 62
+   },
+   "bh": {
+    "cagr": 8.23,
+    "maxdd": -23.4,
+    "names": 62
+   },
+   "n_names": 62,
+   "excess": -4.68
+  },
+  "OBJECTIVE": {
+   "book": {
+    "cagr": 4.19,
+    "maxdd": -16.98,
+    "trades": 821,
+    "win": 67.0,
+    "pf": 1.1,
+    "names": 246
+   },
+   "bh": {
+    "cagr": 5.32,
+    "maxdd": -23.74,
+    "names": 246
+   },
+   "n_names": 246,
+   "excess": -1.13
+  },
+  "ORACLE_hindsight": {
+   "book": {
+    "cagr": 48.97,
+    "maxdd": -12.27,
+    "trades": 529,
+    "win": 75.8,
+    "pf": 2.41,
+    "names": 24
+   },
+   "bh": {
+    "cagr": 13.11,
+    "maxdd": -34.86,
+    "names": 24
+   },
+   "n_names": 24,
+   "excess": 35.86
+  },
+  "gates": {
+   "P1_selection_causal": false,
+   "P2_beats_own_bh": false,
+   "P3_curated_premium_le_15pp": true,
+   "curated_minus_pit_pp": 6.55,
+   "verdict": "FAIL"
+  }
+ },
+ "RSI2": {
+  "PIT": {
+   "book": {
+    "cagr": 14.79,
+    "maxdd": -15.98,
+    "trades": 653,
+    "win": 66.3,
+    "pf": 1.33,
+    "names": 160
+   },
+   "bh": {
+    "cagr": 4.73,
+    "maxdd": -21.51,
+    "names": 160
+   },
+   "n_names": 160,
+   "excess": 10.06
+  },
+  "CURATED": {
+   "book": {
+    "cagr": 5.19,
+    "maxdd": -31.12,
+    "trades": 567,
+    "win": 66.7,
+    "pf": 1.15,
+    "names": 70
+   },
+   "bh": {
+    "cagr": 6.35,
+    "maxdd": -22.25,
+    "names": 70
+   },
+   "n_names": 70,
+   "excess": -1.16
+  },
+  "OBJECTIVE": {
+   "book": {
+    "cagr": 11.0,
+    "maxdd": -17.48,
+    "trades": 697,
+    "win": 65.7,
+    "pf": 1.21,
+    "names": 246
+   },
+   "bh": {
+    "cagr": 5.32,
+    "maxdd": -23.74,
+    "names": 246
+   },
+   "n_names": 246,
+   "excess": 5.68
+  },
+  "ORACLE_hindsight": {
+   "book": {
+    "cagr": 36.7,
+    "maxdd": -15.98,
+    "trades": 379,
+    "win": 74.1,
+    "pf": 2.25,
+    "names": 24
+   },
+   "bh": {
+    "cagr": 12.71,
+    "maxdd": -36.04,
+    "names": 24
+   },
+   "n_names": 24,
+   "excess": 23.99
+  },
+  "gates": {
+   "P1_selection_causal": true,
+   "P2_beats_own_bh": true,
+   "P3_curated_premium_le_15pp": true,
+   "curated_minus_pit_pp": -9.6,
+   "verdict": "PASS"
+  }
+ }
+}
