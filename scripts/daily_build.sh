@@ -18,15 +18,26 @@ echo "=== daily build start $(date '+%F %T') ==="
 
 cd "$WORK"
 
-# 1) Refresh EOD data caches (Tradier-native — single source, program law).
-# FILL IN: your existing refresh entrypoint, e.g.:
-# python3 refresh_histories.py
-
-# 2) Regenerate the dashboard blobs into index.html
-#    (SCAN / SIGNALS / BASKETS / DAILY / REGIME — the script that produced the
-#    2026-08-01 build; point its output at the repo copy).
-# FILL IN, e.g.:
-# python3 build_dashboard.py --out "$REPO/index.html"
+# 1-2) Refresh data + regenerate the dashboard blobs — CONFIG-DRIVEN, no script
+#    edit needed. Put your one-line build command (data refresh + blob rebuild,
+#    ending with index.html written into $REPO) in EITHER:
+#      the SL_BLOB_BUILD_CMD environment variable, or
+#      the file ~/.strategy_lab_build_cmd
+#    Example (write once, from your local research session):
+#      echo 'python3 build_dashboard.py --out ~/repos/strategy-lab/index.html' \
+#        > ~/.strategy_lab_build_cmd
+#    Until configured, the build runs in TRACK-ONLY mode: sell flags and the
+#    indicator snapshot refresh daily, while scan/signal blobs stay at their
+#    last build (the page's stamps show exactly this).
+BUILD_CMD="${SL_BLOB_BUILD_CMD:-}"
+[ -z "$BUILD_CMD" ] && [ -f "$HOME/.strategy_lab_build_cmd" ] && \
+  BUILD_CMD="$(cat "$HOME/.strategy_lab_build_cmd")"
+if [ -n "$BUILD_CMD" ]; then
+  echo "blob rebuild: $BUILD_CMD"
+  bash -c "$BUILD_CMD"
+else
+  echo "blob rebuild not configured - TRACK-only build (see comments above)"
+fi
 
 # 3) Emit the TRACK inputs - READY TO RUN: closes fetched straight from
 #    Tradier for every scan ticker + book-universe symbol parsed off the page.
