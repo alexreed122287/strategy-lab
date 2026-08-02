@@ -6,13 +6,13 @@
   and rsi2_x32_paper plists).
 
   Install:
-    chmod +x ~/repos/strategy-lab/scripts/daily_build.sh
-    cp ~/repos/strategy-lab/scripts/com.alex.strategylab.daily.plist ~/Library/LaunchAgents/
+    chmod +x ~/repos/strategy-lab-site/scripts/daily_build.sh
+    cp ~/repos/strategy-lab-site/scripts/com.alex.strategylab.daily.plist ~/Library/LaunchAgents/
     launchctl load ~/Library/LaunchAgents/com.alex.strategylab.daily.plist
   Manual run:
-    bash ~/repos/strategy-lab/scripts/daily_build.sh
+    bash ~/repos/strategy-lab-site/scripts/daily_build.sh
   Fires weekdays 15:30 CT (4:30 PM ET, after the close). Log:
-    ~/repos/strategy-lab/.daily_build.log
+    ~/repos/strategy-lab-site/.daily_build.log
 -->
 <plist version="1.0">
 <dict>
@@ -21,7 +21,7 @@
   <array>
     <string>/bin/bash</string>
     <string>-lc</string>
-    <string>$HOME/repos/strategy-lab/scripts/daily_build.sh</string>
+    <string>$HOME/repos/strategy-lab-site/scripts/daily_build.sh</string>
   </array>
   <key>StartCalendarInterval</key>
   <array>
