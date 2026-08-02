@@ -383,7 +383,8 @@ const ENTRYBASIS={RSI2:"at the close (strict: 1-day lag destroys it, x31 - the a
  GAPW_RSI14:"MOO next 9:30 open (validated; NEVER 3:45 entries)",
  BB:"KILLED 2026-08-01 (x41 fill-mode: no edge at executable basis) - scanner off; the Scan-tab record is reference only"};
 const SIGHELP={rank:"Order among today's TAKEs, strongest first (by Strength). '-' = book-level row, unranked.",
- state:"TAKE = entry rule true on newest bar (actionable). WATCH = one notch away.",
+ state:"TAKE = entry rule true on newest bar (actionable). PASS-EARNINGS = fired but skipped by the earnings rule. WATCH setups are not shown on this list.",
+ trig:"The single-stock indicator that fires this book's entry, with its value on the newest bar: RSI2 (RSI2/Gap Widen RSI2 rows), RSI14 (Gap Widen RSI14), MFI, RSI3 (z-score). Informational context for how stretched the name is.",
  new_today:"Entry first fired on the latest bar.",
  sym:"Signal symbol - log THIS one in Positions.",
  strat:"Which book fired. HOVER GIVES ENTRY BASIS per book; book rows show their in-book order underneath.",
@@ -393,7 +394,7 @@ const SIGHELP={rank:"Order among today's TAKEs, strongest first (by Strength). '
  hwin:"Historical win % for this arm.", hpf:"Historical profit factor.",
  havg:"Historical avg net %/trade.", hn:"Trade sample size.",
  pf1922:"Era profit factor 2019-22.", pf2326:"Era profit factor 2023-26.",
- depth:"How hard the trigger fired (RSI level / z-score / GW 12-mo return). Context only - never rank by it.",
+ depth:"Ranking-context metric: 12-month relative strength on Gap Widen rows, z-score on z rows, RSI level on RSI2/MFI rows. Context only - never rank by it.",
  close:"Last scan close - also the Positions auto-fill entry price.",
  buy_date:"When the entry first fired.", age:"Bars the signal has been active.",
  as_of:"The bar this row is computed from.", earnings_soon:"Report soon - z-score skips these by rule; caution elsewhere."};
@@ -884,7 +885,7 @@ renderScan();
   h+=`<details class="gloss"><summary>&#9432; Dictionary - every term, chip, and column title on this site (tap to open)</summary>`+
   dgroup("Signal states & badges",
     drow('<span class="chip take">TAKE</span>',"The book's entry rule is TRUE on the newest daily bar - actionable NOW. Buy per that book's timing: at the close for RSI2/MFI, or queue a market-on-open order that fills at tomorrow's 9:30 open for Gap Widen / Z-Score.")+
-    drow('<span class="chip watch">WATCH</span>',"One notch away from triggering (e.g. almost oversold). NOT actionable - do nothing; it is a heads-up that it may become a TAKE in the next day or two.")+
+    drow('<span class="chip watch">WATCH</span>',"One notch away from triggering (e.g. almost oversold). Not a buy - so WATCH rows are NOT shown on the Signals list at all; the state exists only in the data feed. If a name matters to you, find its full record on the Scan tab.")+
     drow('<span class="chip pass">PASS-EARNINGS</span>',"The entry rule fired but the trade is SKIPPED because an earnings report lands before the next session - the z-score book's mandatory no-entry rule.")+
     drow('<span class="chip info">NEW</span>',"The entry first fired on the latest bar. A row without NEW has been live for the number shown under Signal day - the setup fired earlier and has not exited yet.")+
     drow('<span class="chip take">VETTED</span>',"Passed the quality bar: 20+ trades, profit factor at least 1.3, win rate at least 60%, profitable in BOTH eras. Only vetted arms with 30+ trades enter the ranked list and Top-4.")+
@@ -902,7 +903,8 @@ renderScan();
     drow("PF 19-22 / 23-26","Profit factor split by era. Both healthy = era-robust, not one lucky regime.")+
     drow("Worst %","The single worst trade in the sample - the gap risk you sign up for.")+
     drow("Depth","How hard the trigger fired (RSI level, z-score). Context only - ranking by Depth tested far worse than Strength.")+
-    drow("rs252","12-month price change (relative strength). Gap Widen ranks its candidates by it, strongest first."))+
+    drow("rs252","12-month price change (relative strength). Gap Widen ranks its candidates by it, strongest first.")+
+    drow("Trigger","The single-stock indicator that fires the entry, with its live value: RSI2 for RSI2 and Gap Widen RSI2 rows, RSI14 for Gap Widen RSI14, MFI for MFI, RSI3 for z-score. Informational - Depth stays the ranking-context metric."))+
   dgroup("Timing & trading words",
     drow("Close-basis / open-basis","The two entry timings - never mix them. CLOSE-basis: RSI2 and MFI fill at the signal day's close. OPEN-basis: Gap Widen and Z-Score fill at the NEXT morning's 9:30 open (queue the order tonight).")+
     drow("MOO / MOC","Market-on-open / market-on-close order types - they fill at the official opening or closing auction price. The validated way to trade the open-basis books and all exits.")+
@@ -1052,18 +1054,21 @@ function armStats(sym, strat){
   // Join every fired signal with its arm's historical record. Strength =
   // avg/trade x n/(n+10) - the exact trailing-expectancy rule the Daily
   // Optimal backtest validated end-to-end. Only VETTED arms qualify.
+  // Which single-stock indicator fires each book's entry - shown in the Trigger column
+  const TRIGL={RSI2:"RSI2",RSI2_LEV:"RSI2",MFI:"MFI",GAPW_RSI2:"RSI2",GAPW_RSI14:"RSI14",ZSCORE:"RSI3"};
   const all=SIGNALS.signals.map(x=>{
     const st=armStats(x.sym, x.strat);
     return Object.assign({}, x, {
       vehicle: x.vehicle || (st?st.vehicle:undefined),
       vetted: !!(st&&st.vetted),
       exit: EXITS[x.strat]||"",
+      trig:(TRIGL[x.strat]?TRIGL[x.strat]+" ":"")+(x.depth??""),
       hn: st?st.n:null, hpf: st?st.pf:null, hwin: st?st.win_pct:null,
       havg: st?st.avg_pct:null,
       pf1922: st&&st.era_1922?st.era_1922.pf:null,
       pf2326: st&&st.era_2326?st.era_2326.pf:null,
       score: st&&st.vetted?+(st.avg_pct*(st.n/(st.n+10))).toFixed(3):null});
-  });
+  }).filter(x=>x.state!=="WATCH"); // WATCH = not a buy -> not shown (user rule)
   if(typeof BOOKSIG!=="undefined"&&BOOKSIG&&BOOKSIG.rows)for(const r of BOOKSIG.rows){
     if(r.strat==="BB")continue; // KILLED 2026-08-01 (x41 fill-mode gate) - scanner off
     let n=r.n??null, win=r.win??null, avg=r.avg??null, pf=r.pf??null, note="";
@@ -1081,6 +1086,8 @@ function armStats(sym, strat){
       (new Date(tr.next_earnings+"T00:00:00")-new Date(BOOKSIG.as_of+"T00:00:00"))/86400000<=3);
     all.push({sym:r.sym, strat:r.strat, state:r.state,
       depth:r.rs252??r.z50??"", close:r.close, as_of:BOOKSIG.as_of,
+      trig:(TRIGL[r.strat]?TRIGL[r.strat]+" ":"")+
+        ((r.strat.indexOf("GAPW")===0?r.rsi:r.strat==="ZSCORE"?r.rsi3:"")??""),
       age:1, buy_date:BOOKSIG.as_of, new_today:true, earnings_soon:esoon,
       vehicle:r.vehicle||"", vetted:(r.strat.indexOf("GAPW")===0&&n!=null&&avg!=null),
       exit:EXITS[r.strat]||"", hn:n, hpf:pf, hwin:win, havg:avg,
@@ -1188,7 +1195,8 @@ function armStats(sym, strat){
     trailing-expectancy rule the Daily Optimal backtest validated; ranking by
     signal depth alone tested far worse (2.2% vs 17.8% CAGR), so Depth is shown
     as context, not used for rank. TAKE = entry rule true on the newest cached
-    bar. WATCH = one notch away. Nothing on this page places orders and there is
+    bar. WATCH setups (one notch from triggering) are not shown - only
+    actionable rows render. Nothing on this page places orders and there is
     no brokerage connection - decision support only.</p></div>`;
   // Controls + ranked table
   let h=`<div class="controls filters">
@@ -1196,7 +1204,7 @@ function armStats(sym, strat){
       ${stratOptions.map(x=>`<option>${x}</option>`).join("")}</select></label>
     <label>State <select id="s-state">
       <option value="TAKE" selected>TAKE only</option>
-      <option value="ALL">All vetted (incl. WATCH)</option></select></label>
+      <option value="ALL">All (incl. PASS-EARNINGS)</option></select></label>
     <label>Min trades <input type="number" id="s-minn" value="30" style="width:64px"></label>
     <label>Ticker <input type="text" id="s-sym" placeholder="search" style="width:90px"></label>
     <button id="s-apply">Refresh</button></div>
@@ -1208,7 +1216,8 @@ function armStats(sym, strat){
     <tr><th class="l">Column</th><th class="l">Meaning - and how to use it</th></tr>`+
     gl("Rank","One rank per TICKER - its best-strength arm, strongest first across the whole universe. When several strategies fired on the same name, the extras are collapsed behind the \u25b8 button on the ranked row.")+
     gl("Strength","avg/trade x n/(n+10) - expectancy shrunk toward zero for small samples. <b>Yes, this is the right sort for picking buys</b>: it is the exact rule the Daily Optimal study validated (17.8%/yr, vs 2.2%/yr sorting by Depth). Sort by other columns to inspect, not to pick.")+
-    gl("State","TAKE = entry rule true on the newest bar (actionable). WATCH = one notch away (not actionable, just heads-up). PASS-EARNINGS = rule fired but the entry is skipped because a report lands before the next session (z-score rule).")+
+    gl("State","TAKE = entry rule true on the newest bar (actionable). PASS-EARNINGS = rule fired but the entry is skipped because a report lands before the next session (z-score rule). WATCH setups (one notch from triggering) are NOT shown on this list - only actionable rows render.")+
+    gl("Trigger","The single-stock indicator that fires this book's entry, with its value: RSI2, RSI14, MFI, or RSI3 depending on the book. Informational - how stretched the name is right now.")+
     gl("New","The entry first fired on the latest bar. An older Signal day means the setup has been live for that many bars without exiting.")+
     gl("Ticker","The SIGNAL symbol - log this one in Positions; exit rules evaluate the 1x base even when you trade a levered vehicle.")+
     gl("Strategy / Exit","Which book fired, and that book's exact sell rule. Hover the Strategy cell for that book's ENTRY basis.")+
@@ -1301,10 +1310,11 @@ function armStats(sym, strat){
     ["new_today","New","l"],["strat","Strategy","l"],["exit","Exit","l"],
     ["vehicle","Vehicle","l"],
     ["score","Strength"],["hwin","Win %"],["hpf","PF"],["havg","Avg/trade %"],
-    ["hn","Trades"],["pf1922","PF 19-22"],["pf2326","PF 23-26"],["depth","Depth"],
+    ["hn","Trades"],["pf1922","PF 19-22"],["pf2326","PF 23-26"],
+    ["trig","Trigger","l"],["depth","Depth"],
     ["close","Close"],["buy_date","Buy date","l"],["age","Signal day"],
     ["as_of","As of","l"],["earnings_soon","Earnings","l"]];
-  const textCols=["state","new_today","sym","strat","exit","vehicle","buy_date","as_of","earnings_soon"];
+  const textCols=["state","new_today","sym","strat","exit","vehicle","trig","buy_date","as_of","earnings_soon"];
   const orderState={TAKE:0,"PASS-EARNINGS":1,WATCH:2};
   function render(){
     const fs=document.getElementById("s-strat").value;
@@ -1340,7 +1350,7 @@ function armStats(sym, strat){
       <td style="white-space:normal">${vehChip(x.sym, armStats(x.sym,x.strat))}</td>
       <td><b>${x.score??""}</b></td><td>${x.hwin??""}</td><td>${x.hpf??""}</td>
       <td>${x.havg??""}</td><td>${x.hn??""}</td><td>${x.pf1922??""}</td>
-      <td>${x.pf2326??""}</td><td>${x.depth}</td><td>${x.close}</td>
+      <td>${x.pf2326??""}</td><td class="l">${x.trig??""}</td><td>${x.depth}</td><td>${x.close}</td>
       <td>${x.buy_date||""}</td><td>${x.age??""}</td><td>${x.as_of}</td>
       <td>${x.earnings_soon?"yes":""}</td></tr>`;
     t+=grouped.map(g=>rowHtml(g[0],false,g.length-1)+
