@@ -70,7 +70,7 @@ python3 "$REPO/scripts/scan_book_signals.py" --bars "$TMP/bars.json" \
 python3 - "$REPO/index.html" <<'PYEOF'
 import json, re, sys
 html = open(sys.argv[1]).read()
-for n in ["SCAN","BASKETS","SIGNALS","REGIME","DAILY","CALLS","TF","METHOD","BOOKS","TRACK","BOOKSIG"]:
+for n in ["SCAN","BASKETS","SIGNALS","REGIME","DAILY","CALLS","TF","METHOD","BOOKS","TRACK","BOOKSIG","NOTIFY"]:
     m = re.search(r'const %s = (.*?);\n' % n, html, re.S)
     assert m, "missing blob: " + n
     json.loads(m.group(1))
@@ -90,8 +90,10 @@ else
     sleep "$delay"
     git push origin main && break
   done
-  # 7) Notify (email + ntfy push) - configured via ~/.strategy_lab_notify.json,
-  #    see docs/notifications.md. Never fails the build.
+  # 7) Notify (email + ntfy push + optional SMS) - configured via
+  #    ~/.strategy_lab_notify.json, see docs/notifications.md. First harvest
+  #    any self-service signups from the page's card. Never fails the build.
+  python3 "$REPO/scripts/notify_signups.py" || echo "signup harvest failed (non-fatal)"
   python3 "$REPO/scripts/notify_buys.py" --page "$REPO/index.html" \
     || echo "notify step failed (non-fatal)"
 fi

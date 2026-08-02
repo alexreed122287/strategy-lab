@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Harvest self-service alert signups 4x daily (ntfy.sh only retains messages
+     ~12h, so a single nightly pull would miss weekend signups).
+     Install:
+       cp scripts/com.alex.strategylab.signups.plist ~/Library/LaunchAgents/
+       launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.alex.strategylab.signups.plist
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.alex.strategylab.signups</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/bin/python3</string>
+    <string>/Users/alexreed/repos/strategy-lab-site/scripts/notify_signups.py</string>
+  </array>
+  <key>StartCalendarInterval</key>
+  <array>
+    <dict><key>Hour</key><integer>8</integer><key>Minute</key><integer>5</integer></dict>
+    <dict><key>Hour</key><integer>13</integer><key>Minute</key><integer>5</integer></dict>
+    <dict><key>Hour</key><integer>18</integer><key>Minute</key><integer>5</integer></dict>
+    <dict><key>Hour</key><integer>22</integer><key>Minute</key><integer>5</integer></dict>
+  </array>
+  <key>StandardOutPath</key><string>/tmp/strategylab.signups.log</string>
+  <key>StandardErrorPath</key><string>/tmp/strategylab.signups.log</string>
+</dict>
+</plist>

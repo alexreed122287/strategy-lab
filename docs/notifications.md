@@ -72,6 +72,65 @@ page's NEW flag) plus the book scanner's fresh TAKEs. A state file
 re-run of the build doesn't re-send; `--force` overrides. Days with no new
 buys send nothing at all.
 
+## Friends subscribe THEMSELVES (the alerts card on the Signals tab)
+
+The dashboard has a "Daily buy alerts — subscribe yourself" card: friends type
+an email address or a US mobile number and hit Subscribe (or Unsubscribe), and
+the push section shows one-tap ntfy setup. No backend involved: the page posts
+signup requests to a second unlisted ntfy topic, and your Mac harvests them
+into `~/.strategy_lab_notify.json` automatically.
+
+**Turn it on (one time):**
+
+1. Pick TWO unguessable topic names — one for alerts, one for signups, e.g.
+   `alex-slab-x9k24qzt` and `alex-slab-signup-p3m81vd`. Put the first in your
+   config as `ntfy_topic` and the second as `signup_topic`.
+2. Publish the topics into the page (run in your site clone, then push):
+
+```bash
+cd ~/repos/strategy-lab-site
+python3 - <<'EOF'
+import re
+ALERTS  = "PUT_ALERTS_TOPIC_HERE"
+SIGNUP  = "PUT_SIGNUP_TOPIC_HERE"
+CONTACT = "your@email.com"   # fallback shown if the relay is unreachable
+html = open("index.html").read()
+line = ('const NOTIFY = {"ntfy_topic": "%s", "signup_topic": "%s", '
+        '"owner_contact": "%s"};' % (ALERTS, SIGNUP, CONTACT))
+html2, n = re.subn(r"const NOTIFY = .*?;", line, html, count=1)
+assert n == 1
+open("index.html", "w").write(html2)
+print("NOTIFY set")
+EOF
+git add index.html && git commit -m "enable alert signups" && git push origin main
+```
+
+3. Install the harvester schedule (ntfy only retains messages ~12h, so it
+   polls 4x daily; the nightly build also harvests right before sending):
+
+```bash
+cp scripts/com.alex.strategylab.signups.plist ~/Library/LaunchAgents/
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.alex.strategylab.signups.plist
+```
+
+4. (Optional) enable TEXTS for phone signups — needs a Twilio account
+   (~$1/mo number + ~$0.01/text). Add to the config:
+   `"twilio_sid": "AC...", "twilio_token": "...", "twilio_from": "+1..."`.
+   Until those exist, phone signups queue in `sms_to` and the nightly log
+   reports how many are waiting; email and push work regardless.
+
+**How requests flow:** page card → ntfy signup topic → `notify_signups.py`
+(4x daily + at build) → `to` / `sms_to` lists in your local config →
+`notify_buys.py` sends after each green build. Unsubscribes remove from both
+lists. Lists cap at 200 entries as an abuse guard.
+
+**Exposure to understand:** both topic names ship inside the public page, so
+anyone with your dashboard URL can subscribe to the push topic, post junk
+signups, or read signup messages during their ~12h relay retention (emails and
+phone numbers are PII — friends should know they transit ntfy.sh). Your
+dashboard link is the real secret. If a topic gets spammed, rotate both names
+(step 1-2 again) — subscribers you already harvested are unaffected.
+
 ## Security notes
 
 - Credentials: local file only, `chmod 600`, never committed — the repo's
