@@ -1,0 +1,53 @@
+{
+ "zscore_000": {
+  "book_ideal": 68.52,
+  "book_dd": -19.9,
+  "book_exec": 60.83,
+  "book_exec_dd": -22.97,
+  "bh": {
+   "cagr": 18.75,
+   "maxdd": -41.78,
+   "names": 358
+  },
+  "window": "2019-01 -> 2026-07",
+  "excess_ideal": 49.77,
+  "excess_exec": 42.08,
+  "dd_ratio": 0.48,
+  "verdict": "BEATS"
+ },
+ "gap_widen_rsi2": {
+  "book_ideal": 57.26,
+  "book_dd": -31.09,
+  "book_exec": 50.59,
+  "book_exec_dd": -31.5,
+  "bh": {
+   "cagr": 19.42,
+   "maxdd": -41.82,
+   "names": 340
+  },
+  "window": "2019-01 -> 2026-07",
+  "excess_ideal": 37.84,
+  "excess_exec": 31.17,
+  "dd_ratio": 0.74,
+  "verdict": "BEATS"
+ },
+ "gap_widen_rsi14": {
+  "book_ideal": 38.78,
+  "book_dd": -33.61,
+  "book_exec": 34.23,
+  "book_exec_dd": -36.9,
+  "bh": {
+   "cagr": 19.67,
+   "maxdd": -44.23,
+   "names": 198,
+   "dropped_bad_price": [
+    "AUR"
+   ]
+  },
+  "window": "2019-01 -> 2026-07",
+  "excess_ideal": 19.11,
+  "excess_exec": 14.56,
+  "dd_ratio": 0.76,
+  "verdict": "BEATS"
+ }
+}
