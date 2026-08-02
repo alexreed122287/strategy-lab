@@ -1,0 +1,38 @@
+{
+ "RSI2": {
+  "book": {
+   "cagr": 39.93,
+   "maxdd": -20.73,
+   "trades": 1303,
+   "win": 69.8,
+   "avg": 0.625,
+   "pf": 1.76
+  },
+  "bh": {
+   "cagr": 22.72,
+   "maxdd": -38.46,
+   "names": 193
+  },
+  "excess": 17.21,
+  "verdict": "BEATS",
+  "names": 193
+ },
+ "MFI": {
+  "book": {
+   "cagr": 59.5,
+   "maxdd": -26.04,
+   "trades": 1635,
+   "win": 71.2,
+   "avg": 0.684,
+   "pf": 1.96
+  },
+  "bh": {
+   "cagr": 24.13,
+   "maxdd": -37.91,
+   "names": 192
+  },
+  "excess": 35.37,
+  "verdict": "BEATS",
+  "names": 192
+ }
+}
