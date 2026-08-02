@@ -41,6 +41,88 @@ FRICTION_RT = {"GAPW_RSI2": 0.001, "GAPW_RSI14": 0.001, "ZSCORE": 0.0002,
 BASIS = {"GAPW_RSI2": "moo", "GAPW_RSI14": "moo", "ZSCORE": "moo",
          "RSI2": "close", "MFI": "close"}
 
+# ---------------------------------------------------------------- capital model
+# The per-trade ledger above answers "is the signal edge real" (the Evidence
+# Parity "Forward n>=20" gate). It deliberately takes EVERY signal, so it can
+# hold 37 positions at once - which no $100k account could. This layer replays
+# the same ledger through an account that CAN be traded, so the forward record
+# can also be compared to the books' backtest CAGRs.
+#
+# Modeling choices (explicit, and not themselves validated by any lab run):
+#   - one shared $100,000 paper account, the program's standing paper balance
+#   - split into equal sleeves per book so no book can crowd out another; each
+#     book then applies its own slot count inside its sleeve, preserving the
+#     mechanics each book was validated with (z-score is spec'd at 3 slots)
+#   - position size = sleeve equity / slots, capped by sleeve cash
+#   - a signal arriving with no free slot or no cash is SKIPPED AND RECORDED -
+#     the skip count is the honest cost of a real account and must be visible
+CAPITAL = 100_000.0
+SLOTS = {"RSI2": 3, "MFI": 3, "GAPW_RSI2": 3, "GAPW_RSI14": 3, "ZSCORE": 3}
+
+
+def portfolio(led, books):
+    """Replay the ledger through the shared account. Pure function - it never
+    mutates `led`, so the per-trade record stays exactly as it was."""
+    sleeve0 = CAPITAL / len(books)
+    cash = {b: sleeve0 for b in books}
+    open_pos = {b: {} for b in books}          # sym -> {cost, net_pending}
+    skipped, taken = [], 0
+    ev = []                                    # (date, entered, exited) events
+    for p in list(led.get("closed", [])) + list(led.get("positions", [])):
+        b = p.get("book")
+        if b not in cash:
+            continue
+        if p.get("entry_date") and p.get("entry_px"):
+            ev.append((p["entry_date"], "in", p))
+        if p.get("exit_date") and p.get("net") is not None:
+            ev.append((p["exit_date"], "out", p))
+    ev.sort(key=lambda e: (e[0], 0 if e[1] == "out" else 1))   # exits free slots first
+    for date, kind, p in ev:
+        b, sym = p["book"], p["sym"]
+        if kind == "out":
+            held = open_pos[b].pop(sym, None)
+            if held is not None:
+                cash[b] += held["cost"] * (1.0 + p["net"])     # net already net of friction
+            continue
+        if sym in open_pos[b]:
+            continue
+        if len(open_pos[b]) >= SLOTS[b]:
+            skipped.append({"date": date, "book": b, "sym": sym, "why": "no free slot"})
+            continue
+        equity_b = cash[b] + sum(h["cost"] for h in open_pos[b].values())
+        size = min(equity_b / SLOTS[b], cash[b])
+        if size <= 1.0:
+            skipped.append({"date": date, "book": b, "sym": sym, "why": "no cash"})
+            continue
+        cash[b] -= size
+        open_pos[b][sym] = {"cost": size}
+        taken += 1
+    invested = {b: sum(h["cost"] for h in open_pos[b].values()) for b in books}
+    equity = sum(cash.values()) + sum(invested.values())
+    return {
+        "capital": CAPITAL, "slots_per_book": SLOTS,
+        "equity_at_cost": round(equity, 2),
+        "realized_pct": round(100.0 * (equity / CAPITAL - 1.0), 2),
+        "cash": round(sum(cash.values()), 2),
+        "invested_at_cost": round(sum(invested.values()), 2),
+        "utilization_pct": round(100.0 * sum(invested.values()) / max(equity, 1e-9), 1),
+        "open_positions": sum(len(v) for v in open_pos.values()),
+        "taken": taken, "skipped": len(skipped),
+        "skipped_recent": skipped[-12:],
+        "by_book": {b: {"sleeve_cash": round(cash[b], 2),
+                        "invested": round(invested[b], 2),
+                        "open": len(open_pos[b]),
+                        "skipped": sum(1 for s in skipped if s["book"] == b)}
+                    for b in books},
+        "note": ("Replay of the same ledger through one shared $100k account: "
+                 "equal sleeves per book, each book's own slot count inside its "
+                 "sleeve, position = sleeve equity / slots. Open positions are "
+                 "carried AT COST (unrealized P&L is not marked here), so "
+                 "'realized' moves only when trades close. Signals that arrive "
+                 "with no free slot or no cash are skipped and counted - that "
+                 "gap between the per-trade ledger and this account is the real "
+                 "cost of finite capital.")}
+
 
 def ema(closes, n):
     a = 2.0 / (n + 1)
@@ -223,7 +305,8 @@ def main():
               "open": [{k: p.get(k) for k in ["book", "sym", "state", "signal_date",
                         "entry_date", "entry_px", "bars_held"]} for p in led["positions"]],
               "exits_today": exits_today,
-              "closed_total": len([p for p in led["closed"] if p.get("net") is not None])}
+              "closed_total": len([p for p in led["closed"] if p.get("net") is not None]),
+              "portfolio": portfolio(led, books)}
     led.setdefault("started", shadow["started"])
 
     os.makedirs(os.path.dirname(ledger_path), exist_ok=True)
