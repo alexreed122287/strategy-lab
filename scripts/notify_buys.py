@@ -44,6 +44,7 @@ import re
 import smtplib
 import ssl
 import sys
+import urllib.parse
 import urllib.request
 from email.mime.text import MIMEText
 from email.utils import formatdate
@@ -212,6 +213,34 @@ def send_push(cfg, subject, body):
     return "push: sent to ntfy topic"
 
 
+def send_sms(cfg, subject, body):
+    """Text subscribers collected by the page's signup card (sms_to list).
+    Needs a Twilio account: set twilio_sid / twilio_token / twilio_from in the
+    config (~$0.01 per text). Until those exist, numbers queue and this reports
+    how many are waiting."""
+    nums = cfg.get("sms_to") or []
+    if not nums:
+        return "sms: skipped (no sms_to subscribers)"
+    sid, tok = cfg.get("twilio_sid"), cfg.get("twilio_token")
+    frm = cfg.get("twilio_from")
+    if not (sid and tok and frm):
+        return ("sms: %d number(s) waiting - add twilio_sid/twilio_token/"
+                "twilio_from to the config to enable texting" % len(nums))
+    import base64
+    text = subject + ("\n" + cfg["dashboard_url"] if cfg.get("dashboard_url") else "")
+    auth = base64.b64encode(("%s:%s" % (sid, tok)).encode()).decode()
+    sent = 0
+    for n in nums:
+        data = urllib.parse.urlencode({"To": n, "From": frm, "Body": text}).encode()
+        req = urllib.request.Request(
+            "https://api.twilio.com/2010-04-01/Accounts/%s/Messages.json" % sid,
+            data=data, headers={"Authorization": "Basic " + auth})
+        with urllib.request.urlopen(req, timeout=30) as r:
+            r.read()
+        sent += 1
+    return "sms: sent to %d number(s)" % sent
+
+
 def main():
     args = sys.argv[1:]
     def opt(name, default=None):
@@ -255,14 +284,14 @@ def main():
         return
 
     results, failures = [], []
-    for fn in (send_email, send_push):
+    for fn in (send_email, send_push, send_sms):
         try:
             results.append(fn(cfg, subject, body))
         except Exception as e:
             failures.append("%s failed: %r" % (fn.__name__, e))
     for line in results + failures:
         print("notify:", line)
-    if not test and not failures and any(r.startswith(("email: sent", "push: sent")) for r in results):
+    if not test and not failures and any(r.startswith(("email: sent", "push: sent", "sms: sent")) for r in results):
         as_of = collect(page)[0]
         json.dump({"last_sent": as_of}, open(state_path, "w"))
     if failures and not results:
