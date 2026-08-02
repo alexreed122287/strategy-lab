@@ -43,22 +43,27 @@ fi
 #    Tradier for every scan ticker + book-universe symbol parsed off the page.
 #    Token: TRADIER_TOKEN env var or ~/.tradier_token file. ~6 min for ~700 names.
 python3 "$REPO/scripts/dump_closes.py" --index "$REPO/index.html" \
-  --out "$TMP/closes.json" --days 90
+  --out "$TMP/bars.json" --days 400 --ohlcv
 # earnings.json (z-score force-exit dates) - OPTIONAL FILL IN if you have a
 # confirmed-earnings feed; empty file just disables earnings flags:
 [ -f "$TMP/earnings.json" ] || echo '{}' > "$TMP/earnings.json"
 
 # 4) Splice the TRACK indicator snapshot into the page (ready to run).
-python3 "$REPO/scripts/track_snapshot_reference.py" "$TMP/closes.json" \
+python3 "$REPO/scripts/track_snapshot_reference.py" "$TMP/bars.json" \
   --earnings "$TMP/earnings.json" \
   --splice "$REPO/index.html" \
   --source "tradier local build $(date +%F)"
+
+# 4b) Evaluate the strategy books' entry rules -> BOOKSIG (Gap Widen x2,
+#     Z-Score, BB signals join the Signals ranking).
+python3 "$REPO/scripts/scan_book_signals.py" --bars "$TMP/bars.json" \
+  --page "$REPO/index.html" --splice
 
 # 5) Validate before publishing: every embedded blob must parse. Fail-closed.
 python3 - "$REPO/index.html" <<'PYEOF'
 import json, re, sys
 html = open(sys.argv[1]).read()
-for n in ["SCAN","BASKETS","SIGNALS","REGIME","DAILY","CALLS","TF","METHOD","BOOKS","TRACK"]:
+for n in ["SCAN","BASKETS","SIGNALS","REGIME","DAILY","CALLS","TF","METHOD","BOOKS","TRACK","BOOKSIG"]:
     m = re.search(r'const %s = (.*?);\n' % n, html, re.S)
     assert m, "missing blob: " + n
     json.loads(m.group(1))

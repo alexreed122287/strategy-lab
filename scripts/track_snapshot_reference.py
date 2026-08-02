@@ -60,8 +60,8 @@ def snapshot(closes_by_sym, earnings=None, source="local build"):
     for sym, series in closes_by_sym.items():
         if len(series) < 15:
             continue
-        dates = [d for d, _ in series]
-        closes = [float(c) for _, c in series]
+        dates = [r[0] for r in series]
+        closes = [float(r[4] if len(r) >= 6 else r[1]) for r in series]
         as_of = max(as_of or dates[-1], dates[-1])
         row = {
             "close": round(closes[-1], 4),

@@ -43,6 +43,9 @@ def page_tickers(html):
 API_BASE = os.environ.get("TRADIER_API_BASE", "https://api.tradier.com")
 
 
+OHLCV = False
+
+
 def fetch(sym, token, start):
     q = urllib.parse.urlencode({"symbol": sym, "interval": "daily", "start": start})
     req = urllib.request.Request(
@@ -54,6 +57,10 @@ def fetch(sym, token, start):
     days = (d.get("history") or {}).get("day") or []
     if isinstance(days, dict):
         days = [days]
+    if OHLCV:
+        return [[x["date"], float(x["open"]), float(x["high"]), float(x["low"]),
+                 float(x["close"]), float(x.get("volume") or 0)]
+                for x in days if x.get("close") is not None]
     return [[x["date"], float(x["close"])] for x in days if x.get("close") is not None]
 
 
@@ -66,6 +73,8 @@ def main():
     days = int(opt("--days", "90"))
     cap = int(opt("--max", "0"))
     extra = [s for s in (opt("--extra", "") or "").upper().split(",") if s]
+    global OHLCV
+    OHLCV = "--ohlcv" in args
     token = os.environ.get("TRADIER_TOKEN")
     if not token and os.path.exists(os.path.expanduser("~/.tradier_token")):
         token = open(os.path.expanduser("~/.tradier_token")).read().strip()
