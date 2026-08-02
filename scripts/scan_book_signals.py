@@ -4,8 +4,13 @@ BOOKSIG blob into the dashboard, so Gap Widen / Z-Score signals appear in the
 Signals ranking alongside the generator's RSI2/MFI rows.
 
 Implements the exact specs from the page's BOOKS blob:
-  GAPW_RSI2 / GAPW_RSI14 : ema(4/10/21) ignition sequence + stack + widening +
-      pullback context + liquidity + variant RSI filter, ranked by rs252 desc
+  GAPW_RSI2 / GAPW_RSI14 : NO LONGER SCANNED - pulled 2026-08-02 by the user's
+      decision after the local gapwiden-lab's own results were collected. The
+      lab's point-in-time arm (the only run with no hindsight in the universe)
+      earns 5.1% faithful and -14.3% at an honest 15bp spread, and its deep-OOS
+      arm is -4.2%/-22.2%; x46 reached the same conclusion independently. The
+      published 51.9%/51.5% headline is reproduced by neither. The gapw_entry()
+      path below is kept for reference and for paper research only.
   ZSCORE_000 : close>20, avol50>1M sh, close>sma200, z50<=-1.5, rsi3<20 (Ext-31,
       paper only - book killed for real-money wiring x40/x41/x42). Rows carry
       per-name research stats from BOOKS universe.per_name with the executable
@@ -167,8 +172,12 @@ def main():
         return as_of <= nxt <= nx.isoformat()
 
     rows = []
-    for sid, strat, kind in [("gap_widen_rsi2", "GAPW_RSI2", 2),
-                             ("gap_widen_rsi14", "GAPW_RSI14", 14)]:
+    # Gap Widen pulled from the nightly scan 2026-08-02 (see module docstring).
+    # Set SL_SCAN_GAPW=1 to re-enable for a research build without editing code.
+    import os as _os
+    for sid, strat, kind in ([("gap_widen_rsi2", "GAPW_RSI2", 2),
+                              ("gap_widen_rsi14", "GAPW_RSI14", 14)]
+                             if _os.environ.get("SL_SCAN_GAPW") else []):
         u = S[sid]["universe"]
         stats = {e["signal"]: e for e in u.get("qualified", [])}
         veh = {e["signal"]: e["trade"] for e in u.get("qualified", []) if e["trade"] != e["signal"]}
