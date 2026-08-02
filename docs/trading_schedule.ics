@@ -1,0 +1,55 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Strategy Lab//Trading Schedule//EN
+CALSCALE:GREGORIAN
+X-WR-CALNAME:Strategy Lab Trading Schedule
+BEGIN:VTIMEZONE
+TZID:America/Chicago
+BEGIN:DAYLIGHT
+TZOFFSETFROM:-0600
+TZOFFSETTO:-0500
+TZNAME:CDT
+DTSTART:20260308T020000
+RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=2SU
+END:DAYLIGHT
+BEGIN:STANDARD
+TZOFFSETFROM:-0500
+TZOFFSETTO:-0600
+TZNAME:CST
+DTSTART:20261101T020000
+RRULE:FREQ=YEARLY;BYMONTH=11;BYDAY=1SU
+END:STANDARD
+END:VTIMEZONE
+BEGIN:VEVENT
+UID:sl-moo-queue@strategy-lab
+DTSTART;TZID=America/Chicago:20260803T082000
+DTEND;TZID=America/Chicago:20260803T082800
+RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR
+SUMMARY:Queue MOO orders (deadline ~9:28 ET)
+DESCRIPTION:Gap Widen + Z-Score books: submit MOO orders for yesterday's EOD-c
+ onfirmed TAKE signals. Fill happens at the 9:30 ET opening auction. Never ent
+ er intraday.
+END:VEVENT
+BEGIN:VEVENT
+UID:sl-exit-screen@strategy-lab
+DTSTART;TZID=America/Chicago:20260803T144000
+DTEND;TZID=America/Chicago:20260803T144800
+RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR
+SUMMARY:3:45 ET exit screen - MOC by 3:48 ET
+DESCRIPTION:Check Positions tab sell flags\, confirm thresholds on live print
+ s (GW: rsi2>80 / rsi14>60\; Z/BB after gate: close>EMA5)\, submit MOC by 3:4
+ 8 ET (NYSE cutoff 3:50\, Nasdaq 3:55). Bar-10 time stops go as scheduled MOC
+ . Z-Score: force-exit before earnings.
+END:VEVENT
+BEGIN:VEVENT
+UID:sl-eod-review@strategy-lab
+DTSTART;TZID=America/Chicago:20260803T153000
+DTEND;TZID=America/Chicago:20260803T154500
+SUMMARY:EOD build + signal review + log positions
+RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR
+DESCRIPTION:Daily build runs (or run scripts/daily_build.sh). Review ranked T
+ AKEs on the Signals tab and Strategy Books\, decide tomorrow's MOO queue\, l
+ og today's fills and closes in the Positions tab so the forward-test card ac
+ crues.
+END:VEVENT
+END:VCALENDAR
