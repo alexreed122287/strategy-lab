@@ -96,6 +96,13 @@ nav button.on { background: var(--surface-2); font-weight: 600; }
   -webkit-overflow-scrolling: touch; }
 .tablewrap table tr:last-child td { border-bottom: none; }
 .tablewrap th { background: var(--surface-2); }
+/* first column stays pinned while a wide table scrolls sideways */
+.tablewrap th:first-child, .tablewrap td:first-child {
+  position: sticky; left: 0; z-index: 2; background: var(--surface-1); }
+.tablewrap th:first-child { z-index: 3; background: var(--surface-2); }
+.tablewrap tr:hover td:first-child { background: var(--surface-2); }
+.tablewrap tr.subrow td:first-child { background: var(--surface-2); }
+.card .tablewrap td:first-child { background: var(--surface-2); }
 details.gloss { background: var(--surface-2); border: 1px solid var(--border);
   border-radius: 10px; padding: 9px 12px; margin: 10px 0; max-width: 980px; }
 details.gloss summary { cursor: pointer; font-size: 12px; font-weight: 600;
@@ -1182,8 +1189,8 @@ function armStats(sym, strat){
   // Ranked table rendering with sortable headers (numeric descending-first,
   // rank ascending-first, text ascending-first)
   let sk="score", sd=1;
-  const cols=[["rank","Rank"],["state","State","l"],["new_today","New","l"],
-    ["sym","Ticker","l"],["strat","Strategy","l"],["exit","Exit","l"],
+  const cols=[["sym","Ticker","l"],["rank","Rank"],["state","State","l"],
+    ["new_today","New","l"],["strat","Strategy","l"],["exit","Exit","l"],
     ["vehicle","Vehicle","l"],
     ["score","Strength"],["hwin","Win %"],["hpf","PF"],["havg","Avg/trade %"],
     ["hn","Trades"],["pf1922","PF 19-22"],["pf2326","PF 23-26"],["depth","Depth"],
@@ -1217,10 +1224,9 @@ function armStats(sym, strat){
     for(const x of r){
       if(gseen.has(x.sym)) gseen.get(x.sym).push(x);
       else { const g=[x]; gseen.set(x.sym,g); grouped.push(g); } }
-    const rowHtml=(x,sub,subCount)=>`<tr${sub?` class="subrow" data-psym="${x.sym}" style="display:none"`:""}><td>${
-      sub?"&middot;":(x.rank??"-")}${!sub&&subCount?` <button class="exp" data-sym="${x.sym}" title="${subCount} more strateg${subCount===1?"y":"ies"} fired on ${x.sym} - tap to expand">&#9656;${subCount}</button>`:""}</td><td>${chip(x.state)}</td>
+    const rowHtml=(x,sub,subCount)=>`<tr${sub?` class="subrow" data-psym="${x.sym}" style="display:none"`:""}><td>${x.sym}${!sub&&subCount?` <button class="exp" data-sym="${x.sym}" title="${subCount} more strateg${subCount===1?"y":"ies"} fired on ${x.sym} - tap to expand">&#9656;${subCount}</button>`:""}</td><td>${
+      sub?"&middot;":(x.rank??"-")}</td><td>${chip(x.state)}</td>
       <td>${x.new_today?'<span class="chip info">NEW</span>':""}</td>
-      <td>${x.sym}</td>
       <td title="Entry: ${ENTRYBASIS[x.strat]||""}">${x.strat}${x.bookNote?'<br><span class="small">'+x.bookNote+'</span>':""}</td>
       <td class="l small" style="white-space:normal">${x.exit}</td>
       <td style="white-space:normal">${vehChip(x.sym, armStats(x.sym,x.strat))}</td>
