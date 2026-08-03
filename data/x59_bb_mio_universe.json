@@ -1,0 +1,153 @@
+{
+ "prereg": "docs/x59_session_prereg_bb_mio_universe.md",
+ "universe": {
+  "supplied": 301,
+  "run": 180,
+  "missing": 121,
+  "note": "the 121 missing were never fetched into any local store; a mix of delisted names and live names the brain has not seen"
+ },
+ "legs": {
+  "idealized_close": {
+   "cagr": 48.83,
+   "maxdd": -20.93,
+   "trades": 658,
+   "win": 76.6,
+   "avg": 1.384,
+   "pf": 2.51,
+   "yby": {
+    "2019": 3.25,
+    "2020": 17.8,
+    "2021": 100.27,
+    "2022": 14.1,
+    "2023": 39.6,
+    "2024": 76.87,
+    "2025": 70.58,
+    "2026": 73.71
+   }
+  },
+  "executable_hybrid_MOO_to_MOC": {
+   "cagr": 34.88,
+   "maxdd": -25.94,
+   "trades": 658,
+   "win": 73.9,
+   "avg": 1.035,
+   "pf": 2.12,
+   "yby": {
+    "2019": -2.89,
+    "2020": 4.18,
+    "2021": 66.59,
+    "2022": 11.2,
+    "2023": 33.77,
+    "2024": 46.59,
+    "2025": 67.54,
+    "2026": 56.68
+   }
+  },
+  "worst_case_next_open_020": {
+   "cagr": 22.75,
+   "maxdd": -31.6,
+   "trades": 658,
+   "win": 67.6,
+   "avg": 0.731,
+   "pf": 1.65,
+   "yby": {
+    "2019": -8.37,
+    "2020": 6.31,
+    "2021": 60.97,
+    "2022": -1.56,
+    "2023": 26.91,
+    "2024": 25.27,
+    "2025": 46.7,
+    "2026": 31.26
+   }
+  },
+  "buy_hold_same_names": {
+   "cagr": 21.11,
+   "maxdd": -42.3
+  }
+ },
+ "gates": {
+  "B1_retention": {
+   "v": 0.714,
+   "bar": 0.8,
+   "pass": 0.0
+  },
+  "B2_positive": {
+   "v": 34.88,
+   "pass": 1.0
+  },
+  "B3_vs_bh": {
+   "excess_pp": 13.77,
+   "dd_better": true,
+   "pass": true
+  },
+  "B4_era": {
+   "e1922": 79.08,
+   "e2326": 204.58,
+   "pass": 1.0
+  }
+ },
+ "verdict": "FAIL - kill stands (B1)",
+ "prior_kill": {
+  "retention": 0.096,
+  "idealized": 8.1,
+  "executable": 0.78,
+  "universe": "lab-derived wide 435 ex-healthcare"
+ },
+ "ex_etf_control": {
+  "names": 170,
+  "ideal": {
+   "cagr": 48.73,
+   "maxdd": -20.93,
+   "trades": 656,
+   "win": 77.0,
+   "avg": 1.417,
+   "pf": 2.54,
+   "yby": {
+    "2019": 3.25,
+    "2020": 20.87,
+    "2021": 96.77,
+    "2022": 14.12,
+    "2023": 39.9,
+    "2024": 74.49,
+    "2025": 70.25,
+    "2026": 73.71
+   }
+  },
+  "hybrid": {
+   "cagr": 34.27,
+   "maxdd": -25.94,
+   "trades": 656,
+   "win": 73.9,
+   "avg": 1.047,
+   "pf": 2.13,
+   "yby": {
+    "2019": -2.89,
+    "2020": 7.34,
+    "2021": 63.67,
+    "2022": 11.18,
+    "2023": 32.24,
+    "2024": 44.94,
+    "2025": 63.62,
+    "2026": 56.68
+   }
+  },
+  "bh": {
+   "cagr": 21.16,
+   "maxdd": -41.12
+  },
+  "retention": 0.703
+ },
+ "levered_etfs_present": [
+  "FAS",
+  "FXI",
+  "GUSH",
+  "LIT",
+  "MJ",
+  "QQQ",
+  "SMH",
+  "SOXX",
+  "TECL",
+  "XBI"
+ ]
+}
