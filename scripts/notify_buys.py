@@ -52,8 +52,19 @@ import ssl
 import sys
 import urllib.parse
 import urllib.request
+from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.utils import formatdate
+
+
+# Ported verbatim from index.html so the email and the Signals tab cannot drift.
+EXITS = {"RSI2": "close>SMA5 | 10 bars", "RSI2_LEV": "close>SMA5 | 10 bars",
+         "MFI": "close>EMA7 | 10 bars",
+         "ZSCORE": "close>EMA5 | 10 bars | pre-earnings",
+         "GAPW_RSI2": "rsi2>80 3:45->MOC | 10 bars",
+         "GAPW_RSI14": "rsi14>60 3:45->MOC | 10 bars"}
+TRIGL = {"RSI2": "RSI2", "RSI2_LEV": "RSI2", "MFI": "MFI",
+         "GAPW_RSI2": "RSI2", "GAPW_RSI14": "RSI14", "ZSCORE": "RSI3"}
 
 
 def blob(html, name):
@@ -100,6 +111,10 @@ def collect(page_path):
             # program's own era-robustness read, and depth is the trigger depth.
             "pf1922": e19.get("pf"), "pf2326": e23.get("pf"),
             "depth": x.get("depth"),
+            "state": x.get("state"), "new": bool(x.get("new_today")),
+            "exit": EXITS.get(x["strat"], ""), "vehicle": st.get("vehicle") or "1x",
+            "trig": ("%s %s" % (TRIGL.get(x["strat"], ""), x.get("depth"))).strip(),
+            "earnings": bool(x.get("earnings_soon")),
             "entry": "at the close" if x["strat"].startswith("RSI2")
                      else "close-validated (next-morning OK)"})
 
@@ -115,6 +130,10 @@ def collect(page_path):
                    "avg": r.get("avg"), "score": score(r.get("avg"), r.get("n")),
                    "rank": r.get("book_rank"), "rs252": r.get("rs252"),
                    "pf1922": None, "pf2326": None, "depth": r.get("rs252"),
+                   "state": r.get("state"), "new": True,
+                   "exit": EXITS.get(strat, ""), "vehicle": r.get("vehicle") or "1x",
+                   "trig": ("%s %s" % (TRIGL.get(strat, ""), r.get("rsi"))).strip(),
+                   "earnings": False,
                    "entry": "MOO next 9:30 open (validated basis)"}
             gw_book.append(row)
             pool.append(row)
@@ -128,6 +147,10 @@ def collect(page_path):
                 "n": n, "win": win, "avg": avg, "score": score(avg, n),
                 "pf": (e or {}).get("pf"), "pf1922": None, "pf2326": None,
                 "depth": r.get("z50"),
+                "state": r.get("state"), "new": True,
+                "exit": EXITS.get(strat, ""), "vehicle": "1x",
+                "trig": ("RSI3 %s" % r.get("rsi3")) if r.get("rsi3") is not None else "",
+                "earnings": r.get("state") == "PASS-EARNINGS",
                 "entry": "MOO next open - PAPER only (book killed for wiring)"})
 
     # RANKED = the page's exact pool: vetted, 30+ trades, one best arm per
@@ -200,13 +223,17 @@ def compose(as_of, ranked, gw_book, paper, exits, url):
 
 
 def compose_simple(as_of, ranked, gw_book, paper, url):
-    """The plain-language digest: today's new buys, ranked, with the strategy
-    that fired and that name's own backtest record. One screen, no jargon.
+    """The daily ranked digest: every new signal, in the dashboard Signals tab's
+    own columns and its own top-to-bottom order (Strength descending).
 
-    Deliberately carries the honest label. This goes to people who have not sat
-    through the research, and every book on this page has now failed at least
-    one era test - an email that lists tickers without saying so would be
-    misleading, which is a worse failure than being wordy."""
+    Returns (subject, text, html). Sixteen columns cannot be aligned in plain
+    text without wrapping in most mail clients, so the HTML table is the real
+    deliverable and the text part is a readable fallback.
+
+    The honest label rides along deliberately. This goes to people who have not
+    sat through the research, and every book here has now failed at least one
+    era test - a table of tickers and win rates with no context would read as a
+    recommendation."""
     rows, seen = [], set()
     for r in list(ranked) + list(gw_book) + list(paper):
         key = (r["sym"], r["strat"])
@@ -215,69 +242,86 @@ def compose_simple(as_of, ranked, gw_book, paper, url):
         seen.add(key)
         rows.append(r)
     rows.sort(key=lambda x: -(x["score"] if x.get("score") is not None else -1e9))
+    for i, r in enumerate(rows, 1):
+        r["_rank"] = i
 
     NAME = {"GAPW_RSI2": "Gap Widen RSI2", "GAPW_RSI14": "Gap Widen RSI14",
             "ZSCORE": "Z-Score", "RSI2": "RSI2", "MFI": "MFI"}
-    # The account holds ONE position per strategy, so the buy list is each
-    # strategy's top-ranked signal - not every name that triggered. Listing all
-    # of them would imply 20-odd buys the account never makes.
-    top, rest = {}, {}
-    for r in rows:
-        if r["strat"] not in top:
-            top[r["strat"]] = r
-        else:
-            rest.setdefault(r["strat"], []).append(r["sym"])
+    COLS = [("Ticker", "sym", "l"), ("Rank", "_rank", "r"), ("State", "state", "l"),
+            ("New", "new", "c"), ("Strategy", "strat", "l"), ("Exit", "exit", "l"),
+            ("Vehicle", "vehicle", "l"), ("Strength", "score", "r"),
+            ("Win %", "win", "r"), ("PF", "pf", "r"), ("Avg/trade %", "avg", "r"),
+            ("Trades", "n", "r"), ("PF 19-22", "pf1922", "r"),
+            ("PF 23-26", "pf2326", "r"), ("Trigger", "trig", "l"),
+            ("Earnings", "earnings", "c")]
+    DEC = {"score": 2, "win": 1, "pf": 2, "avg": 2, "pf1922": 2, "pf2326": 2}
 
-    def bt(r):
-        parts = []
-        if r.get("n"):
-            parts.append("%s trades" % r["n"])
-        if r.get("win") is not None:
-            parts.append("%.0f%% win" % r["win"])
-        if r.get("avg") is not None:
-            parts.append("%+.2f%%/trade" % r["avg"])
-        if r.get("pf"):
-            parts.append("PF %s" % r["pf"])
-        return ", ".join(parts) if parts else "no per-name record"
-
-    def cell(v, w, dec=None):
+    def val(r, key):
+        v = r.get(key)
+        if key == "strat":
+            return NAME.get(v, v or "")
+        if key == "new":
+            return "NEW" if v else ""
+        if key == "earnings":
+            return "yes" if v else ""
         if v is None or v == "":
-            return " " * (w - 1) + "-"
-        t = ("%.*f" % (dec, v)) if (dec is not None and isinstance(v, (int, float))) else str(v)
-        return t.rjust(w)
+            return "-"
+        if key in DEC and isinstance(v, (int, float)):
+            return "%.*f" % (DEC[key], v)
+        return str(v)
 
-    L = ["STRATEGY LAB - new buys",
+    def esc(t):
+        return (str(t).replace("&", "&amp;").replace("<", "&lt;")
+                .replace(">", "&gt;").replace('"', "&quot;"))
+
+    # ---------- HTML ----------
+    ALIGN = {"l": "left", "r": "right", "c": "center"}
+    th = "".join('<th style="padding:6px 9px;border-bottom:2px solid #444;'
+                 'text-align:%s;white-space:nowrap;font-size:12px">%s</th>'
+                 % (ALIGN[a], esc(h)) for h, _, a in COLS)
+    trs = []
+    for i, r in enumerate(rows):
+        bg = "#fafafa" if i % 2 else "#ffffff"
+        tds = "".join('<td style="padding:5px 9px;border-bottom:1px solid #e6e6e6;'
+                      'text-align:%s;white-space:nowrap;font-size:12px">%s</td>'
+                      % (ALIGN[a], esc(val(r, k))) for _, k, a in COLS)
+        trs.append('<tr style="background:%s">%s</tr>' % (bg, tds))
+    html = """<div style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;color:#111">
+<h2 style="margin:0 0 2px 0;font-size:17px">Strategy Lab &mdash; new buys</h2>
+<p style="margin:0 0 14px 0;color:#555;font-size:13px">Signals confirmed at the close of %s &middot; ranked by Strength, exactly as the dashboard's Signals tab</p>
+<div style="overflow-x:auto"><table cellspacing="0" cellpadding="0" style="border-collapse:collapse;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">
+<thead><tr>%s</tr></thead><tbody>%s</tbody></table></div>
+<p style="margin:14px 0 4px 0;font-size:12px;color:#555">
+<b>Strength</b> = avg/trade weighted by sample size &mdash; the sort key.
+<b>PF 19-22 / PF 23-26</b> = profit factor by era; both healthy is the era-robustness read, and a dash means the book has no per-era record.</p>
+<h3 style="margin:16px 0 4px 0;font-size:14px">How to act</h3>
+<p style="margin:0;font-size:13px">Buy at the market open, next session. These are end-of-day signals &mdash; buying intraday is not what was tested.</p>
+<h3 style="margin:16px 0 4px 0;font-size:14px">What this is</h3>
+<p style="margin:0;font-size:13px;color:#333">Paper research. No real money is in any of these strategies and none is authorised for it.
+Every strategy here has failed at least one historical era test: both Gap Widen books earn roughly zero in 2011-2018, and the Z-Score book
+earns nothing over simply owning the same stocks in that period. The recent results describe one favourable regime, not a forecast, and the
+per-name figures above are idealised fills that read better than reality.</p>
+<p style="margin:10px 0 0 0;font-size:13px">Full evidence, including what failed: <a href="%s">%s</a></p>
+</div>""" % (esc(as_of or "the last session"), th, "".join(trs),
+             esc(url or "#"), esc(url or "(dashboard)"))
+
+    # ---------- plain-text fallback ----------
+    w = [max(len(h), max((len(val(r, k)) for r in rows), default=0)) for h, k, _ in COLS]
+    def line(cells):
+        return "  " + "  ".join(
+            (c.ljust(w[i]) if COLS[i][2] == "l" else c.rjust(w[i]))
+            for i, c in enumerate(cells))
+    T = ["STRATEGY LAB - new buys",
          "Signals confirmed at the close of %s" % (as_of or "the last session"),
-         "",
-         "BUY THESE (one per strategy - its top-ranked signal)", ""]
-    for r in top.values():
-        px = ("$%s" % r["close"]) if r.get("close") is not None else ""
-        L.append("  %-6s %-16s %s" % (r["sym"], NAME.get(r["strat"], r["strat"]), px))
-        L.append("  %-6s %s" % ("", bt(r)))
-        L.append("")
-
-    # Full ranking, same columns and same top-to-bottom order as the dashboard's
-    # Signals tab (strength descending). Fixed-width so it lines up in any mail
-    # client that renders monospace; view in a monospace font if it looks ragged.
-    L += ["ALL NEW SIGNALS - ranked exactly as the dashboard's Signals tab", "",
-          "  #  TICKER STRATEGY          STR   WIN%     PF   AVG%    N  PF19-22 PF23-26    CLOSE",
-          "  " + "-" * 84]
-    for i, r in enumerate(rows, 1):
-        L.append(cell(i, 3) + "  " +
-                 ("%-6s " % r["sym"]) +
-                 ("%-14s" % NAME.get(r["strat"], r["strat"])) +
-                 cell(r.get("score"), 7, 2) +
-                 cell(r.get("win"), 7, 1) +
-                 cell(r.get("pf"), 7, 2) +
-                 cell(r.get("avg"), 7, 2) +
-                 cell(r.get("n"), 5) +
-                 cell(r.get("pf1922"), 9, 2) +
-                 cell(r.get("pf2326"), 8, 2) +
-                 cell(r.get("close"), 9, 2))
-    L += ["",
-          "  STR = strength (avg/trade weighted by sample size) - the sort key.",
-          "  PF 19-22 / PF 23-26 = profit factor by era. Both healthy is the",
-          "  era-robustness read; a blank means the book has no per-era record.",
+         "Ranked by Strength, exactly as the dashboard's Signals tab.",
+         "(View in HTML for the aligned table.)", "",
+         line([h for h, _, _ in COLS]),
+         "  " + "-" * (sum(w) + 2 * (len(w) - 1))]
+    T += [line([val(r, k) for _, k, _ in COLS]) for r in rows]
+    T += ["",
+          "  Strength = avg/trade weighted by sample size - the sort key.",
+          "  PF 19-22 / PF 23-26 = profit factor by era; both healthy is the",
+          "  era-robustness read, a dash means no per-era record.",
           "",
           "HOW TO ACT",
           "  Buy at the market open, next session. These are end-of-day",
@@ -294,19 +338,26 @@ def compose_simple(as_of, ranked, gw_book, paper, url):
           "  than reality.",
           "",
           "  Full evidence, including what failed: %s" % (url or "(dashboard)")]
-    n = len(top)
-    return ("Strategy Lab - %d new buy%s, %d signals (%s)"
-            % (n, "" if n == 1 else "s", len(rows), as_of or ""), "\n".join(L))
+    return ("Strategy Lab - %d new signal%s (%s)"
+            % (len(rows), "" if len(rows) == 1 else "s", as_of or ""),
+            "\n".join(T), html)
 
 
-def send_email(cfg, subject, body):
+def send_email(cfg, subject, body, html=None):
     to = cfg.get("to") or []
     host = cfg.get("smtp_host")
     if not (to and host):
         return "email: skipped (no to/smtp_host in config)"
     port = int(cfg.get("smtp_port") or (465 if cfg.get("smtp_ssl") else 587))
     user, pw = cfg.get("smtp_user"), cfg.get("smtp_pass")
-    msg = MIMEText(body)
+    if html:
+        # multipart/alternative: clients that render HTML get the aligned
+        # table, everything else falls back to the text part.
+        msg = MIMEMultipart("alternative")
+        msg.attach(MIMEText(body, "plain"))
+        msg.attach(MIMEText(html, "html"))
+    else:
+        msg = MIMEText(body)
     msg["Subject"] = subject
     msg["From"] = cfg.get("from") or user or "strategy-lab"
     msg["To"] = ", ".join(to)
@@ -380,6 +431,7 @@ def main():
         "--state", "~/.strategy_lab_digest_state.json" if simple
         else "~/.strategy_lab_notify_state.json"))
     dry, force, test = "--dry-run" in args, "--force" in args, "--test" in args
+    html = None
 
     if not os.path.exists(cfg_path):
         print("notify: no config at %s - nothing sent. Create it (see the header "
@@ -406,9 +458,12 @@ def main():
         if not force and state.get("last_sent") == as_of and as_of:
             print("notify: already sent for", as_of, "- skipping (--force to resend)")
             return
-        subject, body = (compose_simple(as_of, ranked, gw_book, paper, cfg.get("dashboard_url"))
-                         if simple else
-                         compose(as_of, ranked, gw_book, paper, exits, cfg.get("dashboard_url")))
+        if simple:
+            subject, body, html = compose_simple(as_of, ranked, gw_book, paper,
+                                                 cfg.get("dashboard_url"))
+        else:
+            subject, body = compose(as_of, ranked, gw_book, paper, exits,
+                                    cfg.get("dashboard_url"))
 
     # The digest may go to a wider list than the personal alert. "to_digest"
     # wins when --simple is set; otherwise it falls back to "to".
@@ -420,12 +475,15 @@ def main():
         print("To:", ", ".join(cfg.get("to") or []) or "(no recipients configured)")
         print("Subject:", subject)
         print(body)
+        if html and "--html" in args:
+            print("\n--- HTML PART ---\n" + html)
         return
 
     results, failures = [], []
     for fn in (send_email, send_push, send_sms):
         try:
-            results.append(fn(cfg, subject, body))
+            results.append(send_email(cfg, subject, body, html)
+                           if fn is send_email else fn(cfg, subject, body))
         except Exception as e:
             failures.append("%s failed: %r" % (fn.__name__, e))
     for line in results + failures:
