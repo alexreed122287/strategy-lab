@@ -48,14 +48,53 @@ if len(uni) < 100:
 frames, cal, M = fs.matrices(uni)
 EN = fs.entry_matrix(frames, cal, uni, "ZSCORE")
 out = {"universe_n": len(uni), "missing": missing, "basis": "tradier-refreshed"}
+# PANEL FINDING (2026-08-03): the first version of this script ran 2 of x45's 6
+# pre-registered legs on 5 of the pre-registered 10 seeds, and recorded no gates
+# block - yet its output became the book's published numbers and was asserted to
+# pass "every x45 gate". All six legs and all ten seeds now run, and the gates
+# are evaluated and recorded so the artifact is auditable on its own terms.
 out["ideal_close"] = fs.simulate(uni, cal, M, EN, "ideal_close")
 print("ideal_close:", out["ideal_close"]["cagr"], "% | PF", out["ideal_close"]["pf"],
       "| trades", out["ideal_close"]["trades"], flush=True)
+out["moc_ideal"] = fs.simulate(uni, cal, M, EN, "moc_ideal")
+out["next_open_020"] = fs.simulate(uni, cal, M, EN, "next_open", entry_cost=0.0020)
 seeds = [fs.simulate(uni, cal, M, EN, "moc_full", seed=s, entry_cost=0.0005)
-         for s in range(1, 6)]
+         for s in range(1, 11)]
+hyb = [fs.simulate(uni, cal, M, EN, "hybrid", seed=s, entry_cost=0.0005)
+       for s in range(1, 11)]
 out["moc_full_mean"] = round(float(np.mean([s["cagr"] for s in seeds])), 2)
 out["moc_full_seeds"] = [s["cagr"] for s in seeds]
-print("moc_full mean:", out["moc_full_mean"], "%", flush=True)
+out["hybrid_moo005_mean"] = round(float(np.mean([s["cagr"] for s in hyb])), 2)
+out["hybrid_moo005_seeds"] = [s["cagr"] for s in hyb]
+print("moc_ideal:", out["moc_ideal"]["cagr"], "% | next_open_020:",
+      out["next_open_020"]["cagr"], "%", flush=True)
+print("moc_full mean (10 seeds):", out["moc_full_mean"], "% | hybrid mean:",
+      out["hybrid_moo005_mean"], "%", flush=True)
+
+# x45's pre-registered gates, evaluated on THIS basis and recorded.
+ic, mf = out["ideal_close"], out["moc_full_mean"]
+all_pos = all(v > 0 for v in ic["yby"].values())
+out["gates"] = {
+    "E1": {"pass": bool(ic["cagr"] >= 30 and ic["pf"] >= 2.5 and all_pos),
+           "cagr": ic["cagr"], "pf": ic["pf"], "all_years_pos": all_pos,
+           "yby": ic["yby"]},
+    "E2": {"pass": bool(mf >= 0.75 * ic["cagr"] and mf >= 22),
+           "moc_full_mean": mf, "ratio": round(mf / ic["cagr"], 3)},
+    # E3 is recorded BOTH ways. Its prose says "within 8pp of x44's 43.51%"
+    # (band 35.51-51.51); its own parenthetical operationalises it one-sided as
+    # ">= 35.5%". The panel refused to co-sign x45 on that contradiction, so the
+    # script no longer picks a side - it reports both and leaves the ruling to
+    # the panel.
+    "E3": {"x44_ideal": 43.51, "expanded_ideal": ic["cagr"],
+           "one_sided_floor": 35.51,
+           "pass_one_sided": bool(ic["cagr"] >= 35.51),
+           "two_sided_band": [35.51, 51.51],
+           "pass_two_sided": bool(35.51 <= ic["cagr"] <= 51.51),
+           "deviation_pp": round(ic["cagr"] - 43.51, 2)},
+}
+print("gates:", json.dumps(out["gates"]["E1"]["pass"] and out["gates"]["E2"]["pass"]),
+      "| E3 one-sided", out["gates"]["E3"]["pass_one_sided"],
+      "/ two-sided", out["gates"]["E3"]["pass_two_sided"], flush=True)
 
 prior_path = f"{repo}/data/x45v2_results.json"
 if os.path.exists(prior_path):
