@@ -56,8 +56,16 @@ BASIS = {"GAPW_RSI2": "moo", "GAPW_RSI14": "moo", "ZSCORE": "moo",
 #   - position size = sleeve equity / slots, capped by sleeve cash
 #   - a signal arriving with no free slot or no cash is SKIPPED AND RECORDED -
 #     the skip count is the honest cost of a real account and must be visible
+#
+# GATE BASIS (owner decision, pre-registered 2026-08-03, BEFORE any trade
+# closed): the binding real-money gate counts trades THIS ACCOUNT actually
+# took - 20 closed account trades, program-wide - not the skip-free per-book
+# ledger. The account is what real money would have done; the ledger measures
+# whether a rule fires, which is a different question. Both counts are
+# published; only the account count opens the gate.
 CAPITAL = 100_000.0
 SLOTS = {"RSI2": 3, "MFI": 3, "GAPW_RSI2": 3, "GAPW_RSI14": 3, "ZSCORE": 3}
+GATE_CLOSED_TRADES = 20
 
 
 def portfolio(led, books):
@@ -77,12 +85,15 @@ def portfolio(led, books):
         if p.get("exit_date") and p.get("net") is not None:
             ev.append((p["exit_date"], "out", p))
     ev.sort(key=lambda e: (e[0], 0 if e[1] == "out" else 1))   # exits free slots first
+    closed = []                                # account-basis closed trades
     for date, kind, p in ev:
         b, sym = p["book"], p["sym"]
         if kind == "out":
             held = open_pos[b].pop(sym, None)
             if held is not None:
                 cash[b] += held["cost"] * (1.0 + p["net"])     # net already net of friction
+                closed.append({"date": date, "book": b, "sym": sym,
+                               "net": p["net"], "cost": held["cost"]})
             continue
         if sym in open_pos[b]:
             continue
@@ -99,8 +110,22 @@ def portfolio(led, books):
         taken += 1
     invested = {b: sum(h["cost"] for h in open_pos[b].values()) for b in books}
     equity = sum(cash.values()) + sum(invested.values())
+    nets = [c["net"] for c in closed]
+    gross = sum(n for n in nets if n > 0)
+    loss = -sum(n for n in nets if n <= 0)
     return {
         "capital": CAPITAL, "slots_per_book": SLOTS,
+        # --- the binding real-money gate (owner decision 2026-08-03) ---
+        "gate_target": GATE_CLOSED_TRADES,
+        "gate_closed": len(closed),
+        "gate_remaining": max(GATE_CLOSED_TRADES - len(closed), 0),
+        "gate_met": len(closed) >= GATE_CLOSED_TRADES,
+        "closed_win_pct": round(100.0 * sum(1 for n in nets if n > 0) / len(nets), 1)
+                          if nets else None,
+        "closed_avg_pct": round(100.0 * sum(nets) / len(nets), 2) if nets else None,
+        "closed_pf": round(gross / loss, 2) if loss > 0 else (None if not nets else 99.0),
+        "closed_by_book": {b: sum(1 for c in closed if c["book"] == b) for b in books},
+        "closed_recent": closed[-12:],
         "equity_at_cost": round(equity, 2),
         "realized_pct": round(100.0 * (equity / CAPITAL - 1.0), 2),
         "cash": round(sum(cash.values()), 2),
@@ -112,7 +137,8 @@ def portfolio(led, books):
         "by_book": {b: {"sleeve_cash": round(cash[b], 2),
                         "invested": round(invested[b], 2),
                         "open": len(open_pos[b]),
-                        "skipped": sum(1 for s in skipped if s["book"] == b)}
+                        "skipped": sum(1 for s in skipped if s["book"] == b),
+                        "closed": sum(1 for c in closed if c["book"] == b)}
                     for b in books},
         "note": ("Replay of the same ledger through one shared $100k account: "
                  "equal sleeves per book, each book's own slot count inside its "
@@ -121,7 +147,11 @@ def portfolio(led, books):
                  "'realized' moves only when trades close. Signals that arrive "
                  "with no free slot or no cash are skipped and counted - that "
                  "gap between the per-trade ledger and this account is the real "
-                 "cost of finite capital.")}
+                 "cost of finite capital. THIS is the basis of the binding "
+                 "real-money gate: 20 closed trades HERE, program-wide, decided "
+                 "2026-08-03 before any trade closed. The skip-free per-book "
+                 "ledger is still published, but it counts trades this account "
+                 "could not have taken, so it does not open the gate.")}
 
 
 def ema(closes, n):
