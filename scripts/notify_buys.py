@@ -22,6 +22,8 @@ commit it):
     "smtp_user": "you@gmail.com",
     "smtp_pass": "abcd efgh ijkl mnop", // Gmail APP password, not your login
     "from": "you@gmail.com",            // optional, defaults to smtp_user
+    "to_digest": ["a@x.com", "b@y.com"], // optional: --simple digest list;
+                                        // falls back to "to" when absent
     "ntfy_topic": "alex-strategy-lab-8f3k2",
     "dashboard_url": "https://alexreed122287.github.io/strategy-lab/"
   }
@@ -34,6 +36,10 @@ build re-runs do not re-send. Override with --force.
 
 Usage:
   python3 notify_buys.py --page /path/to/index.html [--dry-run] [--force]
+      [--simple]  plain-language digest: ranked new buys + the strategy that
+                  fired + that name's backtest record, one screen. Keeps its
+                  own dedupe state so it never collides with the full alert.
+      [--state P] override the dedupe state file
       [--config /path/to/config.json] [--test]
   --dry-run : print exactly what would be sent, send nothing
   --test    : send a "wiring works" message through every configured channel
@@ -185,6 +191,83 @@ def compose(as_of, ranked, gw_book, paper, exits, url):
     return subject, "\n".join(lines)
 
 
+def compose_simple(as_of, ranked, gw_book, paper, url):
+    """The plain-language digest: today's new buys, ranked, with the strategy
+    that fired and that name's own backtest record. One screen, no jargon.
+
+    Deliberately carries the honest label. This goes to people who have not sat
+    through the research, and every book on this page has now failed at least
+    one era test - an email that lists tickers without saying so would be
+    misleading, which is a worse failure than being wordy."""
+    rows, seen = [], set()
+    for r in list(ranked) + list(gw_book) + list(paper):
+        key = (r["sym"], r["strat"])
+        if key in seen:
+            continue
+        seen.add(key)
+        rows.append(r)
+    rows.sort(key=lambda x: -(x["score"] if x.get("score") is not None else -1e9))
+
+    NAME = {"GAPW_RSI2": "Gap Widen RSI2", "GAPW_RSI14": "Gap Widen RSI14",
+            "ZSCORE": "Z-Score", "RSI2": "RSI2", "MFI": "MFI"}
+    # The account holds ONE position per strategy, so the buy list is each
+    # strategy's top-ranked signal - not every name that triggered. Listing all
+    # of them would imply 20-odd buys the account never makes.
+    top, rest = {}, {}
+    for r in rows:
+        if r["strat"] not in top:
+            top[r["strat"]] = r
+        else:
+            rest.setdefault(r["strat"], []).append(r["sym"])
+
+    def bt(r):
+        parts = []
+        if r.get("n"):
+            parts.append("%s trades" % r["n"])
+        if r.get("win") is not None:
+            parts.append("%.0f%% win" % r["win"])
+        if r.get("avg") is not None:
+            parts.append("%+.2f%%/trade" % r["avg"])
+        if r.get("pf"):
+            parts.append("PF %s" % r["pf"])
+        return ", ".join(parts) if parts else "no per-name record"
+
+    L = ["STRATEGY LAB - new buys",
+         "Signals confirmed at the close of %s" % (as_of or "the last session"),
+         "",
+         "BUY THESE (one per strategy - its top-ranked signal)", ""]
+    for r in top.values():
+        px = ("$%s" % r["close"]) if r.get("close") is not None else ""
+        L.append("  %-6s %-16s %s" % (r["sym"], NAME.get(r["strat"], r["strat"]), px))
+        L.append("  %-6s %s" % ("", bt(r)))
+        L.append("")
+    if rest:
+        L.append("ALSO TRIGGERED - not bought, one slot per strategy")
+        for strat, syms in rest.items():
+            shown = ", ".join(syms[:8])
+            more = " +%d more" % (len(syms) - 8) if len(syms) > 8 else ""
+            L.append("  %-16s %s%s" % (NAME.get(strat, strat) + ":", shown, more))
+        L.append("")
+    L += ["HOW TO ACT",
+          "  Buy at the market open, next session. These are end-of-day",
+          "  signals - buying intraday is not what was tested.",
+          "",
+          "WHAT THIS IS",
+          "  Paper research. No real money is in any of these strategies,",
+          "  and none is authorised for it. Every strategy here has failed",
+          "  at least one historical era test: both Gap Widen books earn",
+          "  roughly zero in 2011-2018, and the Z-Score book earns nothing",
+          "  over simply owning the same stocks in that period. The recent",
+          "  results describe one favourable regime, not a forecast. The",
+          "  per-name figures above are idealised fills and read better",
+          "  than reality.",
+          "",
+          "  Full evidence, including what failed: %s" % (url or "(dashboard)")]
+    n = len(top)
+    return ("Strategy Lab - %d new buy%s (%s)"
+            % (n, "" if n == 1 else "s", as_of or ""), "\n".join(L))
+
+
 def send_email(cfg, subject, body):
     to = cfg.get("to") or []
     host = cfg.get("smtp_host")
@@ -259,7 +342,12 @@ def main():
         return args[args.index(name) + 1] if name in args else default
     page = opt("--page") or sys.exit("--page /path/to/index.html required")
     cfg_path = os.path.expanduser(opt("--config", "~/.strategy_lab_notify.json"))
-    state_path = os.path.expanduser("~/.strategy_lab_notify_state.json")
+    simple = "--simple" in args
+    # The digest keeps its OWN dedupe state, so the 12:30 send and the
+    # post-build send never suppress each other.
+    state_path = os.path.expanduser(opt(
+        "--state", "~/.strategy_lab_digest_state.json" if simple
+        else "~/.strategy_lab_notify_state.json"))
     dry, force, test = "--dry-run" in args, "--force" in args, "--test" in args
 
     if not os.path.exists(cfg_path):
@@ -287,10 +375,18 @@ def main():
         if not force and state.get("last_sent") == as_of and as_of:
             print("notify: already sent for", as_of, "- skipping (--force to resend)")
             return
-        subject, body = compose(as_of, ranked, gw_book, paper, exits, cfg.get("dashboard_url"))
+        subject, body = (compose_simple(as_of, ranked, gw_book, paper, cfg.get("dashboard_url"))
+                         if simple else
+                         compose(as_of, ranked, gw_book, paper, exits, cfg.get("dashboard_url")))
+
+    # The digest may go to a wider list than the personal alert. "to_digest"
+    # wins when --simple is set; otherwise it falls back to "to".
+    if simple and cfg.get("to_digest"):
+        cfg = dict(cfg, to=cfg["to_digest"])
 
     if dry:
         print("--- DRY RUN (nothing sent) ---")
+        print("To:", ", ".join(cfg.get("to") or []) or "(no recipients configured)")
         print("Subject:", subject)
         print(body)
         return

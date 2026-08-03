@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Simplified new-buy digest. Fires weekdays 12:30 local time.
+  Install and preview instructions: see docs/notifications.md
+  (they contain command-line flags, which XML comments cannot hold).
+
+  TIMING, STATED PLAINLY: the daily build runs at 15:30 and signals are
+  confirmed on the CLOSE, so a 12:30 send always carries the PREVIOUS
+  session's signals, and their validated fill (that morning's open) has
+  already passed by four hours. Recipients acting on a 12:30 email are
+  therefore buying one session later than anything that was tested.
+  To send while the signals are still actionable, change Hour to 16, just
+  after the build: recipients then have the evening to place market-on-open
+  orders for the next open, which IS the validated basis.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.alex.strategylab.digest</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>-lc</string>
+    <string>python3 $HOME/repos/strategy-lab-site/scripts/notify_buys.py --page $HOME/repos/strategy-lab-site/index.html --simple</string>
+  </array>
+  <key>StartCalendarInterval</key>
+  <array>
+    <dict><key>Weekday</key><integer>1</integer><key>Hour</key><integer>12</integer><key>Minute</key><integer>30</integer></dict>
+    <dict><key>Weekday</key><integer>2</integer><key>Hour</key><integer>12</integer><key>Minute</key><integer>30</integer></dict>
+    <dict><key>Weekday</key><integer>3</integer><key>Hour</key><integer>12</integer><key>Minute</key><integer>30</integer></dict>
+    <dict><key>Weekday</key><integer>4</integer><key>Hour</key><integer>12</integer><key>Minute</key><integer>30</integer></dict>
+    <dict><key>Weekday</key><integer>5</integer><key>Hour</key><integer>12</integer><key>Minute</key><integer>30</integer></dict>
+  </array>
+  <key>RunAtLoad</key><false/>
+  <key>StandardOutPath</key><string>/tmp/strategylab.digest.out</string>
+  <key>StandardErrorPath</key><string>/tmp/strategylab.digest.err</string>
+</dict>
+</plist>
