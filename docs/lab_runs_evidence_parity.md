@@ -311,3 +311,55 @@ book to 0.74pp while missing RSI14 by 12.8pp - the anchor itself was later shown
 
 STATUS: gap closed. Both Gap Widen books were pulled from the scanner
 2026-08-02 and remain paper research. No further reconciliation is owed.
+
+## RSI2 ERA CONFLICT — RESOLVED 2026-08-03 (x56)
+
+x47 found RSI2 failing the point-in-time universe test over 2023-26 (trailing
+buy-and-hold of its own names by 7-9pp). x50 ran the identical test on 2015-18
+and RSI2 PASSED all three gates (+10.1pp). The owner kept the book live on
+2026-08-02, citing the accumulated evidence in a prior research archive that was
+not readable from this session at the time.
+
+It is readable now, and it has been read: 46 documents, rounds x3 through x42,
+pre-registrations and results, with adversarial refuter panels on the
+load-bearing rounds.
+
+**It does not contradict this session's tests.** It reaches the same conclusions
+by different methods, up to a month earlier:
+
+1. **Era-dependence.** The archive's canonical handoff already classifies this
+   book as era-inflated, carrying the same 6.8%/yr 2005-2018 deep floor (~40%
+   drawdown) that this site has published all along as its bear-floor band. x47
+   and x50 are two samples from a book the archive had already characterised as
+   era-variable around a modest deep mean. Era decomposition is standing law
+   there — one round used it to kill an upgrade that had passed every structural
+   test.
+2. **Buy-and-hold.** A July round tested MIO-style screeners against
+   equal-weight buy-and-hold of their own baskets, on neutral (no-foresight)
+   baskets as the control, under a five-lens adversarial pass. Same answer: no
+   return edge over holding the basket.
+3. **List vs rule.** The same round measured a clean gradient in book
+   performance that tracks how heavily the basket was curated — which is x48b,
+   x49 and x51's conclusion, reached independently and earlier.
+
+Two independent lines of evidence that did not know about each other landing on
+the same result is the strongest thing in this program.
+
+**What it changes.** The benchmark gate tests excess return over buy-and-hold
+plus drawdown. On the archive's own record this family of mean-reversion books
+was never return-additive against buy-and-hold on uncurated universes — they are
+drawdown-compression and risk-adjusted-timing instruments. So the recent-era
+PASSES are the anomaly that needs explaining, and the deep-era failures (x53,
+x54, x55) are the behaviour the research record already predicted.
+
+VERDICT: keeping RSI2 live was defensible; the book is era-dependent, not
+broken. What changes is the expectation attached to it — judge these books on
+drawdown-adjusted terms rather than on beating buy-and-hold.
+
+SOURCING: the archive is private and stays private. Published to the public
+dashboard: conclusions only, plus figures this site already carried (the 6.8%/yr
+deep floor with ~40% drawdown, and the 0.94 walk-forward shrink). No research
+numbers, per-round statistics, rule variants or basket compositions from that
+repo appear on the public page.
+
+STATUS: loose end closed. No further reconciliation is owed.
