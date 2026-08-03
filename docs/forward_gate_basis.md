@@ -63,3 +63,38 @@ Clearing 20 closed account trades does not by itself authorize real money. The
 other standing gates are unaffected: the lab panel co-sign, and every book's own
 evidence-parity row. Z-Score, Gap Widen RSI2 and Gap Widen RSI14 are all
 recorded era-dependent (x53, x54) and stay on paper regardless of trade count.
+
+## Amendment — one slot per book (2026-08-03, at zero closed trades)
+
+The account now holds **one position per book**, not three. Decided the same day
+as the gate basis above and for the same reason: the account had **zero closed
+trades**, so the model could still be changed by pre-registration rather than
+re-cut around a record already in flight. Both decisions are now fixed.
+
+**What it selects.** Each book's own #1-ranked signal by its own ranking rule —
+Gap Widen by 52-week relative strength, Z-Score by RSI(3). Nothing is picked
+across books by hand, which matters because this program has established twice
+over, from two independent evidence chains, that discretionary selection inside
+these books destroys the edge. Friday's scan resolves to **JBLU** (Gap Widen
+RSI2), **BEN** (Gap Widen RSI14) and **KNX** (Z-Score), plus one each for
+RSI2 and MFI.
+
+**Two costs, stated because they are not free:**
+
+- **Position size triples.** Size is sleeve equity ÷ slots, so one slot puts the
+  full ~$20k sleeve on a single name instead of ~$6.7k. At five books the account
+  runs ~100% deployed with no cash buffer. A single bad fill now moves the
+  account five times as much as it would have.
+- **It departs from validated mechanics.** Every book was validated at three
+  concurrent positions and 40% of equity each. The forward record is therefore a
+  test of *this account*, not a replication of any book's backtest, and it cannot
+  be compared directly to their published CAGRs.
+
+**Effect on the gate.** Unchanged in definition — still 20 closed account
+trades, program-wide. Fewer concurrent positions means slower accrual: on the
+current signal rate, roughly two months rather than five to six weeks.
+
+**Effect on the record so far.** `portfolio()` is a pure replay, so the account
+history recomputes under the new model: Friday's fills narrow from six positions
+to two (one RSI2, one MFI), with 25 signals skipped rather than 21. No closed
+trade is affected, because there are none.

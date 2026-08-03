@@ -64,7 +64,22 @@ BASIS = {"GAPW_RSI2": "moo", "GAPW_RSI14": "moo", "ZSCORE": "moo",
 # whether a rule fires, which is a different question. Both counts are
 # published; only the account count opens the gate.
 CAPITAL = 100_000.0
-SLOTS = {"RSI2": 3, "MFI": 3, "GAPW_RSI2": 3, "GAPW_RSI14": 3, "ZSCORE": 3}
+# OWNER DECISION 2026-08-03, taken while the account had ZERO closed trades - the
+# only honest moment to change a capital model, and the same reason the gate basis
+# was fixed the same day. The account holds ONE position per book: each book's own
+# #1-ranked signal by its own ranking rule (Gap Widen by rs252, Z-Score by rsi3),
+# so nothing is hand-picked across books. Friday's scan resolves to JBLU
+# (GAPW_RSI2), BEN (GAPW_RSI14) and KNX (ZSCORE), plus one each for RSI2/MFI.
+#
+# Two consequences, stated because they are not free:
+#   - position size TRIPLES. size = sleeve equity / slots, so one slot means the
+#     full $20k sleeve rides on one name instead of ~$6.7k. The account runs ~100%
+#     deployed with no cash buffer.
+#   - it departs from the mechanics every book was validated under (3 concurrent,
+#     40% each). The forward record is therefore a test of THIS account, not a
+#     replication of any book's backtest.
+SLOTS = {"RSI2": 1, "MFI": 1, "GAPW_RSI2": 1, "GAPW_RSI14": 1, "ZSCORE": 1}
+SLOTS_PRIOR = {"RSI2": 3, "MFI": 3, "GAPW_RSI2": 3, "GAPW_RSI14": 3, "ZSCORE": 3}
 GATE_CLOSED_TRADES = 20
 
 
