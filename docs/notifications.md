@@ -150,36 +150,20 @@ the same script with `--simple`, on its own schedule and its own recipient list.
 
 ## What it looks like
 
-```
-STRATEGY LAB - new buys
-Signals confirmed at the close of 2026-07-31
+An **HTML table** with the dashboard Signals tab's own columns, in its own
+top-to-bottom order (Strength descending):
 
-BUY THESE (one per strategy - its top-ranked signal)
+| Ticker | Rank | State | New | Strategy | Exit | Vehicle | Strength | Win % | PF | Avg/trade % | Trades | PF 19-22 | PF 23-26 | Trigger | Earnings |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| TROW | 1 | TAKE | NEW | RSI2 | close>SMA5 \| 10 bars | 1x | 0.94 | 71.7 | 2.86 | 1.15 | 46 | 2.71 | 3.05 | RSI2 8.19 | yes |
+| ACGL | 2 | TAKE | NEW | MFI | close>EMA7 \| 10 bars | 1x | 0.91 | 83.1 | 3.44 | 1.01 | 89 | 4.68 | 2.27 | MFI 0.0 | |
 
-  TROW   RSI2             $111.75
-         46 trades, 72% win, +1.15%/trade, PF 2.86
+Sent as `multipart/alternative`: HTML is the real deliverable (sixteen columns
+cannot align in plain text without wrapping), with a monospace text fallback for
+clients that refuse HTML. `EXITS` and `TRIGL` are ported verbatim from
+`index.html` so the email and the Signals tab cannot drift apart.
 
-  ACGL   MFI              $100.53
-         89 trades, 83% win, +1.01%/trade, PF 3.44
-
-  KNX    Z-Score          $69.53
-         10 trades, 90% win, +1.26%/trade
-
-ALSO TRIGGERED - not bought, one slot per strategy
-  RSI2:            AAPL, WRB, LIN
-  MFI:             V, CB, SNA, DE, FITB, OHI, KIM, SPG +12 more
-
-HOW TO ACT / WHAT THIS IS  ... (see below)
-```
-
-**It shows one name per strategy, not every trigger.** The account holds one
-position per book, so listing all 26 names that fired would imply two dozen buys
-that never happen. The rest appear as a single "also triggered" line.
-
-**It always carries the honest label.** Every strategy on this page has failed at
-least one historical era test, and the digest says so in the body. This is not
-optional politeness — the list goes to people who have not sat through the
-research, and an email that names tickers without that context is misleading.
+Preview the HTML itself with `--dry-run --html`.
 
 ## Recipients
 
