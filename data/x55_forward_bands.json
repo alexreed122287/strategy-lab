@@ -1,0 +1,91 @@
+{
+ "band_formula": "friendly = recent_matched x 0.94; floor = deep; blended = midpoint",
+ "books": {
+  "GAPW_RSI2": {
+   "book": "Gap Widen RSI2",
+   "names": 311,
+   "deep": {
+    "cagr": -1.62,
+    "dd": -48.21,
+    "pf": 1.01,
+    "trades": 1080,
+    "bh": 10.96
+   },
+   "recent_matched": {
+    "cagr": 33.29,
+    "dd": -32.25,
+    "pf": 1.48,
+    "trades": 1218,
+    "bh": 18.54
+   },
+   "recent_full": {
+    "cagr": 38.42,
+    "names": 398
+   },
+   "bands": {
+    "friendly_regime": 31.3,
+    "bear_floor": -1.6,
+    "blended_expectation": 14.8
+   },
+   "listing_effect_pp": -5.13
+  },
+  "GAPW_RSI14": {
+   "book": "Gap Widen RSI14",
+   "names": 216,
+   "deep": {
+    "cagr": 2.33,
+    "dd": -38.6,
+    "pf": 1.07,
+    "trades": 936,
+    "bh": 9.79
+   },
+   "recent_matched": {
+    "cagr": 23.91,
+    "dd": -33.49,
+    "pf": 1.33,
+    "trades": 953,
+    "bh": 18.32
+   },
+   "recent_full": {
+    "cagr": 49.17,
+    "names": 305
+   },
+   "bands": {
+    "friendly_regime": 22.5,
+    "bear_floor": 2.3,
+    "blended_expectation": 12.4
+   },
+   "listing_effect_pp": -25.26
+  },
+  "ZSCORE": {
+   "book": "Z-Score",
+   "names": 313,
+   "deep": {
+    "cagr": 10.08,
+    "dd": -27.96,
+    "pf": 1.42,
+    "trades": 722,
+    "bh": 11.65
+   },
+   "recent_matched": {
+    "cagr": 53.75,
+    "dd": -18.38,
+    "pf": 2.69,
+    "trades": 810,
+    "bh": 17.73
+   },
+   "recent_full": {
+    "cagr": 52.78,
+    "names": 358
+   },
+   "bands": {
+    "friendly_regime": 50.5,
+    "bear_floor": 10.1,
+    "blended_expectation": 30.3
+   },
+   "listing_effect_pp": 0.97
+  }
+ },
+ "note": "x55 (2026-08-03): until now every book card headlined its good era and buried the failing one in a separate card further down. The basket cards have always published three bands - friendly regime, blended expectation, bear floor - and after x53 and x54 the books have their own measured floors, so they get the same treatment. No new modeling: same formula, each book's own deep-era number as its floor. Building it surfaced a second finding that matters more than the bands. The recent and deep eras were never measured on the same names - deep runs can only use names that existed back then - so this re-ran the recent era restricted to exactly the deep-era name sets. Gap Widen RSI14 falls from 49.2% to 23.9% under that restriction: roughly HALF its published recent edge comes from names with no deep history at all. Gap Widen RSI2 gives back 5.1pp. Z-Score gives back nothing - 52.8% on 358 names, 53.8% on the 313 with deep history - so its recent number is robust to the same test that halves RSI14's. That contrast is now the strongest single reason to rank these three books differently, and it was invisible while each era was measured on its own universe.",
+ "caveat": "The deep numbers here supersede x53's slightly and in the same direction (GAPW_RSI2 -0.09% -> -1.62%, GAPW_RSI14 0.02% -> 2.33%). The reason is coverage, not method: the deep store grew after x53 ran - the x54 Z-Score fetch added 248 names, 325 of the 593 deep parquets are Z-Score MIO names - so more Gap Widen names now have 2011-18 history (311 vs 302, 216 vs 201). Same engine, same spec, same verdict: both books sit near zero in the deep era against ~10% for owning the same names. Survivorship applies as it does to every deep test here: the 2011-18 universe is today's survivors, which lifts both the book and its hurdle, which is why they are compared to each other."
+}
