@@ -141,5 +141,12 @@ else
   python3 "$REPO/scripts/notify_signups.py" || echo "signup harvest failed (non-fatal)"
   python3 "$REPO/scripts/notify_buys.py" --page "$REPO/index.html" \
     || echo "notify step failed (non-fatal)"
+  # Simplified ranked digest to the wider list ("to_digest"). Chained here
+  # rather than left to a clock so it can never read a half-written page: the
+  # build is finished and pushed by the time this runs. The 16:00 launchd job
+  # (com.alex.strategylab.digest) is a backstop for the days this step fails -
+  # its own dedupe state makes a double-send impossible.
+  python3 "$REPO/scripts/notify_buys.py" --page "$REPO/index.html" --simple \
+    || echo "digest step failed (non-fatal)"
 fi
 echo "=== daily build done $(date '+%F %T') ==="

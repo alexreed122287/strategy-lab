@@ -215,20 +215,20 @@ The digest keeps its own dedupe state (`~/.strategy_lab_digest_state.json`), so
 it never suppresses or is suppressed by the post-build alert, and it will not
 re-send the same session's signals twice.
 
-## ⚠ A timing problem worth understanding
+## Timing — resolved
 
-**The 12:30 send is always one session late for the strategies as tested.**
+**The digest sends after the build, not on a clock.** `daily_build.sh` calls it
+as its last step, so it can never read a half-written page: the build has
+finished and pushed by the time the digest runs. Signals confirm on the close,
+the build runs 15:30, the digest goes out immediately after — recipients have the
+whole evening to place market-on-open orders for the next open, which is exactly
+the validated basis.
 
-The build runs at 15:30 and signals are confirmed on the **close**. So a 12:30
-email carries the *previous* session's signals — and their validated fill, that
-morning's 8:30 open, passed four hours earlier. Anyone acting on the 12:30 email
-buys at the *following* open, one full session later than anything that was
-backtested. The email states the signal date so the staleness is visible, but
-stating it does not remove it.
+The 16:00 launchd job is a **backstop**, for the days the build's own digest step
+fails. It cannot double-send: the digest keeps its own dedupe state keyed on the
+signal date, so if the build already sent, the 16:00 run is a no-op.
 
-**If the emails are meant to be acted on, change `Hour` to 16** in the digest
-plist. That fires just after the build, so recipients have the whole evening to
-place market-on-open orders for the next open — which is exactly the validated
-basis. Same email, one line of config, and the signals are live instead of stale.
-
-Keep 12:30 if the email is meant to be read rather than traded.
+An earlier draft scheduled this at 12:30, which would have been one full session
+late for every strategy — the build hadn't run, so 12:30 carried the *previous*
+close's signals whose fill window had already passed that morning. Recorded here
+because the mistake is easy to repeat.
