@@ -1,0 +1,48 @@
+{
+ "GAPW_RSI2": {
+  "names_used": 302,
+  "names_listed": 470,
+  "bh": 10.81,
+  "bh_dd": -24.6,
+  "legs": {
+   "0.01%/side": {
+    "cagr": 3.62,
+    "maxdd": -43.44,
+    "pf": 1.11,
+    "trades": 1079,
+    "win": 74.0
+   },
+   "0.05%/side": {
+    "cagr": -0.09,
+    "maxdd": -46.83,
+    "pf": 1.04,
+    "trades": 1079,
+    "win": 73.2
+   }
+  },
+  "verdict": "FAIL"
+ },
+ "GAPW_RSI14": {
+  "names_used": 201,
+  "names_listed": 392,
+  "bh": 9.94,
+  "bh_dd": -27.1,
+  "legs": {
+   "0.01%/side": {
+    "cagr": 3.2,
+    "maxdd": -40.82,
+    "pf": 1.08,
+    "trades": 928,
+    "win": 71.1
+   },
+   "0.05%/side": {
+    "cagr": 0.02,
+    "maxdd": -45.17,
+    "pf": 1.03,
+    "trades": 928,
+    "win": 70.8
+   }
+  },
+  "verdict": "FAIL"
+ }
+}
