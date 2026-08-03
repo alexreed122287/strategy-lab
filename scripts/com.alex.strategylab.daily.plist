@@ -32,5 +32,14 @@
     <dict><key>Weekday</key><integer>5</integer><key>Hour</key><integer>15</integer><key>Minute</key><integer>30</integer></dict>
   </array>
   <key>RunAtLoad</key><false/>
+  <!--
+    daily_build.sh redirects its own output into .daily_build.log, but only
+    AFTER it starts. If launchd cannot start it at all - wrong path, not
+    executable, bash missing - that failure lands nowhere and the job looks
+    like it simply never fired. These two paths catch exactly that window.
+    Check .daily_build.err first when a run appears to have been skipped.
+  -->
+  <key>StandardOutPath</key><string>/tmp/strategylab.daily.out</string>
+  <key>StandardErrorPath</key><string>/tmp/strategylab.daily.err</string>
 </dict>
 </plist>
