@@ -71,15 +71,21 @@ CAPITAL = 100_000.0
 # so nothing is hand-picked across books. Friday's scan resolves to JBLU
 # (GAPW_RSI2), BEN (GAPW_RSI14) and KNX (ZSCORE), plus one each for RSI2/MFI.
 #
-# Two consequences, stated because they are not free:
-#   - position size TRIPLES. size = sleeve equity / slots, so one slot means the
-#     full $20k sleeve rides on one name instead of ~$6.7k. The account runs ~100%
-#     deployed with no cash buffer.
-#   - it departs from the mechanics every book was validated under (3 concurrent,
-#     40% each). The forward record is therefore a test of THIS account, not a
-#     replication of any book's backtest.
+# CORRECTED same day, before any trade closed: the concurrency cap and the
+# position-SIZE divisor were briefly the same number, which silently tripled
+# per-name risk when slots went 3 -> 1. They are separate concepts and are now
+# separate constants:
+#   SLOTS        - how many positions a book may hold at once (owner: 1)
+#   SIZE_DIVISOR - the validated sizing denominator, unchanged at 3, so a
+#                  position is still ~1/3 of its sleeve (~$6.7k), which is the
+#                  40%-of-equity/3-concurrent rule every book was validated under
+# Consequence of the split: the account holds 5 names at ~$6.7k = ~$33k deployed
+# and ~$67k idle. Idle cash is a known, accepted feature here - x40 tested an
+# overlay to deploy it and KILLED the idea - so it stays in cash rather than
+# being levered into the remaining names.
 SLOTS = {"RSI2": 1, "MFI": 1, "GAPW_RSI2": 1, "GAPW_RSI14": 1, "ZSCORE": 1}
 SLOTS_PRIOR = {"RSI2": 3, "MFI": 3, "GAPW_RSI2": 3, "GAPW_RSI14": 3, "ZSCORE": 3}
+SIZE_DIVISOR = {"RSI2": 3, "MFI": 3, "GAPW_RSI2": 3, "GAPW_RSI14": 3, "ZSCORE": 3}
 GATE_CLOSED_TRADES = 20
 
 
@@ -116,7 +122,9 @@ def portfolio(led, books):
             skipped.append({"date": date, "book": b, "sym": sym, "why": "no free slot"})
             continue
         equity_b = cash[b] + sum(h["cost"] for h in open_pos[b].values())
-        size = min(equity_b / SLOTS[b], cash[b])
+        # Size on the VALIDATED divisor, not the concurrency cap - holding fewer
+        # names at once must not silently enlarge each one.
+        size = min(equity_b / SIZE_DIVISOR[b], cash[b])
         if size <= 1.0:
             skipped.append({"date": date, "book": b, "sym": sym, "why": "no cash"})
             continue

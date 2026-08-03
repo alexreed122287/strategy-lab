@@ -79,16 +79,30 @@ these books destroys the edge. Friday's scan resolves to **JBLU** (Gap Widen
 RSI2), **BEN** (Gap Widen RSI14) and **KNX** (Z-Score), plus one each for
 RSI2 and MFI.
 
-**Two costs, stated because they are not free:**
+**Position size is unchanged, and that took a correction.** The first cut of this
+change used one constant for two different things — the concurrency cap and the
+position-size divisor — so dropping slots from 3 to 1 silently tripled per-name
+risk to a full ~$20k sleeve. Caught and split the same day, still at zero closed
+trades:
 
-- **Position size triples.** Size is sleeve equity ÷ slots, so one slot puts the
-  full ~$20k sleeve on a single name instead of ~$6.7k. At five books the account
-  runs ~100% deployed with no cash buffer. A single bad fill now moves the
-  account five times as much as it would have.
-- **It departs from validated mechanics.** Every book was validated at three
-  concurrent positions and 40% of equity each. The forward record is therefore a
-  test of *this account*, not a replication of any book's backtest, and it cannot
-  be compared directly to their published CAGRs.
+- `SLOTS` — how many positions a book may hold at once. **1**, per this decision.
+- `SIZE_DIVISOR` — the validated sizing denominator. **Unchanged at 3**, so a
+  position remains ~1/3 of its sleeve (~$6.7k): the 40%-of-equity, 3-concurrent
+  rule every book was validated under.
+
+Holding fewer names must not enlarge each one. Those are independent choices and
+they are now independent constants.
+
+**The real cost is idle cash, not concentration.** Five books × ~$6.7k is ~$33k
+deployed against ~$67k sitting in cash. That is deliberate rather than an
+oversight: x40 tested an overlay to put idle cash to work and **killed** it, so
+the cash stays in cash instead of being levered into the remaining names.
+
+**It still departs from validated mechanics in one way.** Every book was
+validated at three *concurrent* positions; this account holds one. Per-trade risk
+matches the backtests, portfolio construction does not — so the forward record is
+a test of *this account*, and its aggregate return is not comparable to any
+book's published CAGR.
 
 **Effect on the gate.** Unchanged in definition — still 20 closed account
 trades, program-wide. Fewer concurrent positions means slower accrual: on the
@@ -96,5 +110,5 @@ current signal rate, roughly two months rather than five to six weeks.
 
 **Effect on the record so far.** `portfolio()` is a pure replay, so the account
 history recomputes under the new model: Friday's fills narrow from six positions
-to two (one RSI2, one MFI), with 25 signals skipped rather than 21. No closed
-trade is affected, because there are none.
+to two (one RSI2, one MFI at ~$6.7k each), with 25 signals skipped rather than
+21. No closed trade is affected, because there are none.
