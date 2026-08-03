@@ -1,7 +1,11 @@
 # Panel co-sign packet — what the panel is being asked to decide
 
-> **STATUS: COMPLETED 2026-08-03.** x43 CO-SIGNED, x44 CO-SIGNED ON METHOD (two
-> conclusions withdrawn), **x45 CO-SIGN WITHHELD**. Full record, the specific
+> **STATUS: COMPLETE 2026-08-03.** x43 CO-SIGNED, x44 CO-SIGNED ON METHOD (two
+> conclusions withdrawn), x45 initially WITHHELD and now **CO-SIGNED on a restated
+> conclusion** after the owner ruled E3 (prose binds; E3 FAILED; its FAIL branch
+> discharged by the Tradier arbitration, which found ~3/4 of the universe expansion
+> real and ~1/4 vendor inflation). Two exceptions stay open: the withdrawn MIO-match
+> claim, and two pre-registered legs never computed on audited data. Full record, the specific
 > objection, what would discharge it, and the two panel findings that were
 > themselves refuted: `docs/lab_runs_evidence_parity.md`, section "PANEL CO-SIGN
 > — COMPLETED 2026-08-03 (x57)". The questions below are retained as the record
@@ -98,10 +102,10 @@ Real-money wiring stays off until all of these are true:
    2026-08-03 before any trade closed (`docs/forward_gate_basis.md`). This is
    the binding constraint and nothing accelerates it.
 2. Z-Score sim re-run on the refreshed Tradier brain (question 3 above).
-3. Panel co-sign of x43/x44/x45 — DONE 2026-08-03 for x43/x44; **WITHHELD for
-   x45**. To discharge: rule which E3 text binds (its prose and its own
-   parenthetical disagree), and re-run all six pre-registered legs at ten seeds
-   on the Tradier store — `scripts/lab_zscore_rerun.sh` now does this.
+3. Panel co-sign of x43/x44/x45 — **DONE 2026-08-03, all three.** E3 ruled
+   (prose binds, FAILED, FAIL branch discharged by the Tradier arbitration);
+   five simulation legs re-run at ten seeds on audited data. Residual: the
+   per-name screen and causal fold still lack audited versions.
 4. MIO screen creation date, now low-stakes after x45d.
 
 ## How to record a co-sign
