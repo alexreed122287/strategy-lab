@@ -4,13 +4,12 @@ BOOKSIG blob into the dashboard, so Gap Widen / Z-Score signals appear in the
 Signals ranking alongside the generator's RSI2/MFI rows.
 
 Implements the exact specs from the page's BOOKS blob:
-  GAPW_RSI2 / GAPW_RSI14 : NO LONGER SCANNED - pulled 2026-08-02 by the user's
-      decision after the local gapwiden-lab's own results were collected. The
-      lab's point-in-time arm (the only run with no hindsight in the universe)
-      earns 5.1% faithful and -14.3% at an honest 15bp spread, and its deep-OOS
-      arm is -4.2%/-22.2%; x46 reached the same conclusion independently. The
-      published 51.9%/51.5% headline is reproduced by neither. The gapw_entry()
-      path below is kept for reference and for paper research only.
+  GAPW_RSI2 / GAPW_RSI14 : SCANNED on the ACTUAL MIO universe (x52, 2026-08-03).
+      Pulled 2026-08-02 and REINSTATED once the owner supplied MIO's own ticker
+      lists: at 0.05%/side the books earn 38.4% and 49.2% against 19.9%/19.4%
+      for buy-and-hold of the same names (+18.5pp / +29.8pp, PF 1.49/1.55). The
+      earlier failures were all measured on LAB-DERIVED tiers selected from the
+      books' own backtest results - that hindsight, not the rule, was broken.
   ZSCORE_000 : close>20, avol50>1M sh, close>sma200, z50<=-1.5, rsi3<20 (Ext-31,
       paper only - book killed for real-money wiring x40/x41/x42). Rows carry
       per-name research stats from BOOKS universe.per_name with the executable
@@ -172,17 +171,18 @@ def main():
         return as_of <= nxt <= nx.isoformat()
 
     rows = []
-    # Gap Widen pulled from the nightly scan 2026-08-02 (see module docstring).
-    # Set SL_SCAN_GAPW=1 to re-enable for a research build without editing code.
-    import os as _os
-    for sid, strat, kind in ([("gap_widen_rsi2", "GAPW_RSI2", 2),
-                              ("gap_widen_rsi14", "GAPW_RSI14", 14)]
-                             if _os.environ.get("SL_SCAN_GAPW") else []):
+    for sid, strat, kind in [("gap_widen_rsi2", "GAPW_RSI2", 2),
+                             ("gap_widen_rsi14", "GAPW_RSI14", 14)]:
         u = S[sid]["universe"]
+        # x52: scan the ACTUAL MIO universe. The qualified/scan tiers were
+        # lab-derived from the book's own results - that hindsight is what made
+        # every honest test of them fail. Falls back if the list is absent.
+        mio = u.get("mio_universe")
         stats = {e["signal"]: e for e in u.get("qualified", [])}
         veh = {e["signal"]: e["trade"] for e in u.get("qualified", []) if e["trade"] != e["signal"]}
         cands = []
-        for sym in {e["signal"] for e in u.get("qualified", [])} | set(u.get("scan", [])):
+        pool = set(mio) if mio else ({e["signal"] for e in u.get("qualified", [])} | set(u.get("scan", [])))
+        for sym in pool:
             b = bars.get(sym)
             if not b or b[-1][0] != as_of:
                 continue

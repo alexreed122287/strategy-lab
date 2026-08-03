@@ -1,0 +1,48 @@
+{
+ "GAPW_RSI2": {
+  "names_listed": 470,
+  "names_used": 398,
+  "bh_cagr": 19.88,
+  "bh_dd": -41.4,
+  "legs": {
+   "0.01%/side": {
+    "cagr": 44.69,
+    "maxdd": -35.16,
+    "pf": 1.56,
+    "trades": 1238,
+    "win": 79.0
+   },
+   "0.05%/side": {
+    "cagr": 38.42,
+    "maxdd": -35.55,
+    "pf": 1.49,
+    "trades": 1238,
+    "win": 78.5
+   }
+  },
+  "verdict": "WORTH PAPER TRADING"
+ },
+ "GAPW_RSI14": {
+  "names_listed": 392,
+  "names_used": 305,
+  "bh_cagr": 19.42,
+  "bh_dd": -45.2,
+  "legs": {
+   "0.01%/side": {
+    "cagr": 54.56,
+    "maxdd": -36.22,
+    "pf": 1.6,
+    "trades": 995,
+    "win": 73.4
+   },
+   "0.05%/side": {
+    "cagr": 49.17,
+    "maxdd": -37.3,
+    "pf": 1.55,
+    "trades": 995,
+    "win": 73.1
+   }
+  },
+  "verdict": "WORTH PAPER TRADING"
+ }
+}
