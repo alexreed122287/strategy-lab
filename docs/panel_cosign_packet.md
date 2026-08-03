@@ -31,8 +31,14 @@ Supporting, not requiring co-sign: `docs/x45_provenance_and_data_hygiene.md`
 2. **Curation** — "no, don't curate" → the book trades the FULL list. Confirmed
    three times independently (x40, x44, x48b): performance-selecting inside the
    list destroys the edge.
-3. **Tradier re-run** — "yes, re-run" → the 68.5% headline must be recomputed on
-   the refreshed brain before co-sign. OPEN, needs the Mac.
+3. **Tradier re-run** — "yes, re-run" → **DONE 2026-08-02.** All 358 live names
+   present in the refreshed brain, zero missing. The book earns **61.97%**
+   idealized (PF 2.89, 785 trades, 75.0% win, −21.8% DD) and **52.78%** at the
+   MOC-full executable basis, against 68.52%/57.27% on Robinhood data —
+   **6.55pp lower**. Robinhood was flattering the book. Every x45 gate still
+   passes on the corrected numbers and every calendar year stays positive, so
+   the verdict stands and only the magnitude changes. The Tradier figures are
+   now the book's published numbers. Artifact: `data/x45_tradier_rerun.json`.
 4. **Survivorship** — "that is sufficient" → x45d's point-in-time check accepted;
    no point-in-time data purchase required.
 
