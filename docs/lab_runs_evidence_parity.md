@@ -288,3 +288,26 @@ book both inherit it once encoded in the scanner.
 4. SPEC B Q2/Q3, earnings feed, exit gates as the labs schedule them.
 Forward testing continues in parallel regardless - it is the one dataset no
 backtest can substitute.
+
+## GAP WIDEN RSI14 REPRODUCTION GAP — RESOLVED 2026-08-03
+x46 could not reproduce the RSI14 book's published 51.6% ideal-close CAGR on any
+published universe tier (qualified 41.6%, qualified+scan 38.8%, priority-25
+77.8%) at full 199/199 coverage, and recorded the book UNANCHORED.
+
+The gapwiden-lab collection (2026-08-02) resolves it. The lab's own results do
+not contain a 51.6% figure for any faithful configuration: its replication is
+23.0% (DD -64.6%, PF 1.10), its objective universe 3.3%, its point-in-time arm
+5.1% faithful and -14.3% at an honest 15bp spread. What the lab does contain is
+a 24-cell parameter sensitivity grid spanning -25.2% to +47.4%, and an explicit
+hindsight "oracle" list returning 309%.
+
+CONCLUSION: the published 51.6%/51.9% figures are not reproducible because they
+do not correspond to any faithful run in the lab - they sit at or above the best
+cell of a parameter grid, on a universe selected with knowledge of which names
+worked. The harness was not broken; it was being asked to reproduce a number no
+honest configuration produces. This is consistent with x46 matching the RSI2
+book to 0.74pp while missing RSI14 by 12.8pp - the anchor itself was later shown
+(by adversarial review) to have no discriminating power.
+
+STATUS: gap closed. Both Gap Widen books were pulled from the scanner
+2026-08-02 and remain paper research. No further reconciliation is owed.
