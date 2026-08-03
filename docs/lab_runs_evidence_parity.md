@@ -506,3 +506,53 @@ Recorded so they are not re-litigated.
 was gate 3 of 4; it is now complete for x43 and x44 and **explicitly withheld for
 x45**, which is the run the universe expansion rests on. Gate 1 (20 closed
 account trades, currently 0) remains binding regardless.
+
+## x45 TRADIER RE-RUN, FULL — 2026-08-03 (discharges part of the x57 objection)
+
+The co-sign panel refused x45 partly because the numbers published as the book's
+came from a run that executed 2 of the pre-registered legs on 5 of the
+pre-registered 10 seeds with no gates block. Re-run properly on the Mac: **all
+five simulation legs at ten seeds, all 358 live names present, zero missing,
+gates evaluated and recorded.**
+
+| Leg | CAGR | PF | DD | Trades |
+|---|---|---|---|---|
+| ideal_close | 61.97% | 2.89 | −21.8% | 785 |
+| moc_ideal | 57.41% | 2.73 | −21.9% | 785 |
+| moc_full ×10 seeds (3:45 entry) | **52.82%** | — | — | — |
+| hybrid ×10 seeds (MOO entry) | 46.35% | — | — | — |
+| next_open_020 (worst case) | 32.84% | 1.98 | −37.8% | 685 |
+
+**Three things the full run settled.**
+
+1. **The seed deficiency was real but immaterial to the number.** Five seeds gave
+   52.78%; ten give **52.82%** — a difference of 0.04pp. The method deviation
+   stands as a deviation; the magnitude was never in doubt.
+2. **x43's mechanism claim reproduces on audited data, on a different universe.**
+   The 3:45 threshold entry beats MOO entry by **+6.47pp** (52.82% vs 46.35%) on
+   the 358-name Tradier universe, against +5.76pp when x43 measured it on the F22
+   instrument. Independent corroboration of the one x43 claim that survived
+   panel review.
+3. **The panel's correction to the ×0.87-vs-×0.71 headline is confirmed.**
+   Measured same-universe on audited data, retention is **0.852** for the 3:45
+   entry and **0.748** for MOO — a **10.4pp** gap, which is what the panel said
+   (0.87 vs 0.77), not the ~16pp the cross-instrument comparison implied.
+
+**Also new:** the worst-case execution floor drops to **32.84%** (next-open both
+sides at 0.2%/side), from 39.04% on Robinhood data.
+
+**Gates.** E1 passes (61.97% ≥ 30, PF 2.89 ≥ 2.5, every calendar year positive:
+24.0 / 56.5 / 86.8 / 28.8 / 54.3 / 84.5 / 69.3 / 65.4). E2 passes (52.82 ≥ 0.75 ×
+61.97 = 46.48; ratio 0.852). **E3 is recorded both ways and deliberately not
+scored** — it clears the one-sided floor and fails the two-sided band its own
+prose defines, by 18.46pp. That ruling belongs to the owner and is open.
+
+**What this does NOT discharge.** The per-name screen and the causal fold still
+have never been computed on audited data. The fold matters less than the packet
+assumed — the panel struck its inference entirely, since a subset selected on a
+4-year window regresses to the mean whether or not the parent list is curated —
+but it remains a pre-registered leg that does not exist on Tradier data.
+
+**Co-sign status: x45 REMAINS WITHHELD.** Of the three grounds, the MIO-match
+claim is withdrawn (done), the partial-run objection is now largely discharged
+(five legs, ten seeds), and E3 is unresolved pending the owner's ruling.
