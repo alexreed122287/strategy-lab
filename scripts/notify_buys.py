@@ -91,10 +91,15 @@ def collect(page_path):
         if not st or not st.get("vetted"):
             continue
         as_of = max(as_of, x.get("as_of") or "")
+        e19, e23 = st.get("era_1922") or {}, st.get("era_2326") or {}
         pool.append({
             "sym": x["sym"], "strat": x["strat"], "close": x.get("close"),
             "n": st.get("n"), "win": st.get("win_pct"), "pf": st.get("pf"),
             "avg": st.get("avg_pct"), "score": score(st.get("avg_pct"), st.get("n")),
+            # Signals-tab parity columns: the two era profit factors are the
+            # program's own era-robustness read, and depth is the trigger depth.
+            "pf1922": e19.get("pf"), "pf2326": e23.get("pf"),
+            "depth": x.get("depth"),
             "entry": "at the close" if x["strat"].startswith("RSI2")
                      else "close-validated (next-morning OK)"})
 
@@ -109,6 +114,7 @@ def collect(page_path):
                    "n": r.get("n"), "win": r.get("win"), "pf": None,
                    "avg": r.get("avg"), "score": score(r.get("avg"), r.get("n")),
                    "rank": r.get("book_rank"), "rs252": r.get("rs252"),
+                   "pf1922": None, "pf2326": None, "depth": r.get("rs252"),
                    "entry": "MOO next 9:30 open (validated basis)"}
             gw_book.append(row)
             pool.append(row)
@@ -120,6 +126,8 @@ def collect(page_path):
             paper.append({
                 "sym": r["sym"], "strat": strat, "close": r.get("close"),
                 "n": n, "win": win, "avg": avg, "score": score(avg, n),
+                "pf": (e or {}).get("pf"), "pf1922": None, "pf2326": None,
+                "depth": r.get("z50"),
                 "entry": "MOO next open - PAPER only (book killed for wiring)"})
 
     # RANKED = the page's exact pool: vetted, 30+ trades, one best arm per
@@ -232,6 +240,12 @@ def compose_simple(as_of, ranked, gw_book, paper, url):
             parts.append("PF %s" % r["pf"])
         return ", ".join(parts) if parts else "no per-name record"
 
+    def cell(v, w, dec=None):
+        if v is None or v == "":
+            return " " * (w - 1) + "-"
+        t = ("%.*f" % (dec, v)) if (dec is not None and isinstance(v, (int, float))) else str(v)
+        return t.rjust(w)
+
     L = ["STRATEGY LAB - new buys",
          "Signals confirmed at the close of %s" % (as_of or "the last session"),
          "",
@@ -241,14 +255,31 @@ def compose_simple(as_of, ranked, gw_book, paper, url):
         L.append("  %-6s %-16s %s" % (r["sym"], NAME.get(r["strat"], r["strat"]), px))
         L.append("  %-6s %s" % ("", bt(r)))
         L.append("")
-    if rest:
-        L.append("ALSO TRIGGERED - not bought, one slot per strategy")
-        for strat, syms in rest.items():
-            shown = ", ".join(syms[:8])
-            more = " +%d more" % (len(syms) - 8) if len(syms) > 8 else ""
-            L.append("  %-16s %s%s" % (NAME.get(strat, strat) + ":", shown, more))
-        L.append("")
-    L += ["HOW TO ACT",
+
+    # Full ranking, same columns and same top-to-bottom order as the dashboard's
+    # Signals tab (strength descending). Fixed-width so it lines up in any mail
+    # client that renders monospace; view in a monospace font if it looks ragged.
+    L += ["ALL NEW SIGNALS - ranked exactly as the dashboard's Signals tab", "",
+          "  #  TICKER STRATEGY          STR   WIN%     PF   AVG%    N  PF19-22 PF23-26    CLOSE",
+          "  " + "-" * 84]
+    for i, r in enumerate(rows, 1):
+        L.append(cell(i, 3) + "  " +
+                 ("%-6s " % r["sym"]) +
+                 ("%-14s" % NAME.get(r["strat"], r["strat"])) +
+                 cell(r.get("score"), 7, 2) +
+                 cell(r.get("win"), 7, 1) +
+                 cell(r.get("pf"), 7, 2) +
+                 cell(r.get("avg"), 7, 2) +
+                 cell(r.get("n"), 5) +
+                 cell(r.get("pf1922"), 9, 2) +
+                 cell(r.get("pf2326"), 8, 2) +
+                 cell(r.get("close"), 9, 2))
+    L += ["",
+          "  STR = strength (avg/trade weighted by sample size) - the sort key.",
+          "  PF 19-22 / PF 23-26 = profit factor by era. Both healthy is the",
+          "  era-robustness read; a blank means the book has no per-era record.",
+          "",
+          "HOW TO ACT",
           "  Buy at the market open, next session. These are end-of-day",
           "  signals - buying intraday is not what was tested.",
           "",
@@ -264,8 +295,8 @@ def compose_simple(as_of, ranked, gw_book, paper, url):
           "",
           "  Full evidence, including what failed: %s" % (url or "(dashboard)")]
     n = len(top)
-    return ("Strategy Lab - %d new buy%s (%s)"
-            % (n, "" if n == 1 else "s", as_of or ""), "\n".join(L))
+    return ("Strategy Lab - %d new buy%s, %d signals (%s)"
+            % (n, "" if n == 1 else "s", len(rows), as_of or ""), "\n".join(L))
 
 
 def send_email(cfg, subject, body):
