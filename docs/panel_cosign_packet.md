@@ -1,4 +1,12 @@
 # Panel co-sign packet — what the panel is being asked to decide
+
+> **STATUS: COMPLETED 2026-08-03.** x43 CO-SIGNED, x44 CO-SIGNED ON METHOD (two
+> conclusions withdrawn), **x45 CO-SIGN WITHHELD**. Full record, the specific
+> objection, what would discharge it, and the two panel findings that were
+> themselves refuted: `docs/lab_runs_evidence_parity.md`, section "PANEL CO-SIGN
+> — COMPLETED 2026-08-03 (x57)". The questions below are retained as the record
+> of what was asked; question 1 was already implemented before the panel sat,
+> which is itself recorded as a governance deviation.
 Assembled 2026-08-02. Everything here is already in the repo; this is the index
 and the specific questions, so a reviewer can work through it in one sitting.
 
@@ -76,16 +84,24 @@ them independently.
 - **x48** (Z-Score point-in-time) had a design flaw in its first run: the
   "objective" universe was accidentally identical to the curated one, so its P1
   gate measured nothing. Corrected run recorded separately. The substantive
-  finding was unaffected: performance-selecting names from the MIO list makes the
-  book markedly *worse* (31.5% vs 86.3%), which is evidence *against* selection
-  bias, the opposite of MFI's signature.
+  finding was unaffected in direction, but the figures cited here (31.5% vs 86.3%)
+  appear in NO artifact in this repo and could not be reproduced by the panel; the
+  corrected artifact `data/x48b_zscore_pit.json` records 15.90% (point-in-time) vs
+  44.53% (curated). Citation corrected 2026-08-03. The panel further ruled that
+  "performance-selecting a subset does worse" is NOT evidence the parent list is
+  unbiased - see the x57 record.
 
 ## Gates that remain regardless of co-sign
 Real-money wiring stays off until all of these are true:
-1. **20+ closed forward paper trades.** Currently **0** — the ledger began
-   2026-07-31. This is the binding constraint and nothing accelerates it.
+1. **20 closed ACCOUNT trades** in the shared $100k paper account, program-wide.
+   Currently **0** — the ledger began 2026-07-31. Basis pre-registered
+   2026-08-03 before any trade closed (`docs/forward_gate_basis.md`). This is
+   the binding constraint and nothing accelerates it.
 2. Z-Score sim re-run on the refreshed Tradier brain (question 3 above).
-3. Panel co-sign of x43/x44/x45 — this document.
+3. Panel co-sign of x43/x44/x45 — DONE 2026-08-03 for x43/x44; **WITHHELD for
+   x45**. To discharge: rule which E3 text binds (its prose and its own
+   parenthetical disagree), and re-run all six pre-registered legs at ten seeds
+   on the Tradier store — `scripts/lab_zscore_rerun.sh` now does this.
 4. MIO screen creation date, now low-stakes after x45d.
 
 ## How to record a co-sign

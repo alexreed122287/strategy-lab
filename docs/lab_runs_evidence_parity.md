@@ -43,7 +43,7 @@ STATUS UPDATE 2026-08-02 — the local labs had already run most of this
   x0.87 vs idealized (vs x0.71 MOO); false fires remain profitable (+1.11%
   avg) — threshold entries are not adversely selected the way structural
   entries were. Full artifact: data/x43_results.json. PROVISIONAL pending the
-  lab panel: the dashboard keeps the MOO x0.71 display basis until co-signed;
+  lab panel. NOTE (panel 2026-08-03): the dashboard NO LONGER keeps x0.71 - the owner adopted x0.87 as the displayed basis on 2026-08-02, before the co-sign that all three preregs conditioned it on. Recorded as a governance deviation, not a method defect: the x0.87 factor itself reproduces (1.884/2.17 = 0.868).
   real-money wiring stays killed (x40) regardless.
 - x44 SESSION (2026-08-02): the user's MIO screenshots verified the z spec
   matches exactly and revealed [000 z score] = the 410-name universe list.
@@ -363,3 +363,146 @@ numbers, per-round statistics, rule variants or basket compositions from that
 repo appear on the public page.
 
 STATUS: loose end closed. No further reconciliation is owed.
+
+## PANEL CO-SIGN — COMPLETED 2026-08-03 (x57)
+
+Run against the standard in `docs/panel_cosign_packet.md`: *does the run's method
+match its pre-registration, and does its stated conclusion follow from its
+numbers?* Constituted the way this program constitutes panels — three
+independent adversarial refuters (pre-registration fidelity, arithmetic ground
+truth, interpretation), each instructed to refute rather than approve, plus an
+independent recomputation of every gate from raw seed data rather than from the
+recorded `gates` blocks.
+
+**Every gate in all three runs passes on recomputation.** The co-sign still
+splits, because gates passing and conclusions following are different questions.
+
+### x43 — CO-SIGNED (2026-08-03)
+Anchors A1/A2 reproduce exactly (32.19% / PF 5.94 / 260 trades; 30.86% / PF
+5.66). G1 +5.757pp vs a +2pp bar, 10/10 seeds. G2 both clauses hold (17.01 >
+14.22; 17.01 ≥ 3.53) — the second was never recorded in the artifact and was
+verified independently. G3 concentration 0.2057 vs a 0.60 bar.
+
+Four wording corrections were required and are applied:
+- the ×0.87-vs-×0.71 headline is **cross-instrument** (×0.71 is F22 from x41/x42).
+  Same-universe, x43's own hybrid retention is 0.766 — the honest gap is
+  **0.87 vs 0.77**, not 0.87 vs 0.71.
+- "era-clean" overstates: the 2019 delta is **exactly 0.00** with 6/10 seeds
+  negative, and 2022 (+2.64, sd 5.43) is indistinguishable from zero. Correct
+  statement: present 2020–26, absent in 2019.
+- "not adversely selected" is false as written. False fires average **+1.11%**
+  against confirmed **+2.09%** — adversely selected, but still profitable.
+- G2's wide control clears by 13.5pp and cannot fail; it carries no evidential
+  weight and should not be cited as one.
+
+### x44 — CO-SIGNED ON METHOD; two conclusions withdrawn (2026-08-03)
+R1/R2/R3 reproduce (43.51% / PF 3.24; moc_full 38.607, ratio 0.887; ex-best
+9.414). R1's "every calendar year positive" was not recorded in the gates block;
+verified independently.
+
+Withdrawn:
+- **"SAME trade count (608)" as replication evidence.** 143 names producing
+  MIO's 410-name trade count is not corroboration. x45 shows the engine is not
+  slot-saturated (358 names → 788 trades), so the coincidence is evidence the
+  two engines produce *different* trade populations.
+- **"Curation hurts, therefore the full list is the book"** as evidence the
+  parent list is unbiased. The test has no discriminating power — a subset
+  selected on a 4-year window regresses to the mean under *both* hypotheses. The
+  observed effect is capital utilisation: x44's fold ran the curated set at
+  17.2% utilisation against 53.0% for the full list, and on x44's own per-trade
+  numbers the curated 22 were **better** (avg 1.52% vs 1.26%, PF 3.90 vs 3.08,
+  DD −9.3% vs −14.1%). They compounded slower because they deployed a third of
+  the capital.
+
+### x45 — CO-SIGN WITHHELD (2026-08-03)
+E1 and E2 pass (68.52% / PF 3.24; moc_full 57.27, ratio 0.836). Three
+independent grounds for refusal:
+
+1. **E3 is internally contradictory and was scored permissively.** Its prose
+   reads "within 8pp of x44's 43.51%" — a band of [35.51, 51.51] — and its own
+   parenthetical operationalises it as "(i.e. ≥ 35.5%)". Only the floor was
+   scored. The result, 68.52%, is **17.01pp above the band**; the audited
+   Tradier figure, 61.97%, is still **10.46pp above it**. E3's stated purpose
+   included catching the case where "the RH data disagrees with Tradier where it
+   matters" — which is exactly what happened, at −6.55pp — and a one-sided floor
+   is structurally incapable of detecting an *upward* vendor artifact. The gate
+   was written for this failure and scored so it could not fire. Not a post-hoc
+   goalpost move: both readings were committed before results.
+2. **"Matching MIO's claimed 67.2%" is withdrawn.** Dead twice. The audited
+   re-run gives 61.97%, 5.2pp *below* the claim. And the two figures are on
+   different clocks: MIO's stated period is 2019-01-01 → 2026-12-31 (8.0 years,
+   five months of it in the future), and their 61.12× multiple yields 67.2% only
+   on that clock; on the lab's realized 7.575 years the same multiple is
+   **72.11%**. Like-for-like the lab is 3.6pp below MIO on Robinhood data and
+   10.1pp below on Tradier. Of MIO's six published statistics exactly one ever
+   agreed, and none agrees now.
+3. **The published numbers are not the pre-registered run.** The Tradier re-run
+   executed **2 of 6** pre-registered legs on **5 of 10** seeds with no gates
+   block, yet was asserted to pass "every x45 gate". The causal fold — the only
+   evidence the packet offers for its own question 2 — has never been computed
+   on audited data.
+
+**To discharge:** rule which E3 text binds, and re-run all six legs at ten seeds
+on the Tradier store. `scripts/lab_zscore_rerun.sh` now does exactly that and
+records E3 both ways rather than picking a side.
+
+### Governance deviation recorded separately
+All three pre-registrations pinned the displayed executable basis at MOO ×0.71
+"until the lab panel co-signs". The dashboard has displayed **×0.87** since
+2026-08-02 by owner decision — before the co-sign its own prereg conditioned it
+on. The factor itself reproduces (1.884 / 2.17 = 0.868); only its gating was
+skipped. The packet compounds this by asking the panel to decide the basis
+question four paragraphs after recording the owner's answer to it.
+
+### Disclosure added: the 2026 stub
+2026 is a **seven-month stub** (data to 2026-07-31), not a calendar year, and
+every artifact annualises over the realized 7.575 years. The stub returned 65.4%
+in seven months — **136.9%/yr annualised**, which would be the best period in the
+sample — and carries **5.95pp** of the Tradier headline: ex-stub the book earns
+**56.02%/yr** over seven full years, not 61.97%. "Every calendar year positive"
+remains literally true and is retained, now labelled as seven full years plus a
+stub. Note the ex-best-period robustness statistics drop 2021, not the stub.
+
+### Panel findings that were themselves REFUTED
+Recorded so they are not re-litigated.
+
+1. **"`final` and the year-by-year path disagree in 62 of 98 legs."** A refuter
+   computed Π(1 + yby) against `final`, found gaps of 1–3% far outside any
+   rounding envelope, and recommended refusing co-sign until explained.
+   Explained: the engine defines `yby[y] = ec[year==y][-1] / ec[year==y][0] − 1`
+   — the denominator is the equity at the end of that year's **first trading
+   day**, not the end of the prior year. Chaining the years therefore omits each
+   year's first-day return by construction. Every gap resolves to a per-day
+   return between **−0.34% and +0.29%**, consistent in sign *within* each
+   universe and flipping *between* universes — the signature of a real first-day
+   effect, not an inconsistency. The refuter cited that sign flip as proof no
+   rounding convention explains it, which is correct and is evidence *for* this
+   explanation. **Artifacts are sound.**
+2. **"The x45 v1→v2 pair is arithmetically incompatible."** Final equity moved
+   $113 on $5.2M while 2019 moved +12.0pp and 2025 moved −16.7pp. Compatible:
+   because each year is measured within itself, a changed trade set moves only
+   the years it touches, and here 2019's +9.92% on terminal wealth nearly
+   cancelled 2025's −8.95%. **What is wrong is the description.** "Reproduced the
+   headline EXACTLY" and "changed essentially nothing" are not honest summaries
+   of a re-run whose yearly path moved by 12 and 17 points and whose causal fold
+   moved 91.21% → 86.26%. Corrected.
+3. **"x55's Z-Score +0.97pp is a fill-basis mismatch."** The fill basis matches
+   (both legs are moc_full). The substance is right for a different reason: it is
+   a **data-store** mismatch — 53.75% is RH-basis, 52.78% is Tradier. On the same
+   store the figure is **57.27% → 53.75% = −3.52pp**. Corrected in
+   `data/x55_forward_bands.json` and on the dashboard. Z-Score gives back 3.5pp
+   to name-matching, not zero; it remains the most robust of the three
+   (Gap Widen RSI2 −5.13pp, Gap Widen RSI14 −25.26pp), but "loses nothing" is
+   withdrawn.
+
+### Other record defects fixed
+- `docs/panel_cosign_packet.md` cited x48 as "31.5% vs 86.3%". Those figures
+  appear in no artifact in this repo; `data/x48b_zscore_pit.json` records
+  **15.90%** (point-in-time) vs **44.53%** (curated). Corrected.
+- This document previously stated "the dashboard keeps the MOO x0.71 display
+  basis until co-signed", which has been false since 2026-08-02. Corrected.
+
+**Net effect on the real-money gate:** unchanged and still closed. Panel co-sign
+was gate 3 of 4; it is now complete for x43 and x44 and **explicitly withheld for
+x45**, which is the run the universe expansion rests on. Gate 1 (20 closed
+account trades, currently 0) remains binding regardless.

@@ -75,15 +75,21 @@
     "bh": 17.73
    },
    "recent_full": {
-    "cagr": 52.78,
-    "names": 358
+    "cagr": 57.27,
+    "names": 358,
+    "basis": "moc_full on the SAME RH-basis merged store as the matched leg (x45v2)"
    },
    "bands": {
     "friendly_regime": 50.5,
     "bear_floor": 10.1,
     "blended_expectation": 30.3
    },
-   "listing_effect_pp": 0.97
+   "listing_effect_pp": -3.52,
+   "published_tradier_358": {
+    "cagr": 52.78,
+    "note": "the book's PUBLISHED executable number, on the audited Tradier store; not comparable to the matched leg, which has no Tradier equivalent"
+   },
+   "correction": "Panel 2026-08-03: this row originally read +0.97pp, comparing 53.75% (RH-basis store, 313 names) against 52.78% (TRADIER store, 358 names) - two different data vendors. On the same store it is 57.27% -> 53.75% = -3.52pp. Z-Score DOES give back ground to name-matching; it gives back far less than Gap Widen RSI14 (-25.26pp) and slightly less than Gap Widen RSI2 (-5.13pp). The ranking survives; the claim that Z-Score 'loses nothing' does not."
   }
  },
  "note": "x55 (2026-08-03): until now every book card headlined its good era and buried the failing one in a separate card further down. The basket cards have always published three bands - friendly regime, blended expectation, bear floor - and after x53 and x54 the books have their own measured floors, so they get the same treatment. No new modeling: same formula, each book's own deep-era number as its floor. Building it surfaced a second finding that matters more than the bands. The recent and deep eras were never measured on the same names - deep runs can only use names that existed back then - so this re-ran the recent era restricted to exactly the deep-era name sets. Gap Widen RSI14 falls from 49.2% to 23.9% under that restriction: roughly HALF its published recent edge comes from names with no deep history at all. Gap Widen RSI2 gives back 5.1pp. Z-Score gives back nothing - 52.8% on 358 names, 53.8% on the 313 with deep history - so its recent number is robust to the same test that halves RSI14's. That contrast is now the strongest single reason to rank these three books differently, and it was invisible while each era was measured on its own universe.",
