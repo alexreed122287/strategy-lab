@@ -1,0 +1,40 @@
+{
+ "universe_n": 358,
+ "missing": [],
+ "basis": "tradier-refreshed",
+ "ideal_close": {
+  "final": 3859100.59,
+  "cagr": 61.97,
+  "maxdd": -21.8,
+  "trades": 785,
+  "win": 75.0,
+  "avg": 1.41,
+  "pf": 2.89,
+  "util": 57.7,
+  "yby": {
+   "2019": 24.0,
+   "2020": 56.5,
+   "2021": 86.8,
+   "2022": 28.8,
+   "2023": 54.3,
+   "2024": 84.5,
+   "2025": 69.3,
+   "2026": 65.4
+  }
+ },
+ "moc_full_mean": 52.78,
+ "moc_full_seeds": [
+  56.39,
+  51.21,
+  62.49,
+  49.75,
+  44.06
+ ],
+ "prior_rh_basis": {
+  "ideal_close": 68.52,
+  "moc_full_mean": 57.27,
+  "universe_n": 358
+ },
+ "delta_ideal_pp": -6.55,
+ "verdict": "MATERIALLY DIFFERENT from the Robinhood-basis headline"
+}
