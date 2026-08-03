@@ -556,3 +556,61 @@ but it remains a pre-registered leg that does not exist on Tradier data.
 **Co-sign status: x45 REMAINS WITHHELD.** Of the three grounds, the MIO-match
 claim is withdrawn (done), the partial-run objection is now largely discharged
 (five legs, ten seeds), and E3 is unresolved pending the owner's ruling.
+
+## E3 RULED, AND x45 CO-SIGNED ON A RESTATED CONCLUSION — 2026-08-03
+
+**Ruling (owner):** the **prose binds**. "Within 8pp of x44's 43.51%" defines the
+band [35.51, 51.51]. The parenthetical "(i.e. ≥ 35.5%)" is arithmetic derived
+from that prose which dropped the upper bound, and a restatement that
+contradicts its own statement does not govern it. **E3 FAILED** — the expanded
+run came in at 61.97% on audited data, 18.46pp above the band.
+
+**The FAIL branch, applied.** E3's pre-committed consequence reads: *"treated as
+a data-quality alarm, not an edge verdict: scanner stays on the 143-name universe
+until the lab's Tradier re-fetch arbitrates dilution-vs-vendor-artifact."* That
+arbitration has now run, and it resolves cleanly:
+
+| | CAGR | Gap vs x44's 143 names |
+|---|---|---|
+| x44, 143 names | 43.51% | — |
+| x45, 358 names, Robinhood | 68.52% | +25.01pp |
+| x45, 358 names, **audited Tradier** | **61.97%** | **+18.46pp** |
+
+Of the 25.01pp expansion gap, **18.46pp survives the audit and 6.55pp was
+Robinhood vendor inflation** — roughly three quarters real, one quarter data. The
+alarm was correct to fire, the prescribed remedy was correct, and the answer is
+that the expansion stands on the audited basis. **The scanner stays on the
+358-name live universe; the published numbers are the Tradier ones.**
+
+This is the outcome that argued for the ruling in the first place: it costs
+almost nothing and it leaves the program with a gate that can actually fire in
+the direction the failure occurred.
+
+### x45 — CO-SIGNED (restated), 2026-08-03
+
+**What is co-signed.** The method matches the pre-registration once E3 is scored
+on its prose and its FAIL branch applied. E1 and E2 pass on audited data at the
+pre-registered ten seeds: 61.97% idealized, PF 2.89, every calendar year
+positive; 52.82% executable, ratio 0.852. And the restated conclusion follows
+from those numbers — the universe expansion is real on audited data (+18.46pp
+over x44's 143 names), about a quarter of the original headline gap was vendor
+inflation, and E3 fired correctly as the data-quality alarm it was written to be.
+
+**What is not co-signed, and stays open.**
+
+1. **"Matching MIO's claimed 67.2%" remains withdrawn** and forms no part of the
+   restated conclusion. Audited data is 5.2pp below the claim, and the two are on
+   different clocks besides (MIO's period runs to 2026-12-31; their 61.12×
+   multiple is 72.11% on the lab's realized 7.575 years).
+2. **Two pre-registered legs have still never been computed on audited data** —
+   the per-name screen and the causal fold. The fold carries less weight than the
+   packet assumed, since the panel struck its inference outright, but **203 of the
+   593 per-name rows displayed on the dashboard are Robinhood-basis**. Those rows
+   now carry a per-row `RH` marker rather than only a caption note, since
+   Robinhood flattered this book by 6.55pp at the portfolio level and the
+   per-name figures should be read as provisional in the same direction.
+
+**Panel co-sign is now complete for all three runs: x43 co-signed, x44 co-signed
+on method with two conclusions withdrawn, x45 co-signed on a restated conclusion
+with two exceptions.** Gate 3 of the real-money list is discharged. Gate 1 — 20
+closed account trades, currently 0 — remains binding.
