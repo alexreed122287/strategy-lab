@@ -139,3 +139,96 @@ dashboard link is the real secret. If a topic gets spammed, rotate both names
   buy alerts, wrong for anything sensitive. Rotate the topic name if it leaks.
 - Recipients see backtest-derived decision support with basis labels intact;
   the email repeats that nothing places orders.
+
+---
+
+# The 12:30 digest — simplified daily email
+
+A second, plain-language email: **the day's new buys, ranked, with the strategy
+that fired and that name's own backtest record.** One screen, no jargon. Sent by
+the same script with `--simple`, on its own schedule and its own recipient list.
+
+## What it looks like
+
+```
+STRATEGY LAB - new buys
+Signals confirmed at the close of 2026-07-31
+
+BUY THESE (one per strategy - its top-ranked signal)
+
+  TROW   RSI2             $111.75
+         46 trades, 72% win, +1.15%/trade, PF 2.86
+
+  ACGL   MFI              $100.53
+         89 trades, 83% win, +1.01%/trade, PF 3.44
+
+  KNX    Z-Score          $69.53
+         10 trades, 90% win, +1.26%/trade
+
+ALSO TRIGGERED - not bought, one slot per strategy
+  RSI2:            AAPL, WRB, LIN
+  MFI:             V, CB, SNA, DE, FITB, OHI, KIM, SPG +12 more
+
+HOW TO ACT / WHAT THIS IS  ... (see below)
+```
+
+**It shows one name per strategy, not every trigger.** The account holds one
+position per book, so listing all 26 names that fired would imply two dozen buys
+that never happen. The rest appear as a single "also triggered" line.
+
+**It always carries the honest label.** Every strategy on this page has failed at
+least one historical era test, and the digest says so in the body. This is not
+optional politeness — the list goes to people who have not sat through the
+research, and an email that names tickers without that context is misleading.
+
+## Recipients
+
+Add to `~/.strategy_lab_notify.json`. `to_digest` is optional and applies only to
+`--simple`; without it the digest goes to the same `to` list as the full alert.
+
+```json
+{
+  "to": ["alexander.s.reed@gmail.com"],
+  "to_digest": ["alexander.s.reed@gmail.com",
+                "jasoncolvin7.0@gmail.com",
+                "ruizrk@yahoo.com"],
+  "...": "smtp settings as above"
+}
+```
+
+## Schedule
+
+```bash
+cp ~/repos/strategy-lab-site/scripts/com.alex.strategylab.digest.plist ~/Library/LaunchAgents/
+launchctl load -w ~/Library/LaunchAgents/com.alex.strategylab.digest.plist
+launchctl list | grep strategylab      # expect BOTH daily and digest
+```
+
+Preview without sending anything:
+
+```bash
+python3 ~/repos/strategy-lab-site/scripts/notify_buys.py \
+  --page ~/repos/strategy-lab-site/index.html --simple --dry-run
+```
+
+The digest keeps its own dedupe state (`~/.strategy_lab_digest_state.json`), so
+it never suppresses or is suppressed by the post-build alert, and it will not
+re-send the same session's signals twice.
+
+## ⚠ A timing problem worth understanding
+
+**The 12:30 send is always one session late for the strategies as tested.**
+
+The build runs at 15:30 and signals are confirmed on the **close**. So a 12:30
+email carries the *previous* session's signals — and their validated fill, that
+morning's 8:30 open, passed four hours earlier. Anyone acting on the 12:30 email
+buys at the *following* open, one full session later than anything that was
+backtested. The email states the signal date so the staleness is visible, but
+stating it does not remove it.
+
+**If the emails are meant to be acted on, change `Hour` to 16** in the digest
+plist. That fires just after the build, so recipients have the whole evening to
+place market-on-open orders for the next open — which is exactly the validated
+basis. Same email, one line of config, and the signals are live instead of stale.
+
+Keep 12:30 if the email is meant to be read rather than traded.
