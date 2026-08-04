@@ -68,13 +68,21 @@ def main():
     args = sys.argv[1:]
     def opt(name, default=None):
         return args[args.index(name) + 1] if name in args else default
-    index = opt("--index") or sys.exit("--index path/to/index.html required")
+    # --symbols-file lets a run target an explicit list (one per line or comma
+    # separated) instead of every ticker on the page - used by the BB
+    # full-coverage workflow, which needs 301 names rather than 1029.
+    symfile = opt("--symbols-file")
+    index = opt("--index") or (None if symfile else
+                               sys.exit("--index path/to/index.html or --symbols-file required"))
     outpath = opt("--out", "closes.json")
     days = int(opt("--days", "90"))
     cap = int(opt("--max", "0"))
     extra = [s for s in (opt("--extra", "") or "").upper().split(",") if s]
     global OHLCV
     OHLCV = "--ohlcv" in args
+    FILE_SYMS = ([t.strip().upper() for t in
+                  open(os.path.expanduser(symfile)).read().replace("\n", ",").split(",")
+                  if t.strip()] if symfile else None)
     fp = os.path.expanduser("~/.tradier_token")
     token, token_src = None, "~/.tradier_token"
     if os.path.exists(fp):
@@ -95,7 +103,7 @@ def main():
         sys.exit(f"fail-closed: preflight failed using {token_src} against "
                  f"{API_BASE} -> {e!r}")
 
-    syms = page_tickers(open(index).read())
+    syms = FILE_SYMS if FILE_SYMS is not None else page_tickers(open(index).read())
     syms = sorted(set(syms) | set(extra))
     if cap:
         syms = syms[:cap]

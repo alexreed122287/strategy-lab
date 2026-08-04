@@ -35,6 +35,46 @@ def frame(path):
     return f
 
 
+def frame_rows(rows):
+    """Same indicators as frame(), from dump_closes --ohlcv rows:
+    [[date, open, high, low, close, volume], ...] ascending."""
+    df = pd.DataFrame(rows, columns=["date", "open", "high", "low", "close", "volume"])
+    df["date"] = pd.to_datetime(df["date"])
+    for c in ("open", "high", "low", "close", "volume"):
+        df[c] = pd.to_numeric(df[c], errors="coerce")
+    df = df.dropna(subset=["close"]).sort_values("date")
+    df = df[(df["volume"] > 0) & (df["close"] > 0)].set_index("date")
+    c, v = df["close"], df["volume"]
+    f = pd.DataFrame(index=df.index)
+    f["close"] = c
+    f["open"] = df["open"]
+    f["sma200"] = c.rolling(200).mean()
+    f["sma20"] = c.rolling(20).mean()
+    f["sd20"] = c.rolling(20).std(ddof=1)
+    f["bblb"] = f["sma20"] - 2 * f["sd20"]
+    f["ema5"] = c.ewm(span=5, adjust=False).mean()
+    f["av50"] = v.rolling(50).mean()
+    d = c.diff()
+    up = d.clip(lower=0).ewm(alpha=0.5, min_periods=2, adjust=False).mean()
+    dn = (-d).clip(lower=0).ewm(alpha=0.5, min_periods=2, adjust=False).mean()
+    f["rsi2"] = 100 - 100 / (1 + up / dn)
+    return f
+
+
+def load_json(bars, start, end):
+    """Load from a dump_closes --ohlcv bars.json instead of parquet."""
+    fr = {}
+    for s, rows in bars.items():
+        try:
+            f = frame_rows(rows)
+        except Exception:
+            continue
+        f = f[(f.index >= pd.Timestamp(start)) & (f.index <= pd.Timestamp(end))]
+        if len(f) >= 300:
+            fr[s] = f
+    return fr
+
+
 def load(sources, start, end):
     fr = {}
     for s, p in sources.items():

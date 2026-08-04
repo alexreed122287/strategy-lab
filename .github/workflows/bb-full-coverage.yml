@@ -1,0 +1,106 @@
+name: x59 BB full coverage
+
+# The session run of x59 reached only 180 of MIO's 301 BB names - the other 121
+# were never in any local store - so its FAIL on B1 was recorded as
+# coverage-limited. This fetches all 301 straight from Tradier and re-scores the
+# four pre-registered gates at whatever coverage Tradier can actually supply.
+#
+# Gates are NOT re-written here. They are the ones committed before any number
+# was computed, in docs/x59_session_prereg_bb_mio_universe.md:
+#   B1 execution retention >= 0.80   (the SPEC C bar that killed the book)
+#   B2 executable CAGR > 0 at 0.05%/side
+#   B3 beats buy-and-hold of the SAME names on return AND drawdown
+#   B4 executable CAGR positive in both 2019-22 and 2023-26
+#
+# Manual only. This is a research re-run, not part of the daily loop.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: bb-full-coverage
+
+jobs:
+  rerun:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Token
+        env:
+          TRADIER_TOKEN: ${{ secrets.TRADIER_TOKEN }}
+        run: |
+          if [ -z "$TRADIER_TOKEN" ]; then
+            echo "::error::TRADIER_TOKEN secret is not set"; exit 1
+          fi
+          printf '%s' "$TRADIER_TOKEN" > "$HOME/.tradier_token"
+          chmod 600 "$HOME/.tradier_token"
+
+      # 301 names only, not the 1029 the daily build walks.
+      - name: Fetch the MIO BB universe
+        run: |
+          python3 scripts/dump_closes.py \
+            --symbols-file data/x59_bb_universe.txt \
+            --out /tmp/bb_bars.json --days 2600 --ohlcv
+          python3 -c "import json;b=json.load(open('/tmp/bb_bars.json'));print('fetched',len(b),'of 301')"
+
+      - name: Score the four pre-registered gates
+        run: |
+          python3 - <<'PY'
+          import json, sys
+          sys.path.insert(0, "scripts")
+          import bb_harness as bb
+          bars = json.load(open("/tmp/bb_bars.json"))
+          want = [t.strip() for t in open("data/x59_bb_universe.txt").read()
+                  .replace("\n", ",").split(",") if t.strip()]
+          fr = bb.load_json(bars, "2018-01-01", "2026-12-31")
+          print(f"coverage: {len(fr)} of {len(want)}  (session run reached 180)")
+          ideal = bb.simulate(fr, "ideal_close", trade_start="2019-01-02", slip=0.0001)
+          hyb   = bb.simulate(fr, "hybrid",      trade_start="2019-01-02", slip=0.0005)
+          wc    = bb.simulate(fr, "next_open",   trade_start="2019-01-02", slip=0.0020)
+          bh    = bb.buy_hold(fr, "2019-01-02")
+          ret = hyb["cagr"] / ideal["cagr"] if ideal["cagr"] else 0
+          e19 = sum(v for y, v in hyb["yby"].items() if 2019 <= y <= 2022)
+          e23 = sum(v for y, v in hyb["yby"].items() if 2023 <= y <= 2026)
+          G = {
+            "B1_retention": {"v": round(ret, 3), "bar": 0.80, "pass": ret >= 0.80},
+            "B2_positive":  {"v": hyb["cagr"], "pass": hyb["cagr"] > 0},
+            "B3_vs_bh":     {"excess_pp": round(hyb["cagr"] - bh["cagr"], 2),
+                             "pass": hyb["cagr"] > bh["cagr"]
+                                     and abs(hyb["maxdd"]) < abs(bh["maxdd"])},
+            "B4_era":       {"e1922": round(e19, 2), "e2326": round(e23, 2),
+                             "pass": e19 > 0 and e23 > 0},
+          }
+          print(f"idealized {ideal['cagr']}%  executable {hyb['cagr']}%  "
+                f"worst {wc['cagr']}%  B&H {bh['cagr']}%")
+          for k, v in G.items():
+              print(f"  {k:14s} {'PASS' if v['pass'] else 'FAIL'}  {v}")
+          verdict = ("ALL PASS - un-kill to paper" if all(v["pass"] for v in G.values())
+                     else "FAIL - kill stands")
+          print("VERDICT:", verdict)
+          json.dump({"names": len(fr), "of": len(want), "session_run_names": 180,
+                     "ideal": ideal, "hybrid": hyb, "worst": wc, "bh": bh,
+                     "gates": G, "verdict": verdict, "basis": "tradier-full-coverage",
+                     "prereg": "docs/x59_session_prereg_bb_mio_universe.md"},
+                    open("data/x59_bb_full.json", "w"), indent=1, default=float)
+          PY
+
+      - name: Commit the result
+        run: |
+          git config user.name "strategy-lab-bot"
+          git config user.email "actions@github.com"
+          git add data/x59_bb_full.json
+          if git diff --cached --quiet; then
+            echo "no change"
+          else
+            git commit -m "x59 full coverage: BB on MIO's own universe (Tradier, GitHub)"
+            git pull --rebase --autostash origin main
+            git push origin HEAD:main
+          fi
+
+      - name: Wipe token
+        if: always()
+        run: rm -f "$HOME/.tradier_token"
