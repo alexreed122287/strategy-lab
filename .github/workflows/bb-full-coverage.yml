@@ -29,6 +29,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # bb_harness.py is the only script in this repo that needs the scientific
+      # stack, and ubuntu-latest does not ship it. The daily build stays
+      # stdlib-only, so this install lives here rather than in a shared step.
+      - name: Harness dependencies
+        run: python3 -m pip install --quiet --disable-pip-version-check numpy pandas
+
       - name: Token
         env:
           TRADIER_TOKEN: ${{ secrets.TRADIER_TOKEN }}
@@ -40,11 +46,18 @@ jobs:
           chmod 600 "$HOME/.tradier_token"
 
       # 301 names only, not the 1029 the daily build walks.
+      #
+      # --days is CALENDAR days. 2600 reached only 2019-06-20, and sma(200) then
+      # stayed NaN until ~2020-04 - so run 2 sat in cash through the whole COVID
+      # crash and posted an 18% max drawdown against buy-and-hold's 40%, an
+      # advantage that came from the fetch window rather than from the rule.
+      # 3300 reaches 2017-06, giving a full warmup before the 2019-01-02 trade
+      # start the gates are scored on. The run asserts it got there.
       - name: Fetch the MIO BB universe
         run: |
           python3 scripts/dump_closes.py \
             --symbols-file data/x59_bb_universe.txt \
-            --out /tmp/bb_bars.json --days 2600 --ohlcv
+            --out /tmp/bb_bars.json --days 3300 --ohlcv
           python3 -c "import json;b=json.load(open('/tmp/bb_bars.json'));print('fetched',len(b),'of 301')"
 
       - name: Score the four pre-registered gates
@@ -58,10 +71,36 @@ jobs:
                   .replace("\n", ",").split(",") if t.strip()]
           fr = bb.load_json(bars, "2018-01-01", "2026-12-31")
           print(f"coverage: {len(fr)} of {len(want)}  (session run reached 180)")
+          # The prereg says unsourced names are listed, not silently dropped.
+          missing = sorted(set(want) - set(fr))
+          print(f"unsourced ({len(missing)}): {', '.join(missing)}")
           ideal = bb.simulate(fr, "ideal_close", trade_start="2019-01-02", slip=0.0001)
           hyb   = bb.simulate(fr, "hybrid",      trade_start="2019-01-02", slip=0.0005)
           wc    = bb.simulate(fr, "next_open",   trade_start="2019-01-02", slip=0.0020)
           bh    = bb.buy_hold(fr, "2019-01-02")
+
+          # Warmup guard. If sma200 is still NaN deep into the window the book
+          # sits in cash and every buy-and-hold comparison is flattered by
+          # whatever it slept through. Fail loudly rather than publish that.
+          print(f"equity window {hyb['window']}  first trade {hyb['first_trade']}")
+          if hyb["first_trade"][:4] > "2019":
+              sys.exit(f"::error::warmup too short - first trade "
+                       f"{hyb['first_trade']}, expected 2019. Raise --days.")
+
+          # Prereg: "Treating a pass carried by the leveraged ETFs as a pass for
+          # the rule" is named as a way this run could be worthless. Measure it.
+          LEV = {"TQQQ","UPRO","SPXS","SPXU","SDS","SSO","FAS","FAZ","TECL","TECS",
+                 "GUSH","DRIP","TBT","TMF","TMV","QLD","QID","VXX","UVXY","SVXY",
+                 "UCO","SCO","NUGT","DUST","LABU","LABD","SOXL","SOXS","TNA","TZA",
+                 "ERX","ERY","YINN","YANG","BOIL","KOLD","AGQ","ZSL","UDOW","SDOW"}
+          lg = hyb.get("log") or []
+          lev = [t for t in lg if t["sym"] in LEV]
+          gain = lambda ts: sum(t["ret"] * t["cost"] for t in ts)
+          tot = gain(lg)
+          conc = {"lev_names": sorted({t["sym"] for t in lev}),
+                  "lev_trades": len(lev), "total_trades": len(lg),
+                  "lev_share_of_pnl": round(gain(lev) / tot, 3) if tot else None}
+          print("levered-ETF concentration:", conc)
           ret = hyb["cagr"] / ideal["cagr"] if ideal["cagr"] else 0
           e19 = sum(v for y, v in hyb["yby"].items() if 2019 <= y <= 2022)
           e23 = sum(v for y, v in hyb["yby"].items() if 2023 <= y <= 2026)
@@ -81,7 +120,12 @@ jobs:
           verdict = ("ALL PASS - un-kill to paper" if all(v["pass"] for v in G.values())
                      else "FAIL - kill stands")
           print("VERDICT:", verdict)
+          # The per-trade logs are attribution scratch, not a published record -
+          # drop them from the artifact once concentration is computed.
+          for leg in (ideal, hyb, wc):
+              leg.pop("log", None)
           json.dump({"names": len(fr), "of": len(want), "session_run_names": 180,
+                     "unsourced": missing, "levered_concentration": conc,
                      "ideal": ideal, "hybrid": hyb, "worst": wc, "bh": bh,
                      "gates": G, "verdict": verdict, "basis": "tradier-full-coverage",
                      "prereg": "docs/x59_session_prereg_bb_mio_universe.md"},
@@ -97,8 +141,11 @@ jobs:
             echo "no change"
           else
             git commit -m "x59 full coverage: BB on MIO's own universe (Tradier, GitHub)"
-            git pull --rebase --autostash origin main
-            git push origin HEAD:main
+            # Push back to whatever ref this was dispatched from. Hardcoding
+            # main here would shove an entire feature branch onto main the
+            # first time someone dispatched this from one to test a fix.
+            git pull --rebase --autostash origin "$GITHUB_REF_NAME"
+            git push origin "HEAD:$GITHUB_REF_NAME"
           fi
 
       - name: Wipe token

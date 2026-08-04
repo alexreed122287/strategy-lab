@@ -114,7 +114,7 @@ def simulate(frames, mode="ideal_close", trade_start=None, slip=0.0):
         j = idx.searchsorted(day, side="right")
         return float(o[s].iloc[j]) if j < len(idx) else fb
 
-    cash, pos, trades, eq = CAP0, {}, [], []
+    cash, pos, trades, eq, log = CAP0, {}, [], [], []
     for i, day in enumerate(cal):
         for s in list(pos):
             p = pos[s]
@@ -127,6 +127,11 @@ def simulate(frames, mode="ideal_close", trade_start=None, slip=0.0):
                 px *= (1 - slip)
                 cash += p["sh"] * px
                 trades.append(px / p["px"] - 1)
+                # Attribution only - the return recorded is identical. The x59
+                # prereg asks whether a result is carried by the levered ETFs in
+                # MIO's list, and that cannot be answered from aggregates.
+                log.append({"sym": s, "entry": str(p["day"]), "exit": str(day),
+                            "ret": px / p["px"] - 1, "cost": p["sh"] * p["px"]})
                 del pos[s]
         if len(pos) < SLOTS:
             cand = [(r2[s].get(day, np.nan), s) for s in names
@@ -144,7 +149,7 @@ def simulate(frames, mode="ideal_close", trade_start=None, slip=0.0):
                 if sh < 1:
                     continue
                 cash -= sh * px
-                pos[s] = {"px": px, "sh": sh, "i": i}
+                pos[s] = {"px": px, "sh": sh, "i": i, "day": day}
         eq.append((day, cash + sum(p["sh"] * c[s].get(day, p["px"]) for s, p in pos.items())))
     E = pd.Series(dict(eq))
     yrs = (E.index[-1] - E.index[0]).days / 365.25
@@ -160,7 +165,15 @@ def simulate(frames, mode="ideal_close", trade_start=None, slip=0.0):
             "trades": len(r), "win": round(100 * float((r > 0).mean()), 1) if len(r) else 0,
             "avg": round(100 * float(r.mean()), 3) if len(r) else 0,
             "pf": round(float(r[r > 0].sum() / gl), 2) if gl > 0 else None,
-            "yby": yby}
+            "yby": yby,
+            # First date the rule could actually fire. If the fetch window is
+            # too short, sma200 is NaN for months and the book sits in cash -
+            # which silently skips whatever happened in that stretch (for the
+            # 2600-day fetch, the entire COVID crash) and flatters every
+            # comparison against buy-and-hold. Published so it cannot hide.
+            "first_trade": str(min((t["entry"] for t in log), default="")),
+            "window": [str(E.index[0].date()), str(E.index[-1].date())],
+            "log": log}
 
 
 def buy_hold(frames, start):

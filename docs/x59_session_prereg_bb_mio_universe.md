@@ -92,3 +92,93 @@ Recorded in advance so it cannot be rationalised afterwards:
 - Treating a pass carried by the leveraged ETFs as a pass for the rule. If the
   book's return concentrates in TQQQ/UPRO/SPXS and their kin, that is reported as
   the result, whatever the aggregate says.
+
+---
+
+# RESULT — 2026-08-04, full coverage on GitHub Actions
+
+**VERDICT: FAIL on B1. The kill stands.** Per the pre-committed outcomes above,
+a second failure on MIO's own list closes the question: the earlier kill was not
+a universe artifact.
+
+| Pre-registered gate | Measured | |
+|---|---|---|
+| **B1 execution retention ≥ 0.80** | **0.744** | **FAIL** |
+| B2 executable CAGR > 0 | 42.10% | PASS |
+| B3 beats B&H of same names, return AND drawdown | +21.84pp, −26.6% vs −40.5% | PASS |
+| B4 both eras positive | +102.7 / +228.8 | PASS |
+
+| Leg | CAGR | Max DD | PF | Trades |
+|---|---|---|---|---|
+| Idealized (close fills) | 56.62% | −25.33% | — | 718 |
+| **Executable (MOO → MOC)** | **42.10%** | **−26.60%** | — | 718 |
+| Worst case (next-open, 0.2%/side) | 29.06% | −33.34% | — | 718 |
+| Buy & hold, same names | 20.26% | −40.49% | — | — |
+
+The bar was not touched. 0.80 is the SPEC C figure, reused verbatim, exactly as
+this document committed.
+
+## What the universe was worth
+
+Retention went **0.096 → 0.744**. The universe mattered enormously and the
+verdict did not change. Both are true, and the reason for the kill has changed:
+not "this book has almost no edge" but "this book has a real edge that loses
+**25.6%** of itself between the signal and the fill."
+
+## Coverage
+
+**263 of 301** ran, up from 180 in the session run. The 121-name gap that made
+the session verdict provisional is now down to 38, listed here as this document
+required:
+
+> ABB, BK, CFX, CLR, CMA, CWAN, ERJ, FBHS, FTCH, FYBR, HFC, IAC, K, LTHM, MAXN,
+> MMP, NCR, NUAN, NYCB, OSTK, PDCE, RDS-A, RDS-B, SATS, SEAS, SMAR, SPLK, SPR,
+> SRC, STL, STOR, SWCH, TPH, UNVR, UTX, VRNT, XLNX, YY
+
+Roughly half are the delistings predicted above (CLR, FBHS, FTCH, HFC, LTHM,
+MMP, NUAN, OSTK, PDCE, RDS-A/B, SPLK, STL, STOR, SWCH, UNVR, UTX, XLNX) — their
+absence biases **in the book's favour**. The remainder are live, liquid names
+Tradier did not return in this run; cause unconfirmed.
+
+Two separate effects moved retention, in opposite directions, and they should
+not be run together:
+
+- **Coverage 180 → 263 moved it UP**: 0.714 → 0.787.
+- **The window correction moved it DOWN**: 0.787 → 0.744, on the same 263 names.
+
+Neither is a clean controlled comparison — the 180-name session run also used a
+local store rather than Tradier — so the honest statement is that the two
+largest known defects in the earlier number pushed it in opposite directions and
+it lands at 0.744. Every version of this measurement misses the 0.80 bar.
+
+## The leveraged-ETF check, which this document pre-committed
+
+Named above as a way the run could be worthless. Measured per trade: **6**
+levered names traded (FAS, GUSH, SDS, SPXS, TBT, UCO), **16 of 718** trades,
+contributing **−3.2% of P&L**. They are not carrying the result — they were a
+small drag on it. This is an equity result.
+
+## A correction inside this run, disclosed rather than buried
+
+The first full-coverage attempt fetched 2600 **calendar** days, reaching only
+2019-06-20. `sma(200)` then stayed NaN until roughly 2020-04, so the book sat in
+**cash for the first ten months of its own window — including the entire COVID
+crash**. It posted −18.2% max drawdown against buy-and-hold's −40.5% on an
+advantage that came from fetch depth, not from the rule. `yby[2019] = 0.00` was
+the tell.
+
+Re-run at 3300 days with a full warmup. First trade lands 2019-01-02 as
+intended, and **every number moved against the book**:
+
+| | short window | corrected |
+|---|---|---|
+| B1 retention | 0.787 | **0.744** |
+| Executable CAGR | 49.19% | 42.10% |
+| Executable max DD | −18.22% | **−26.60%** |
+| B3 excess | +30.42pp | +21.84pp |
+
+**B1 was never affected** — it is a ratio of two legs over identical trades on an
+identical window — so the verdict never moved. The published comparisons against
+buy-and-hold did, and they were flattering the book, which is why this was fixed
+before publication rather than after. The workflow now asserts its own
+first-trade date and fails loudly instead of publishing a short window again.

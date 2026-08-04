@@ -1,0 +1,154 @@
+{
+ "names": 263,
+ "of": 301,
+ "session_run_names": 180,
+ "unsourced": [
+  "ABB",
+  "BK",
+  "CFX",
+  "CLR",
+  "CMA",
+  "CWAN",
+  "ERJ",
+  "FBHS",
+  "FTCH",
+  "FYBR",
+  "HFC",
+  "IAC",
+  "K",
+  "LTHM",
+  "MAXN",
+  "MMP",
+  "NCR",
+  "NUAN",
+  "NYCB",
+  "OSTK",
+  "PDCE",
+  "RDS-A",
+  "RDS-B",
+  "SATS",
+  "SEAS",
+  "SMAR",
+  "SPLK",
+  "SPR",
+  "SRC",
+  "STL",
+  "STOR",
+  "SWCH",
+  "TPH",
+  "UNVR",
+  "UTX",
+  "VRNT",
+  "XLNX",
+  "YY"
+ ],
+ "levered_concentration": {
+  "lev_names": [
+   "FAS",
+   "GUSH",
+   "SDS",
+   "SPXS",
+   "TBT",
+   "UCO"
+  ],
+  "lev_trades": 16,
+  "total_trades": 718,
+  "lev_share_of_pnl": -0.032
+ },
+ "ideal": {
+  "cagr": 56.62,
+  "maxdd": -25.33,
+  "trades": 718,
+  "win": 76.2,
+  "avg": 1.412,
+  "pf": 2.57,
+  "yby": {
+   "2019": 10.96,
+   "2020": 50.82,
+   "2021": 90.25,
+   "2022": 23.65,
+   "2023": 57.94,
+   "2024": 69.79,
+   "2025": 71.44,
+   "2026": 65.96
+  },
+  "first_trade": "2019-01-02 00:00:00",
+  "window": [
+   "2019-01-02",
+   "2026-08-03"
+  ]
+ },
+ "hybrid": {
+  "cagr": 42.1,
+  "maxdd": -26.6,
+  "trades": 718,
+  "win": 73.3,
+  "avg": 1.103,
+  "pf": 2.19,
+  "yby": {
+   "2019": 2.82,
+   "2020": 22.76,
+   "2021": 58.85,
+   "2022": 18.29,
+   "2023": 47.13,
+   "2024": 51.22,
+   "2025": 73.46,
+   "2026": 56.96
+  },
+  "first_trade": "2019-01-02 00:00:00",
+  "window": [
+   "2019-01-02",
+   "2026-08-03"
+  ]
+ },
+ "worst": {
+  "cagr": 29.06,
+  "maxdd": -33.34,
+  "trades": 718,
+  "win": 68.5,
+  "avg": 0.821,
+  "pf": 1.73,
+  "yby": {
+   "2019": -6.14,
+   "2020": 23.93,
+   "2021": 45.55,
+   "2022": 1.48,
+   "2023": 44.38,
+   "2024": 37.13,
+   "2025": 43.46,
+   "2026": 41.85
+  },
+  "first_trade": "2019-01-02 00:00:00",
+  "window": [
+   "2019-01-02",
+   "2026-08-03"
+  ]
+ },
+ "bh": {
+  "cagr": 20.26,
+  "maxdd": -40.49
+ },
+ "gates": {
+  "B1_retention": {
+   "v": 0.744,
+   "bar": 0.8,
+   "pass": 0.0
+  },
+  "B2_positive": {
+   "v": 42.1,
+   "pass": 1.0
+  },
+  "B3_vs_bh": {
+   "excess_pp": 21.84,
+   "pass": true
+  },
+  "B4_era": {
+   "e1922": 102.72,
+   "e2326": 228.77,
+   "pass": 1.0
+  }
+ },
+ "verdict": "FAIL - kill stands",
+ "basis": "tradier-full-coverage",
+ "prereg": "docs/x59_session_prereg_bb_mio_universe.md"
+}
