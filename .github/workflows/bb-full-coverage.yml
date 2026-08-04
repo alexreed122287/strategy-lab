@@ -29,6 +29,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # bb_harness.py is the only script in this repo that needs the scientific
+      # stack, and ubuntu-latest does not ship it. The daily build stays
+      # stdlib-only, so this install lives here rather than in a shared step.
+      - name: Harness dependencies
+        run: python3 -m pip install --quiet --disable-pip-version-check numpy pandas
+
       - name: Token
         env:
           TRADIER_TOKEN: ${{ secrets.TRADIER_TOKEN }}
@@ -97,8 +103,11 @@ jobs:
             echo "no change"
           else
             git commit -m "x59 full coverage: BB on MIO's own universe (Tradier, GitHub)"
-            git pull --rebase --autostash origin main
-            git push origin HEAD:main
+            # Push back to whatever ref this was dispatched from. Hardcoding
+            # main here would shove an entire feature branch onto main the
+            # first time someone dispatched this from one to test a fix.
+            git pull --rebase --autostash origin "$GITHUB_REF_NAME"
+            git push origin "HEAD:$GITHUB_REF_NAME"
           fi
 
       - name: Wipe token
