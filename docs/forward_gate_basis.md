@@ -112,3 +112,40 @@ current signal rate, roughly two months rather than five to six weeks.
 history recomputes under the new model: Friday's fills narrow from six positions
 to two (one RSI2, one MFI at ~$6.7k each), with 25 signals skipped rather than
 21. No closed trade is affected, because there are none.
+
+## Amendment — RSI2 and MFI move to MOO entry (2026-08-03, at one closed trade)
+
+The shadow book recorded RSI2 and MFI entries **at the signal close** — their
+validated basis. But the signal is only known *at* that close, the daily build
+runs after it, and the buy email lands ~15:50 CT. **Those fills were not
+obtainable**, and crediting the account with them inflated the forward record on
+the two books that fire most often — the record that gates real money.
+
+Measured cost of waiting for the next open, same universes and window as the
+benchmark gate:
+
+| Book | MOC (signal close) | MOO (next open) | Cost | Retention |
+|---|---|---|---|---|
+| MFI | 59.50% | 50.48% | −9.02pp | 0.848 |
+| RSI2 | 39.93% | 34.22% | −5.71pp | 0.857 |
+
+Both lose ~15% of CAGR. **MFI loses more in points**, because it starts higher
+and fires far more often — the opposite of an earlier reading of this program's
+archive, which noted MFI survives a full day's lag with PF 2.33 intact. Both are
+true: MFI remains viable under delay, and the delay is not cheap. Note also that
+next-open is a *smaller* delay than the archive's lag-1 (next day's close),
+which is why RSI2's −5.71pp here is far gentler than the 59.8→31.9 recorded
+there.
+
+`BASIS` is therefore `moo` for all five books. The record now stores what the
+owner can actually get.
+
+**One closed trade predates this** (KRE/MFI, entered at a close). It is
+disclosed rather than back-dated — the ledger accumulates entries and cannot be
+replayed from itself the way `portfolio()` can. Open positions carried at the
+old basis are likewise left as recorded.
+
+**Reversible, and the reversal must be pre-registered too.** If the intraday
+3:45 send is built and actually used, close fills become obtainable and these
+two books move back to `close` — but that change has to be registered before the
+trades it would affect, exactly as this one was.

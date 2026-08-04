@@ -38,8 +38,29 @@ import sys
 
 FRICTION_RT = {"GAPW_RSI2": 0.001, "GAPW_RSI14": 0.001, "ZSCORE": 0.0002,
                "RSI2": 0.0, "MFI": 0.0}
+# ENTRY BASIS. Everything is MOO as of 2026-08-03.
+#
+# RSI2 and MFI were "close" - their validated basis is a fill at the signal
+# close. But the signal is only known AT that close, and the daily build runs
+# after it: the buy email lands ~15:50 CT. Recording a close fill the owner
+# could not have obtained inflates the forward record on the two books that
+# fire most often, and that record is what gates real money. Measured cost of
+# waiting for the next open, same universes and window as the benchmark gate:
+#
+#   MFI   MOC 59.50% -> MOO 50.48%   -9.02pp   retention 0.848
+#   RSI2  MOC 39.93% -> MOO 34.22%   -5.71pp   retention 0.857
+#
+# So the honest record is ~15% below the backtest on both, and that is what
+# this now stores. Changed with ONE closed trade on the books (KRE/MFI, entered
+# at a close) - disclosed rather than back-dated, since a pure replay of entries
+# is not possible from the ledger alone.
+#
+# This is reversible: if the intraday 3:45 send is built and actually used,
+# close fills become achievable and RSI2/MFI move back to "close" - which must
+# itself be pre-registered before the trades it would affect.
 BASIS = {"GAPW_RSI2": "moo", "GAPW_RSI14": "moo", "ZSCORE": "moo",
-         "RSI2": "close", "MFI": "close"}
+         "RSI2": "moo", "MFI": "moo"}
+BASIS_PRIOR = {"RSI2": "close", "MFI": "close"}
 
 # ---------------------------------------------------------------- capital model
 # The per-trade ledger above answers "is the signal edge real" (the Evidence
