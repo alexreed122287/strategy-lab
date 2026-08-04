@@ -216,3 +216,60 @@ An earlier draft scheduled this at 12:30, which would have been one full session
 late for every strategy — the build hadn't run, so 12:30 carried the *previous*
 close's signals whose fill window had already passed that morning. Recorded here
 because the mistake is easy to repeat.
+
+---
+
+# Running the build on GitHub instead of the Mac
+
+`.github/workflows/daily-build.yml` runs the dashboard refresh and both emails on
+GitHub's runners, so the site updates whether the Mac is awake, asleep, or in a
+bag. It mirrors steps 3–7 of `scripts/daily_build.sh`.
+
+## What it does and does not do
+
+**Does:** fetches fresh bars from Tradier, refreshes the TRACK snapshot, rebuilds
+BOOKSIG (Gap Widen and Z-Score, computed live from those bars), advances the
+shadow forward book, stamps HEALTH, validates every blob fail-closed, pushes, and
+sends both the full alert and the ranked digest.
+
+**Does not:** rebuild SCAN and SIGNALS — the RSI2 and MFI arm rows. Those come
+from the local generator (market-data-brain / agentic-cron), which is not in this
+repo and cannot run on a GitHub runner. They stay at whatever the Mac last
+published. This is the same "TRACK-only mode" the Mac build itself runs in when
+`SL_BLOB_BUILD_CMD` is unconfigured, so nothing is lost relative to today — but
+it does mean the Mac is still the only source of *new* RSI2/MFI signals.
+
+## Two secrets, set once
+
+Repo → Settings → Secrets and variables → Actions → New repository secret.
+
+| Secret | Value |
+|---|---|
+| `TRADIER_TOKEN` | the Tradier production token |
+| `NOTIFY_CONFIG` | the entire contents of `~/.strategy_lab_notify.json` |
+
+Neither is ever printed. Both are written to files on the runner and deleted in
+an `always()` step, and the runner itself is destroyed after the job. The
+workflow fails loudly if `TRADIER_TOKEN` is missing, and warns (but still
+publishes) if `NOTIFY_CONFIG` is absent.
+
+## Schedule, and why there are two crons
+
+GitHub cron is UTC with no daylight-saving handling, so both 20:30 and 21:30 UTC
+are listed — 15:30 Chicago in summer and winter respectively. A guard step keeps
+exactly one: it proceeds only when the Chicago hour is 15 or 16, on a weekday,
+and only if today has not already published a `daily build <date>` commit. That
+also absorbs GitHub's scheduler drift, which routinely runs tens of minutes late.
+
+## Running it by hand — works from a phone
+
+Actions tab → **Daily build** → **Run workflow**. A manual run bypasses the time
+guard, so it works at any hour. This is the fastest fix when the Mac build has
+failed and you are not at the machine.
+
+## Belt and braces
+
+Both the Mac's launchd job and this workflow can run. They cannot double-publish:
+whichever lands second finds no changes to commit and stops, and the digest keeps
+its own dedupe state keyed on the signal date, so nobody gets the same table
+twice.
