@@ -1,0 +1,185 @@
+name: Daily build
+
+# Runs the dashboard refresh and the buy digest on GitHub's runners instead of
+# Alex's Mac, so the site updates whether that machine is awake, asleep or in a
+# bag. Mirrors steps 3-7 of scripts/daily_build.sh.
+#
+# WHAT THIS CANNOT DO, stated up front: steps 1-2 of the Mac build call the
+# local generator (market-data-brain / agentic-cron) that produces the SCAN and
+# SIGNALS blobs - the RSI2 and MFI arm rows. That generator is not in this repo
+# and cannot run here. So this workflow refreshes TRACK, BOOKSIG (Gap Widen and
+# Z-Score, computed from fresh bars) and the shadow forward book, and leaves
+# SCAN/SIGNALS at whatever the Mac last published. That is the same "TRACK-only
+# mode" the Mac build itself runs in when SL_BLOB_BUILD_CMD is unconfigured.
+#
+# Secrets required (Settings -> Secrets and variables -> Actions):
+#   TRADIER_TOKEN   your Tradier production token
+#   NOTIFY_CONFIG   the full contents of ~/.strategy_lab_notify.json
+# Neither is ever printed; both are written to files the runner destroys.
+
+on:
+  schedule:
+    # GitHub cron is UTC with no DST handling, so both are listed and the guard
+    # step below keeps exactly one of them. 20:30 UTC = 15:30 CDT (summer),
+    # 21:30 UTC = 15:30 CST (winter).
+    - cron: "30 20 * * 1-5"
+    - cron: "30 21 * * 1-5"
+  workflow_dispatch:        # run it by hand from the GitHub UI - works on a phone
+
+permissions:
+  contents: write
+
+concurrency:
+  group: daily-build
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      # Only one of the two cron firings should proceed, and a manual run always
+      # should. GitHub's scheduler drifts by tens of minutes under load, so this
+      # guards on the Chicago hour AND on whether today already built, rather
+      # than on an exact minute.
+      - name: Should this run proceed?
+        id: guard
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import datetime, os, subprocess, zoneinfo
+          now = datetime.datetime.now(zoneinfo.ZoneInfo("America/Chicago"))
+          manual = os.environ.get("GITHUB_EVENT_NAME") == "workflow_dispatch"
+          today = now.date().isoformat()
+          log = subprocess.run(["git", "log", "--oneline", "-20"],
+                               capture_output=True, text=True).stdout
+          already = ("daily build %s" % today) in log
+          ok = manual or (now.weekday() < 5 and 15 <= now.hour <= 16 and not already)
+          print("proceed=%s" % ("true" if ok else "false"))
+          print("why=%s CT, manual=%s, already_built=%s" % (
+              now.strftime("%Y-%m-%d %H:%M"), manual, already))
+          PY
+
+      - name: Skip notice
+        if: steps.guard.outputs.proceed != 'true'
+        run: echo "Skipping - ${{ steps.guard.outputs.why }}"
+
+      - name: Credentials
+        if: steps.guard.outputs.proceed == 'true'
+        env:
+          TRADIER_TOKEN: ${{ secrets.TRADIER_TOKEN }}
+          NOTIFY_CONFIG: ${{ secrets.NOTIFY_CONFIG }}
+        run: |
+          if [ -z "$TRADIER_TOKEN" ]; then
+            echo "::error::TRADIER_TOKEN secret is not set - the fetch would fail"; exit 1
+          fi
+          printf '%s' "$TRADIER_TOKEN" > "$HOME/.tradier_token"
+          chmod 600 "$HOME/.tradier_token"
+          if [ -n "$NOTIFY_CONFIG" ]; then
+            printf '%s' "$NOTIFY_CONFIG" > "$HOME/.strategy_lab_notify.json"
+            chmod 600 "$HOME/.strategy_lab_notify.json"
+            python3 -c "import json,os;json.load(open(os.path.expanduser('~/.strategy_lab_notify.json')))" \
+              || { echo "::error::NOTIFY_CONFIG is not valid JSON"; exit 1; }
+          else
+            echo "::warning::NOTIFY_CONFIG not set - the page will refresh but no email will send"
+          fi
+
+      # ---- step 3: fresh bars straight from Tradier (~6 min for ~716 names)
+      - name: Fetch bars
+        if: steps.guard.outputs.proceed == 'true'
+        run: |
+          python3 scripts/dump_closes.py --index index.html \
+            --out /tmp/bars.json --days 400 --ohlcv
+          python3 -c "import json;b=json.load(open('/tmp/bars.json'));print('bars for',len(b),'symbols')"
+
+      - name: Earnings (fail-quiet - no local brain cache here)
+        if: steps.guard.outputs.proceed == 'true'
+        run: |
+          mkdir -p /tmp/earn_empty
+          python3 scripts/next_earnings.py --dir /tmp/earn_empty --out /tmp/earnings.json \
+            || echo '{}' > /tmp/earnings.json
+
+      # ---- steps 4, 4b, 4c: the splices
+      - name: Splice TRACK / BOOKSIG / shadow book
+        if: steps.guard.outputs.proceed == 'true'
+        run: |
+          python3 scripts/track_snapshot_reference.py /tmp/bars.json \
+            --earnings /tmp/earnings.json --splice index.html \
+            --source "tradier github-actions $(date +%F)"
+          python3 scripts/scan_book_signals.py --bars /tmp/bars.json \
+            --page index.html --earnings /tmp/earnings.json --splice
+          python3 scripts/shadow_book.py --bars /tmp/bars.json \
+            --page index.html --earnings /tmp/earnings.json \
+            --ledger data/shadow_book.json --splice
+
+      # ---- step 4d: health stamp, marked so its origin is visible on the page
+      - name: Health stamp
+        if: steps.guard.outputs.proceed == 'true'
+        run: |
+          python3 - <<'PY'
+          import json, re, datetime, zoneinfo
+          html = open("index.html").read()
+          bars = json.load(open("/tmp/bars.json"))
+          earn = json.load(open("/tmp/earnings.json"))
+          g = lambda n: json.loads(re.search(r"const %s = (.*?);\n" % n, html, re.S).group(1))
+          booksig, shadow, track = g("BOOKSIG"), g("SHADOW"), g("TRACK")
+          now = datetime.datetime.now(zoneinfo.ZoneInfo("America/Chicago"))
+          h = {"build": now.strftime("%Y-%m-%d %H:%M"), "built_by": "github-actions",
+               "bars_ok": len(bars), "universe": max(len(track.get("tickers") or {}), len(bars)),
+               "earnings": len(earn), "booksig_rows": len(booksig.get("rows") or []),
+               "shadow_open": sum(1 for p in shadow.get("open") or [] if p.get("state") == "open"),
+               "shadow_closed": shadow.get("closed_total") or 0}
+          line = "const HEALTH = " + json.dumps(h, separators=(",", ":")) + ";"
+          html2, n = re.subn(r"const HEALTH = .*?;\n", lambda _m: line + "\n", html, count=1, flags=re.S)
+          assert n == 1, "no HEALTH line"
+          open("index.html", "w").write(html2)
+          print("health:", h)
+          PY
+
+      # ---- step 5: fail-closed validation. Nothing publishes if a blob is broken.
+      - name: Validate
+        if: steps.guard.outputs.proceed == 'true'
+        run: |
+          python3 - <<'PY'
+          import json, re
+          html = open("index.html").read()
+          for n in ["SCAN","BASKETS","SIGNALS","REGIME","DAILY","CALLS","TF","METHOD",
+                    "BOOKS","TRACK","BOOKSIG","NOTIFY","SHADOW","HEALTH"]:
+              m = re.search(r"const %s = (.*?);\n" % n, html, re.S)
+              assert m, "missing blob: " + n
+              json.loads(m.group(1))
+          track = json.loads(re.search(r"const TRACK = (.*?);\n", html, re.S).group(1))
+          assert track and track.get("tickers"), "TRACK is empty - refusing to publish"
+          print("validation OK:", len(track["tickers"]), "tickers as of", track["as_of"])
+          PY
+
+      # ---- step 6: publish
+      - name: Commit and push
+        if: steps.guard.outputs.proceed == 'true'
+        id: publish
+        run: |
+          git config user.name "strategy-lab-bot"
+          git config user.email "actions@github.com"
+          git add index.html data/shadow_book.json
+          if git diff --cached --quiet; then
+            echo "no changes to publish"
+            echo "published=false" >> "$GITHUB_OUTPUT"
+          else
+            git commit -m "daily build $(date +%F)"
+            git pull --rebase --autostash origin main
+            git push origin HEAD:main
+            echo "published=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # ---- step 7: notifications. Never fail the run over email.
+      - name: Send alert and digest
+        if: steps.guard.outputs.proceed == 'true' && steps.publish.outputs.published == 'true'
+        run: |
+          python3 scripts/notify_buys.py --page index.html || echo "alert failed (non-fatal)"
+          python3 scripts/notify_buys.py --page index.html --simple || echo "digest failed (non-fatal)"
+
+      - name: Wipe credentials
+        if: always()
+        run: rm -f "$HOME/.tradier_token" "$HOME/.strategy_lab_notify.json"
