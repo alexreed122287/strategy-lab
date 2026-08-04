@@ -58,6 +58,12 @@ jobs:
           already = ("daily build %s" % today) in log
           ok = manual or (now.weekday() < 5 and 15 <= now.hour <= 16 and not already)
           print("proceed=%s" % ("true" if ok else "false"))
+          # The commit message MUST be stamped with this same Chicago date, not
+          # with the runner's UTC `date +%F`. They differ after 19:00 CT, so a
+          # late or manual evening run stamped TOMORROW's date and then
+          # suppressed tomorrow's real build via the already-built check - the
+          # dashboard simply stops updating and nothing errors. Export it.
+          print("today=%s" % today)
           print("why=%s CT, manual=%s, already_built=%s" % (
               now.strftime("%Y-%m-%d %H:%M"), manual, already))
           PY
@@ -204,9 +210,12 @@ jobs:
             echo "no changes to publish"
             echo "published=false" >> "$GITHUB_OUTPUT"
           else
-            git commit -m "daily build $(date +%F)"
-            git pull --rebase --autostash origin main
-            git push origin HEAD:main
+            # Chicago date from the guard, NOT `date +%F` (UTC) - see the guard.
+            git commit -m "daily build ${{ steps.guard.outputs.today }}"
+            # Push back to the ref this ran from. Hardcoding main meant a manual
+            # dispatch from a branch would shove that whole branch onto main.
+            git pull --rebase --autostash origin "$GITHUB_REF_NAME"
+            git push origin "HEAD:$GITHUB_REF_NAME"
             echo "published=true" >> "$GITHUB_OUTPUT"
           fi
 
