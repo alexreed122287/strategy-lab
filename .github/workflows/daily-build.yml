@@ -94,12 +94,37 @@ jobs:
             --out /tmp/bars.json --days 400 --ohlcv
           python3 -c "import json;b=json.load(open('/tmp/bars.json'));print('bars for',len(b),'symbols')"
 
-      - name: Earnings (fail-quiet - no local brain cache here)
+      # There is no market-data-brain here, so this used to emit earnings:0 -
+      # which is not cosmetic: Z-Score's exit rule has a pre-earnings condition,
+      # so the cloud was running that book with the rule INERT while the Mac ran
+      # it armed. Same book, two behaviours. The repo-committed seed closes that.
+      # Still fail-quiet: a missing or expired seed means no entry for a symbol
+      # and its flags stay off, never a wrong date.
+      - name: Earnings (repo seed - no local brain cache here)
         if: steps.guard.outputs.proceed == 'true'
         run: |
           mkdir -p /tmp/earn_empty
-          python3 scripts/next_earnings.py --dir /tmp/earn_empty --out /tmp/earnings.json \
+          python3 scripts/next_earnings.py --dir /tmp/earn_empty \
+            --seed-file data/earnings_seed.json --out /tmp/earnings.json \
             || echo '{}' > /tmp/earnings.json
+          # A seed that quietly runs out puts us back where we started, so say so.
+          python3 - <<'PY'
+          import datetime, json, zoneinfo
+          try:
+              s = json.load(open("data/earnings_seed.json"))
+          except Exception:
+              print("::warning::no earnings seed - Z-Score pre-earnings rule is inert")
+              raise SystemExit
+          today = datetime.datetime.now(zoneinfo.ZoneInfo("America/Chicago")).date().isoformat()
+          exp = s.get("_expires") or ""
+          n = len(json.load(open("/tmp/earnings.json")))
+          if exp and today > exp:
+              print(f"::warning::earnings seed expired {exp} (today {today}) - "
+                    f"only {n} symbols still have a future date. Refresh "
+                    f"data/earnings_seed.json or wire a live fetch.")
+          else:
+              print(f"earnings: {n} symbols, seed good through {exp}")
+          PY
 
       # ---- steps 4, 4b, 4c: the splices
       - name: Splice TRACK / BOOKSIG / shadow book
