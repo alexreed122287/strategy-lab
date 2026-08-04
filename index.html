@@ -338,10 +338,30 @@ const NOTIFY = {"ntfy_topic": "", "signup_topic": "", "owner_contact": ""};
 if(typeof HEALTH!=="undefined"&&HEALTH){
   const hd=document.createElement("div");
   hd.className="sub";
-  hd.textContent="pipeline OK - build "+HEALTH.build+" | bars "+HEALTH.bars_ok+"/"+HEALTH.universe
+  hd.textContent="pipeline OK - build "+HEALTH.build
+    +(HEALTH.built_by?" ("+HEALTH.built_by+")":"")+" | bars "+HEALTH.bars_ok+"/"+HEALTH.universe
     +" | earnings dates "+HEALTH.earnings+" | book signals "+HEALTH.booksig_rows
     +" | shadow book "+HEALTH.shadow_open+" open / "+HEALTH.shadow_closed+" closed";
   document.querySelector("header").appendChild(hd);
+  // Per-blob freshness. A GitHub-Actions build refreshes the book scan and the
+  // shadow ledger but CANNOT rebuild SCAN/SIGNALS - the RSI2 and MFI arm rows
+  // come from the local generator. When those dates diverge the page must say
+  // so, or the Signals tab silently shows stale rows next to current ones.
+  try{
+    const bsA=(typeof BOOKSIG!=="undefined"&&BOOKSIG&&BOOKSIG.as_of)||null;
+    const sgA=(typeof SIGNALS!=="undefined"&&SIGNALS&&SIGNALS.signals||[])
+      .reduce((m,x)=>x.as_of&&x.as_of>m?x.as_of:m,"")||null;
+    if(bsA&&sgA&&bsA!==sgA){
+      const st=document.createElement("div");
+      st.className="sub";
+      st.innerHTML='<span class="chip watch">MIXED DATES</span> '
+        +'Gap Widen &amp; Z-Score signals are <b>'+bsA+'</b>. '
+        +'RSI2 &amp; MFI rows are <b>'+sgA+'</b> and did NOT refresh in this build - '
+        +'they come from the local generator, which cloud builds cannot run. '
+        +'Treat the RSI2/MFI rows on Signals as of '+sgA+', not today.';
+      document.querySelector("header").appendChild(st);
+    }
+  }catch(e){}
 }
 document.querySelectorAll("header .sub").forEach(e=>{
   e.style.cursor="pointer";
