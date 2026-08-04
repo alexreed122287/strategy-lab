@@ -149,3 +149,47 @@ old basis are likewise left as recorded.
 3:45 send is built and actually used, close fills become obtainable and these
 two books move back to `close` — but that change has to be registered before the
 trades it would affect, exactly as this one was.
+
+## Correction — the replay was dropping same-day round trips (2026-08-04)
+
+Not a model change and not a re-cut. The rules above are untouched; the replay
+that applies them had a bug, and fixing it **added** trades the account really
+took under the already-registered rules.
+
+`portfolio()` sorted each date's events with every exit ahead of every entry, so
+a position that opened and closed on the *same* date had its exit processed
+while the account still held nothing. The exit found no position and was
+discarded; the entry then ran and left a position open that had in fact already
+closed. Two things followed, both wrong:
+
+- the round trip never reached the closed-trade count that **is** the gate, and
+- the phantom open position held the book's only slot indefinitely.
+
+This was not an edge case. The Gap Widen books round-trip intraday **by
+design** — MOO entry, `3:45 -> MOC` exit — so it fired every time they did.
+
+**What it cost, on the record as it stood 2026-08-03:**
+
+| | Before | After |
+|---|---|---|
+| Closed account trades (the gate) | 1 of 20 | **3 of 20** |
+| Account open positions | 4 | 2 |
+| Cash | $73,421 | $87,036 |
+
+The two recovered trades are **JBLU** (Gap Widen RSI2, +1.04%) and **BEN** (Gap
+Widen RSI14, +3.18%) — two of the three the owner authorized on 2026-08-03. They
+had been executing correctly in the ledger and were being dropped on the way
+into the account record. KNX (Z-Score) was unaffected and remains open.
+
+Ordering is now three-phase within a date: exits of positions opened on an
+**earlier** date (these free a slot first), then entries, then exits of
+positions opened the **same** date. The sort is stable, so each book's ranking
+order still decides which signal takes a contested slot.
+
+**Why this is a correction and not hindsight.** The gate's definition, the slot
+count, the sizing divisor and the entry basis are all unchanged and all were
+fixed before the trades they govern. The published count moved because the
+replay now counts what the account did, which is what the pre-registered rule
+always said to count. Recording the direction matters: it moved the gate
+*closer*, which is exactly the direction that warrants disclosure rather than
+silence.

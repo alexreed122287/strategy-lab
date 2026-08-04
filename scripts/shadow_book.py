@@ -117,6 +117,8 @@ def portfolio(led, books):
     cash = {b: sleeve0 for b in books}
     open_pos = {b: {} for b in books}          # sym -> {cost, net_pending}
     skipped, taken = [], 0
+    today = led.get("as_of")
+    exits_today = []                           # ACCOUNT-basis exits, not ledger
     ev = []                                    # (date, entered, exited) events
     for p in list(led.get("closed", [])) + list(led.get("positions", [])):
         b = p.get("book")
@@ -126,7 +128,23 @@ def portfolio(led, books):
             ev.append((p["entry_date"], "in", p))
         if p.get("exit_date") and p.get("net") is not None:
             ev.append((p["exit_date"], "out", p))
-    ev.sort(key=lambda e: (e[0], 0 if e[1] == "out" else 1))   # exits free slots first
+    # Ordering within a date, and it is load-bearing:
+    #   0  exits of positions opened on an EARLIER date - these free a slot
+    #      before the day's entries compete for it
+    #   1  entries
+    #   2  exits of positions opened the SAME date - a round trip has to open
+    #      before it can close
+    # Sorting all exits ahead of all entries (the first cut) processed a
+    # same-day round trip's exit while the account still held nothing, so the
+    # exit found no position, was dropped, and the entry then left a phantom
+    # open position holding the book's only slot forever. The Gap Widen books
+    # round-trip intraday by design (MOO entry, 3:45 -> MOC exit), so this hit
+    # them every time they fired and undercounted the real-money gate.
+    def _phase(kind, p):
+        if kind != "out":
+            return 1
+        return 2 if p.get("entry_date") == p.get("exit_date") else 0
+    ev.sort(key=lambda e: (e[0], _phase(e[1], e[2])))          # stable: keeps rank order
     closed = []                                # account-basis closed trades
     for date, kind, p in ev:
         b, sym = p["book"], p["sym"]
@@ -136,6 +154,12 @@ def portfolio(led, books):
                 cash[b] += held["cost"] * (1.0 + p["net"])     # net already net of friction
                 closed.append({"date": date, "book": b, "sym": sym,
                                "net": p["net"], "cost": held["cost"]})
+                # The ledger exits every qualifying name; the account only exits
+                # what it actually bought. Today's surface must show the second.
+                if today and date == today:
+                    exits_today.append({"sym": sym, "book": b,
+                                        "why": p.get("exit_reason"),
+                                        "net": p["net"], "cost": held["cost"]})
             continue
         if sym in open_pos[b]:
             continue
@@ -159,6 +183,10 @@ def portfolio(led, books):
     loss = -sum(n for n in nets if n <= 0)
     return {
         "capital": CAPITAL, "slots_per_book": SLOTS,
+        # Published so the page cannot re-derive size from the slot count. Those
+        # are independent constants and conflating them tripled per-name risk
+        # once before (forward_gate_basis.md, amendment of 2026-08-03).
+        "size_divisor": SIZE_DIVISOR,
         # --- the binding real-money gate (owner decision 2026-08-03) ---
         "gate_target": GATE_CLOSED_TRADES,
         "gate_closed": len(closed),
@@ -176,6 +204,14 @@ def portfolio(led, books):
         "invested_at_cost": round(sum(invested.values()), 2),
         "utilization_pct": round(100.0 * sum(invested.values()) / max(equity, 1e-9), 1),
         "open_positions": sum(len(v) for v in open_pos.values()),
+        # Names the ACCOUNT holds, and the ones it sells today. The Today tab
+        # sizes positions off this account model, so it has to count slots and
+        # exits off the same model - mixing in the skip-free ledger's open
+        # count (which ignores slots entirely) pins every book at zero free
+        # slots and silently kills the buy list.
+        "open_names": [{"book": b, "sym": s, "cost": round(h["cost"], 2)}
+                       for b in books for s, h in sorted(open_pos[b].items())],
+        "exits_today": exits_today,
         "taken": taken, "skipped": len(skipped),
         "skipped_recent": skipped[-12:],
         "by_book": {b: {"sleeve_cash": round(cash[b], 2),
