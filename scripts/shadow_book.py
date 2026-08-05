@@ -109,11 +109,46 @@ SLOTS_PRIOR = {"RSI2": 3, "MFI": 3, "GAPW_RSI2": 3, "GAPW_RSI14": 3, "ZSCORE": 3
 SIZE_DIVISOR = {"RSI2": 3, "MFI": 3, "GAPW_RSI2": 3, "GAPW_RSI14": 3, "ZSCORE": 3}
 GATE_CLOSED_TRADES = 20
 
+# --- SOLO ACCOUNTS: one $100k per book (owner decision 2026-08-04) ----------
+# Each book ALSO runs its own separate $100k, so books never compete with each
+# other for capital. The shared account above is unchanged and still the
+# program-wide gate; this is strictly additional.
+#
+# Why: the shared account was taking 16% of signals (7 of 44). MFI alone fired
+# 23 and the account took 1, because one slot in a $20k sleeve cannot hold a
+# book that signals in bursts. That is a real measurement of finite capital and
+# it is kept - but it is a terrible rate at which to accumulate per-book
+# evidence, and per-book evidence is what decides which books deserve funding.
+#
+# Mechanics here are the VALIDATED ones, not the owner's 1-slot choice: 3
+# concurrent, position = equity/3. That is the 40%-of-equity/3-concurrent rule
+# every book was tested under, so a solo account is the closest forward analogue
+# of its own backtest.
+#
+# What this does NOT do, measured before it shipped: it does not stop trades
+# being skipped. Capture goes 16% -> 43%, not 100%. With sizing held at /3,
+# three positions consume the whole $100k, so raising concurrency to 5 or 10
+# changes nothing - CAPITAL binds, not slots. Taking all 23 MFI signals would
+# need 23 concurrent at ~$4.3k, i.e. 1/23 sizing and 23-way diversification,
+# which is a different strategy from the one that was validated. The
+# take-everything measurement already exists and stays published: it is the
+# skip-free ledger.
+SOLO_CAPITAL = 100_000.0
+SOLO_SLOTS = 3
+SOLO_DIVISOR = 3
 
-def portfolio(led, books):
-    """Replay the ledger through the shared account. Pure function - it never
-    mutates `led`, so the per-trade record stays exactly as it was."""
-    sleeve0 = CAPITAL / len(books)
+
+def portfolio(led, books, capital=None, slots=None, divisor=None):
+    """Replay the ledger through one account. Pure function - it never mutates
+    `led`, so the per-trade record stays exactly as it was.
+
+    Defaults reproduce the shared program account. Pass a single book with
+    capital=SOLO_CAPITAL to get that book's solo account instead: sleeve0 is
+    capital/len(books), so one book gets the whole thing."""
+    capital = CAPITAL if capital is None else capital
+    slots = SLOTS if slots is None else slots
+    divisor = SIZE_DIVISOR if divisor is None else divisor
+    sleeve0 = capital / len(books)
     cash = {b: sleeve0 for b in books}
     open_pos = {b: {} for b in books}          # sym -> {cost, net_pending}
     skipped, taken = [], 0
@@ -163,13 +198,13 @@ def portfolio(led, books):
             continue
         if sym in open_pos[b]:
             continue
-        if len(open_pos[b]) >= SLOTS[b]:
+        if len(open_pos[b]) >= slots[b]:
             skipped.append({"date": date, "book": b, "sym": sym, "why": "no free slot"})
             continue
         equity_b = cash[b] + sum(h["cost"] for h in open_pos[b].values())
         # Size on the VALIDATED divisor, not the concurrency cap - holding fewer
         # names at once must not silently enlarge each one.
-        size = min(equity_b / SIZE_DIVISOR[b], cash[b])
+        size = min(equity_b / divisor[b], cash[b])
         if size <= 1.0:
             skipped.append({"date": date, "book": b, "sym": sym, "why": "no cash"})
             continue
@@ -182,11 +217,11 @@ def portfolio(led, books):
     gross = sum(n for n in nets if n > 0)
     loss = -sum(n for n in nets if n <= 0)
     return {
-        "capital": CAPITAL, "slots_per_book": SLOTS,
+        "capital": capital, "slots_per_book": slots,
         # Published so the page cannot re-derive size from the slot count. Those
         # are independent constants and conflating them tripled per-name risk
         # once before (forward_gate_basis.md, amendment of 2026-08-03).
-        "size_divisor": SIZE_DIVISOR,
+        "size_divisor": divisor,
         # --- the binding real-money gate (owner decision 2026-08-03) ---
         "gate_target": GATE_CLOSED_TRADES,
         "gate_closed": len(closed),
@@ -199,7 +234,7 @@ def portfolio(led, books):
         "closed_by_book": {b: sum(1 for c in closed if c["book"] == b) for b in books},
         "closed_recent": closed[-12:],
         "equity_at_cost": round(equity, 2),
-        "realized_pct": round(100.0 * (equity / CAPITAL - 1.0), 2),
+        "realized_pct": round(100.0 * (equity / capital - 1.0), 2),
         "cash": round(sum(cash.values()), 2),
         "invested_at_cost": round(sum(invested.values()), 2),
         "utilization_pct": round(100.0 * sum(invested.values()) / max(equity, 1e-9), 1),
@@ -232,6 +267,60 @@ def portfolio(led, books):
                  "2026-08-03 before any trade closed. The skip-free per-book "
                  "ledger is still published, but it counts trades this account "
                  "could not have taken, so it does not open the gate.")}
+
+
+def solo_accounts(led, books):
+    """One $100k account per book, at the validated 3-concurrent / equity-3
+    mechanics, so books never compete for capital.
+
+    Returns a compact summary per book - the full portfolio dict five times over
+    would bloat the page for no reader benefit. The gate fields are the point:
+    real money now needs BOTH the program-wide shared count AND this book's own
+    count to reach GATE_CLOSED_TRADES (owner decision 2026-08-04)."""
+    out = {}
+    for b in books:
+        p = portfolio(led, [b], capital=SOLO_CAPITAL,
+                      slots={b: SOLO_SLOTS}, divisor={b: SOLO_DIVISOR})
+        sig = p["taken"] + p["skipped"]
+        out[b] = {
+            "capital": SOLO_CAPITAL, "slots": SOLO_SLOTS, "divisor": SOLO_DIVISOR,
+            "closed": p["gate_closed"],
+            "gate_target": GATE_CLOSED_TRADES,
+            "gate_remaining": max(GATE_CLOSED_TRADES - p["gate_closed"], 0),
+            "gate_met": p["gate_closed"] >= GATE_CLOSED_TRADES,
+            "win_pct": p["closed_win_pct"], "avg_pct": p["closed_avg_pct"],
+            "pf": p["closed_pf"],
+            "open": p["open_positions"],
+            "open_names": [o["sym"] for o in p["open_names"]],
+            "taken": p["taken"], "skipped": p["skipped"],
+            "capture_pct": round(100.0 * p["taken"] / sig, 1) if sig else None,
+            "cash": p["cash"], "invested": p["invested_at_cost"],
+            "equity_at_cost": p["equity_at_cost"], "realized_pct": p["realized_pct"],
+        }
+    tot_t = sum(v["taken"] for v in out.values())
+    tot_s = sum(v["skipped"] for v in out.values())
+    return {"books": out,
+            "capital_each": SOLO_CAPITAL, "slots": SOLO_SLOTS,
+            "divisor": SOLO_DIVISOR,
+            "closed_total": sum(v["closed"] for v in out.values()),
+            "capture_pct": round(100.0 * tot_t / (tot_t + tot_s), 1)
+                           if (tot_t + tot_s) else None,
+            "note": (
+                "Each book also trades its OWN separate $100k, so no book can "
+                "crowd out another - owner decision 2026-08-04. Mechanics are "
+                "the VALIDATED ones (3 concurrent, position = equity/3), not "
+                "the shared account's 1-slot choice, which makes a solo account "
+                "the closest forward analogue of that book's own backtest. "
+                "This does NOT eliminate skipped trades and was never going to: "
+                "with sizing held at equity/3, three positions consume the whole "
+                "$100k, so CAPITAL binds rather than slots and raising "
+                "concurrency changes nothing. Taking every signal would require "
+                "~1/23 position sizing on MFI, which is a different strategy "
+                "from the validated one - the take-everything measurement is the "
+                "skip-free ledger, which stays published. REAL MONEY NEEDS BOTH: "
+                "20 closed trades in the shared program account AND 20 in that "
+                "book's own account. Strictly more conservative than the "
+                "pre-registered gate, which is unchanged.")}
 
 
 def ema(closes, n):
@@ -419,7 +508,8 @@ def main():
                         "entry_date", "entry_px", "bars_held"]} for p in led["positions"]],
               "exits_today": exits_today,
               "closed_total": len([p for p in led["closed"] if p.get("net") is not None]),
-              "portfolio": portfolio(led, books)}
+              "portfolio": portfolio(led, books),
+              "solo": solo_accounts(led, books)}
     led.setdefault("started", shadow["started"])
 
     os.makedirs(os.path.dirname(ledger_path), exist_ok=True)

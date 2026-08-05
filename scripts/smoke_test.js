@@ -53,7 +53,13 @@ const PAGE = 'file://' + path.resolve(__dirname, '..', 'index.html');
   const minVal = await page.evaluate(() => document.getElementById('s-minn').value);
   t('ZSCORE filter auto-min 0', minVal === '0');
   const zHtml = await page.evaluate(() => document.getElementById('signals-table').innerHTML);
-  t('KNX z row present with research note', zHtml.includes('KNX') && zHtml.includes('research stats'));
+  // Was pinned to KNX until it closed on 2026-08-04 and left the signal list.
+  // Assert the property, not a ticker: z rows are research records and must
+  // always say so, whichever names happen to be signalling today.
+  const zRows = await page.evaluate(() =>
+    [...document.querySelectorAll('#signals-table tr')].filter(r => /ZSCORE/.test(r.textContent)).length);
+  t('z rows present and carrying the research-stats caveat',
+    zRows === 0 || zHtml.includes('research stats'));
   const zStats = await page.evaluate(() => {
     const tr = [...document.querySelectorAll('#signals-table tr')].find(r => r.textContent.includes('KNX'));
     return tr ? tr.textContent : '';
@@ -229,7 +235,16 @@ const PAGE = 'file://' + path.resolve(__dirname, '..', 'index.html');
   // 2026-08-03: one slot per book (owner decision at zero closed trades)
   t('positions: one slot per book', /1-slot limit|slot limit inside its sleeve/.test(posHtml));
   t('positions: gate states the account basis',
-    posHtml.includes('closed ACCOUNT trades needed'));
+    posHtml.includes('closed SHARED-ACCOUNT trades needed'));
+  // 2026-08-04: real money needs BOTH legs - program-wide shared account AND
+  // the book's own $100k. Neither may quietly become sufficient alone.
+  t('positions: gate is labelled leg 1 of 2', /leg 1 of 2/i.test(posHtml));
+  t('positions: solo accounts card present', posHtml.includes('competing with nobody'));
+  t('positions: solo card states BOTH gates are required',
+    posHtml.includes('Real money needs BOTH gates'));
+  t('positions: solo card does not claim skips are eliminated',
+    posHtml.includes('NOT 100%') && !/no more skipped trades|zero skipped/i.test(posHtml));
+  t('positions: solo table has a per-book gate column', posHtml.includes('Gate 2 of 2'));
   t('positions: per-book Closed column', /<th>Closed<\/th>/.test(posHtml));
 
   t('books: discloses the same-day round-trip correction',
