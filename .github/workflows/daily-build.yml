@@ -56,7 +56,15 @@ jobs:
           log = subprocess.run(["git", "log", "--oneline", "-20"],
                                capture_output=True, text=True).stdout
           already = ("daily build %s" % today) in log
-          ok = manual or (now.weekday() < 5 and 15 <= now.hour <= 16 and not already)
+          # Hour window, and it has to absorb GitHub's drift rather than assume
+          # punctuality. Observed on this repo: the 20:30 UTC cron has NEVER
+          # fired; the 21:30 one fired at 21:50 (+20m) and 22:37 (+67m). The
+          # original 15..16 CT window would silently skip that 22:37 firing and
+          # lose the session with no error anywhere. The market closes at 15:00
+          # CT, so every bar is final from then on and any build up to the
+          # evening is equally valid - there is no reason to be narrow. Stops
+          # before 19:00 CT, where the UTC date rolls over.
+          ok = manual or (now.weekday() < 5 and 15 <= now.hour <= 18 and not already)
           print("proceed=%s" % ("true" if ok else "false"))
           # The commit message MUST be stamped with this same Chicago date, not
           # with the runner's UTC `date +%F`. They differ after 19:00 CT, so a
