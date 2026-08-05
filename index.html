@@ -1764,6 +1764,16 @@ function armStats(sym, strat){
     ["as_of","As of","l"],["earnings_soon","Earnings","l"]];
   const textCols=["state","new_today","sym","strat","exit","vehicle","trig","buy_date","as_of","earnings_soon"];
   const orderState={TAKE:0,"PASS-EARNINGS":1,WATCH:2};
+  // Newest data on the page, across BOTH pipelines - the cloud build refreshes
+  // BOOKSIG nightly while SCAN/SIGNALS come from the Mac generator, so "newest"
+  // is not simply the SIGNALS date.
+  const newestAsof=all.reduce((m,x)=>(x.as_of&&x.as_of>m)?x.as_of:m,"");
+  // Is this row one the Today card is actually recommending? Same list, not a
+  // re-derivation - see TODAY_BUYS.
+  const todayBuy=x=>{
+    const T=(typeof TODAY_BUYS!=="undefined"&&TODAY_BUYS)||null;
+    return !!(T&&(T.act||[]).some(b=>b.sym===x.sym&&b.book===x.strat));
+  };
   function render(){
     const fs=document.getElementById("s-strat").value;
     const fstate=document.getElementById("s-state").value;
@@ -1777,7 +1787,11 @@ function armStats(sym, strat){
     ranked.forEach((x,i)=>{x.rank=i+1;});
     let r=s.filter(x=>(fs==="ALL"||x.strat===fs)&&
       (fstate==="ALL"||x.state===fstate)&&
-      (x.hn??0)>=mn&&(!q||x.sym.includes(q)));
+      // Book rows are exempt: the sample floor grades ARM records, and a book
+      // row is a per-NAME research record with its own caveat in bookNote.
+      // Applying an arm floor to it is a category error, and it was hiding
+      // every one of Today's recommendations behind the default min of 30.
+      (x.bookNote?true:(x.hn??0)>=mn)&&(!q||x.sym.includes(q)));
     r.sort((a,b)=>{
       if(sk==="state")
         return (((orderState[a.state]??3)-(orderState[b.state]??3))*sd)||(b.score-a.score);
@@ -1785,6 +1799,8 @@ function armStats(sym, strat){
       if(av===bv) return (b.score??-1e9)-(a.score??-1e9);
       return (av<bv?1:-1)*sd;
     });
+    const bookShown=r.filter(x=>x.bookNote).length;
+    const todayShown=r.filter(todayBuy).length;
     let t="<tr>"+cols.map(c=>`<th class="${c[2]||""}" data-k="${c[0]}" title="${SIGHELP[c[0]]||""}">${c[1]}${sk===c[0]?(sd>0?" v":" ^"):""}</th>`).join("")+"</tr>";
     const grouped=[]; const gseen=new Map();
     for(const x of r){
@@ -1792,7 +1808,9 @@ function armStats(sym, strat){
       else { const g=[x]; gseen.set(x.sym,g); grouped.push(g); } }
     const rowHtml=(x,sub,subCount)=>`<tr${sub?` class="subrow" data-psym="${x.sym}" style="display:none"`:""}><td>${x.sym}${!sub&&subCount?` <button class="exp" data-sym="${x.sym}" title="${subCount} more strateg${subCount===1?"y":"ies"} fired on ${x.sym} - tap to expand">&#9656;${subCount}</button>`:""}</td><td>${
       sub?"&middot;":(x.rank??"-")}</td><td>${chip(x.state)}</td>
-      <td>${x.new_today?'<span class="chip info">NEW</span>':""}</td>
+      <td>${x.new_today&&x.as_of===newestAsof?'<span class="chip info">NEW</span>':
+        x.new_today?'<span class="chip gray" title="new when this row was generated on '+x.as_of+', which is not the newest data on this page">was new '+x.as_of+'</span>':""}${
+        todayBuy(x)?' <span class="chip take" title="the Today tab is recommending this one">TODAY\u0027S BUY</span>':""}</td>
       <td title="Entry: ${ENTRYBASIS[x.strat]||""}">${x.strat}${x.bookNote?'<br><span class="small">'+x.bookNote+'</span>':""}</td>
       <td class="l small" style="white-space:normal">${x.exit}</td>
       <td style="white-space:normal">${vehChip(x.sym, armStats(x.sym,x.strat))}</td>
@@ -1818,8 +1836,19 @@ function armStats(sym, strat){
       render();});
     document.getElementById("s-count").textContent=
       grouped.length+" tickers ("+r.length+" rows) | "+ranked.length+" tickers ranked at min "+mn+" trades | "+
-      "duplicates collapsed under the \u25b8 expander; set min 0 to see book-level rows";
+      "duplicates collapsed under the \u25b8 expander"+
+      // Book rows used to be hidden by the default min-30 floor, which is why
+      // none of Today's recommendations appeared here. Say where they are now.
+      (bookShown?" | "+bookShown+" book row"+(bookShown===1?"":"s")+
+        " (Gap Widen / Z-Score) always shown - the min-trades floor grades ARM"+
+        " records and does not apply to them":"")+
+      (todayShown?" | "+todayShown+" of "+((TODAY_BUYS&&TODAY_BUYS.act||[]).length)+
+        " TODAY'S BUY row"+(todayShown===1?"":"s")+" visible in this view":"");
   }
+  // The Today card computes the day's actionable buys and runs AFTER this tab
+  // renders, so expose render() and let it call back once. Without this the
+  // TODAY'S BUY markers below would never appear on first paint.
+  window.__sigRender=render;
   ["s-strat","s-state","s-minn","s-sym"].forEach(id=>{
     const el2=document.getElementById(id);
     el2.addEventListener("input",render);
@@ -2294,7 +2323,15 @@ function armStats(sym, strat){
    One screen: what to sell, what to buy, at what size, in what order type.
    Ranked by EVIDENCE, not by how loudly a signal fired. Books that failed a
    test are demoted here rather than quietly weighted the same as books that
-   passed. Nothing here places an order. */
+   passed. Nothing here places an order.
+
+   The buy list computed here is published to TODAY_BUYS so the Signals tab can
+   mark the same rows. Before that, the two tabs derived their buys separately
+   and disagreed completely: Today read BOOKSIG (08-04, Gap Widen + Z-Score)
+   while Signals showed SIGNALS (07-31, RSI2 + MFI), so not one of Today's
+   recommendations appeared among the Signals tab's "new buys". One list, two
+   renderings - they can no longer drift apart. */
+var TODAY_BUYS={asof:"",act:[],rest:[]};
 (function(){
   const esc=t=>String(t==null?"":t).replace(/&/g,"&amp;").replace(/</g,"&lt;");
   const SH=(typeof SHADOW!=="undefined"&&SHADOW)||{};
@@ -2363,6 +2400,7 @@ function armStats(sym, strat){
   /* Account-basis exits: only names this account actually bought. The ledger's
      exits_today lists every qualifying name, so it showed 13 sells against an
      account holding 4 positions - instructions for trades that were never on. */
+  TODAY_BUYS={asof:asof, act:act.slice(), rest:rest.slice()};
   const sells=(PF&&PF.exits_today)||[];
   const ledgerOnly=Math.max((SH.exits_today||[]).length-sells.length,0);
   /* Books whose signal source did not refresh this build cannot produce a buy
@@ -2449,6 +2487,8 @@ function armStats(sym, strat){
   }
   const el=document.getElementById("today-body");
   if(el)el.innerHTML=h;
+  // Repaint Signals now that TODAY_BUYS exists, so its rows can be marked.
+  if(typeof window.__sigRender==="function")window.__sigRender();
 })();
 
 </script>
