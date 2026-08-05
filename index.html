@@ -753,18 +753,27 @@ renderScan();
     ["Gap Widen RSI14",["y","y","n","p","y","y","n"]],
     ["Z-Score",["y","y","n","y","y","y","n"]],
     ["BB Rubber Band",["y","y","n","y","y","n","n"]]];
-  // Forward cells feed live from the shadow book's ACCOUNT replay. Owner
+  // Forward cells feed live from the shadow book's ACCOUNT replays. Owner
   // decision pre-registered 2026-08-03, before any trade closed: the binding
   // gate is 20 closed trades in the shared $100k account, program-wide - not
   // the skip-free per-book ledger, which counts trades the account could never
-  // have taken. The per-book cell shows that book's own account closes.
+  // have taken. Owner decision 2026-08-04 added a second, independent leg -
+  // 20 closed trades in that book's OWN $100k solo account - so the pooled
+  // count alone can no longer green a cell.
   const SHFWD={"RSI2 Live-16":"RSI2","MFI":"MFI","Gap Widen RSI2":"GAPW_RSI2",
     "Gap Widen RSI14":"GAPW_RSI14","Z-Score":"ZSCORE"};
+  // 2026-08-04: the gate gained a SECOND leg. A book is only "has it" once the
+  // shared account has cleared 20 program-wide AND that book has cleared 20 in
+  // its own $100k solo account. Strictly harder than the 08-03 registration,
+  // which is untouched - a cell can no longer go green on the pooled count.
   const _pf=(typeof SHADOW!=="undefined"&&SHADOW&&SHADOW.portfolio)||null;
+  const _solo=(typeof SHADOW!=="undefined"&&SHADOW&&SHADOW.solo&&SHADOW.solo.books)||null;
   if(_pf)for(const r of EVR){
     const k=SHFWD[r[0]]; if(!k||r[1][6]==="live")continue;
     const n=(_pf.closed_by_book||{})[k]||0;
-    if(_pf.gate_met)r[1][6]="y"; else if(n>0)r[1][6]="p";
+    const s=(_solo&&_solo[k])||null;
+    const bothMet=_pf.gate_met&&(!s||s.gate_met);
+    if(bothMet)r[1][6]="y"; else if(n>0||(s&&s.closed>0))r[1][6]="p";
   }
   const evc=v=>v==="y"?'<span class="chip take">has it</span>'
     :v==="live"?'<span class="chip take">LIVE</span>'
@@ -1920,9 +1929,9 @@ function armStats(sym, strat){
             <div class="d">$${PF.invested_at_cost.toLocaleString()} in ${PF.open_positions} positions, $${PF.cash.toLocaleString()} cash</div></div>
           <div class="tile"><div class="k">Signals taken</div><div class="v">${PF.taken} of ${PF.taken+PF.skipped}</div>
             <div class="d">${PF.skipped} skipped for want of a slot or cash - that gap IS the cost of finite capital, and the skip-free ledger never shows it</div></div>
-          <div class="tile"><div class="k">Real-money gate</div><div class="v">${PF.gate_closed??0} of ${PF.gate_target??20}</div>
-            <div class="d">${PF.gate_met?"GATE MET - the closed-trade condition is satisfied; every other gate still applies":
-              (PF.gate_remaining??20)+" more closed ACCOUNT trades needed. Pre-registered 2026-08-03, before any trade closed: the gate counts trades this account actually took, program-wide - NOT the skip-free per-book ledger, which counts trades the account could not have taken"}${
+          <div class="tile"><div class="k">Real-money gate &mdash; leg 1 of 2</div><div class="v">${PF.gate_closed??0} of ${PF.gate_target??20}</div>
+            <div class="d">${PF.gate_met?"LEG MET - the program-wide condition is satisfied; the per-book leg and every other gate still apply":
+              (PF.gate_remaining??20)+" more closed SHARED-ACCOUNT trades needed, program-wide. Pre-registered 2026-08-03, before any trade closed: it counts trades this account actually took - NOT the skip-free per-book ledger, which counts trades the account could not have taken"}${
               PF.closed_avg_pct!=null?". So far: "+PF.closed_win_pct+"% win, "+PF.closed_avg_pct+"% avg/trade, PF "+PF.closed_pf:""}</div></div>
         </div>
         <div class="tablewrap"><table style="max-width:640px">
@@ -1936,6 +1945,48 @@ function armStats(sym, strat){
         `<p class="small">${esc(PF.note||"")} Sizing and the equal-sleeve split are MODELING CHOICES, not lab-validated
         parameters - they exist so the forward record can be compared to the books' backtest CAGRs, which all assume
         slot limits this ledger otherwise ignores.</p></div>`;
+
+        /* ---- solo accounts: one $100k per book, owner decision 2026-08-04 ---- */
+        const SOLO=(SH.solo&&SH.solo.books)?SH.solo:null;
+        if(SOLO){
+          const sb=Object.entries(SOLO.books);
+          h+=`<div class="card" style="margin-top:10px"><h3>...and what each book does with its
+          OWN $${(SOLO.capital_each/1000).toFixed(0)}k, competing with nobody</h3>
+          <p class="small">The shared account above is one pot, so a book that signals in bursts
+          loses trades to books that got there first - it took only <b>${PF.taken}</b> of
+          <b>${PF.taken+PF.skipped}</b> signals. Here every book gets its own
+          $${(SOLO.capital_each/1000).toFixed(0)}k at the <b>validated</b> mechanics
+          (${SOLO.slots} concurrent, position = equity/${SOLO.divisor}), which is the closest
+          forward analogue of each book's own backtest.</p>
+          <div class="tiles">
+            <div class="tile"><div class="k">Signals captured</div>
+              <div class="v">${SOLO.capture_pct}%</div>
+              <div class="d">up from ${Math.round(100*PF.taken/Math.max(PF.taken+PF.skipped,1))}%
+              in the shared account. NOT 100%, and it never could be - see below</div></div>
+            <div class="tile"><div class="k">Closed trades</div>
+              <div class="v">${SOLO.closed_total}</div>
+              <div class="d">across the five solo accounts, vs ${PF.gate_closed} in the shared
+              one. This is the rate at which per-book evidence now accrues</div></div>
+          </div>
+          <div class="tablewrap"><table style="max-width:820px">
+            <tr><th class="l">Book</th><th>Gate 2 of 2</th><th>Win %</th><th>Avg/trade</th>
+            <th>PF</th><th>Open</th><th>Took</th><th>Skipped</th><th>Capture</th>
+            <th>Equity (cost)</th></tr>`+
+            sb.map(([b,s])=>`<tr><td class="l">${esc(b)}</td>
+              <td><b>${s.closed} of ${s.gate_target}</b></td>
+              <td>${s.win_pct??"-"}${s.win_pct!=null?"%":""}</td>
+              <td>${s.avg_pct??"-"}${s.avg_pct!=null?"%":""}</td>
+              <td>${s.pf??"-"}</td><td>${s.open}</td><td>${s.taken}</td>
+              <td>${s.skipped}</td><td>${s.capture_pct??"-"}%</td>
+              <td>$${Math.round(s.equity_at_cost).toLocaleString()}</td></tr>`).join("")+
+          `</table></div>
+          <p class="small"><b>Real money needs BOTH gates.</b> A book is eligible only when the
+          shared account has cleared ${PF.gate_target} closed trades program-wide <b>and</b> that
+          book has cleared ${PF.gate_target} in its own account. That is strictly harder than the
+          gate pre-registered on 2026-08-03, which is unchanged and still leg 1 - nothing here
+          loosens it.</p>
+          <p class="small">${esc(SOLO.note||"")}</p></div>`;
+        }
       }
     } else {
       h+=`<p class="small">Seeded - starts accumulating automatically at the next daily build.</p>`;

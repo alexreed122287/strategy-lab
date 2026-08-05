@@ -193,3 +193,94 @@ replay now counts what the account did, which is what the pre-registered rule
 always said to count. Recording the direction matters: it moved the gate
 *closer*, which is exactly the direction that warrants disclosure rather than
 silence.
+
+## Amendment — per-book solo accounts, and a SECOND gate leg (2026-08-04)
+
+Decided at **6 closed shared-account trades**, not zero. That matters and is
+recorded rather than glossed: the 08-03 basis was fixed at zero precisely so the
+denominator could not be re-chosen later. This amendment is therefore written to
+be **strictly additive** — it does not touch the pre-registered gate, and it
+cannot make real money easier to reach.
+
+### The problem it addresses
+
+The shared account was taking **7 of 44 signals — 16%**. Per book:
+
+| Book | Ledger signals | Account took | Skipped |
+|---|---|---|---|
+| MFI | 23 | 1 | 22 |
+| GAPW_RSI14 | 8 | 2 | 6 |
+| ZSCORE | 5 | 2 | 3 |
+| RSI2 | 4 | 1 | 3 |
+| GAPW_RSI2 | 4 | 1 | 3 |
+
+One slot inside a $20k sleeve cannot hold a book that signals in bursts. That is
+a true measurement of finite capital and it is kept — but it is a poor rate at
+which to accumulate **per-book** evidence, and per-book evidence is what decides
+which books deserve funding.
+
+### The change
+
+Each book now also runs its **own separate $100k**, competing with nobody, at
+the **validated** mechanics — 3 concurrent, position = equity/3 — rather than
+the shared account's 1-slot owner choice. A solo account is thus the closest
+forward analogue of that book's own backtest.
+
+Measured before shipping:
+
+| | Shared account | Solo accounts |
+|---|---|---|
+| Signal capture | 16% | **43%** |
+| Closed trades | 6 | **13** |
+
+### What it does NOT do, stated because the request was to stop skipping trades
+
+**It does not stop trades being skipped, and no capital model could.** With
+sizing held at the validated equity/3, three positions consume the entire $100k,
+so raising concurrency from 3 to 5 or 10 changes nothing — **capital binds, not
+slots.** Measured on MFI:
+
+| Slots | Divisor | Took | Skipped |
+|---|---|---|---|
+| 3 | 3 | 3 | 20 |
+| 5 | 3 | 3 | 20 |
+| 10 | 3 | 3 | 20 |
+| 23 | 23 | 23 | 0 |
+
+Taking all 23 MFI signals requires 23 concurrent positions at ~$4.3k — 1/23
+sizing and 23-way diversification. That is **a different strategy** from the one
+validated at 40%/3-concurrent, and its forward record would not be evidence for
+the book that was actually tested. The take-everything measurement already
+exists and stays published: the skip-free ledger.
+
+### The gate: now two legs, both required
+
+> Real money requires **BOTH** 20 closed trades in the shared $100k program
+> account (program-wide) **AND** 20 closed trades in that book's own $100k solo
+> account.
+
+- **Leg 1** is the 08-03 registration, verbatim and unchanged.
+- **Leg 2** is new and answers the weakness the 08-03 doc admitted in writing:
+  twenty pooled trades is about four per book, "enough to validate that the
+  system runs, not enough to validate any single book."
+
+This is strictly harder than before. No book can be funded on the pooled count
+alone, and none on its own record without the system also proving out under real
+capital constraints. A cell on the evidence-parity matrix can no longer go green
+on leg 1 by itself.
+
+### Where it shows up
+
+- `scripts/shadow_book.py` — `SOLO_CAPITAL`, `SOLO_SLOTS`, `SOLO_DIVISOR`,
+  `solo_accounts()`; `portfolio()` is now parameterised by capital/slots/divisor
+  and its defaults reproduce the shared account byte-for-byte.
+- Dashboard → Positions → "...what each book does with its OWN $100k", and the
+  gate tile relabelled **leg 1 of 2**.
+- Dashboard → Books → Evidence parity, "Forward (account)" now needs both legs.
+
+### What is still not claimed
+
+Five solo accounts assume $500k of capital that is not being deployed. They are
+a **measurement instrument for per-book edge**, not a deployment plan, and their
+aggregate return is not a portfolio return. The shared account remains the only
+model of what one real account would have done.
