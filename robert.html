@@ -95,7 +95,7 @@ code { background: var(--surface-1); border: 1px solid var(--border);
   <div class="tile"><div class="k">OOS expectancy</div><div class="v">+8.63%</div><div class="d">per trade, honest friction + event IV</div></div>
   <div class="tile"><div class="k">OOS max drawdown</div><div class="v">&minus;21.9%</div><div class="d">in-sample &minus;29.5%</div></div>
   <div class="tile"><div class="k">2022</div><div class="v">+0.9%</div><div class="d">PF 1.02 - bear year &asymp; flat, not profitable</div></div>
-  <div class="tile"><div class="k">Cadence</div><div class="v">40-70</div><div class="d">trades per year, 77-name basket</div></div>
+  <div class="tile"><div class="k">Cadence</div><div class="v">50-85</div><div class="d">trades per year, 90-name basket</div></div>
 </div>
 
 <div class="card">
@@ -113,7 +113,7 @@ code { background: var(--surface-1); border: 1px solid var(--border);
     <li><b>Contract:</b> shallowest strike with extrinsic &lt; 20% of premium (delta lands 0.78-0.80 as an outcome), first monthly 30-50 DTE, OI &ge; 250, quoted spread &le; 5% of mark (quoted overstates realistic cost 2-3x - work the mid)</li>
     <li><b>Exit:</b> sell at the close when close &gt; SMA5, or 10-bar time stop. No stop-loss - path-simulated stops collapse PF to 0.90</li>
     <li><b>Sizing:</b> 6 slots &times; 15% (5-8 slot plateau; concentrated 40/40/20 reliably worst)</li>
-    <li><b>Universe:</b> 77 names screened under pre-stated two-window bars; live chain check (OI &ge; 250, spread &le; 5%) mandatory before any name's first trade; re-screen semiannually, no re-ranking on live results</li>
+    <li><b>Universe:</b> 90 names screened under pre-stated two-window bars (13 full-market adds 08/07/2026 - SPOT, XPO, RRX, MKSI, BURL, SNX, MOD, EVR, PAAS, SGI, AMKR, ATI, FORM - live chain checks pending); live chain check (OI &ge; 250, spread &le; 5%) mandatory before any name's first trade; re-screen semiannually, no re-ranking on live results</li>
   </ul>
 </div>
 
