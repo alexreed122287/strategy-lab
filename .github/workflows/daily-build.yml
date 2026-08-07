@@ -49,13 +49,27 @@ jobs:
         id: guard
         run: |
           python3 - <<'PY' >> "$GITHUB_OUTPUT"
-          import datetime, os, subprocess, zoneinfo
+          import datetime, json, os, re, subprocess, zoneinfo
           now = datetime.datetime.now(zoneinfo.ZoneInfo("America/Chicago"))
           manual = os.environ.get("GITHUB_EVENT_NAME") == "workflow_dispatch"
           today = now.date().isoformat()
           log = subprocess.run(["git", "log", "--oneline", "-20"],
                                capture_output=True, text=True).stdout
-          already = ("daily build %s" % today) in log
+          # "Already built" cannot be judged from the commit NAME alone. On
+          # 2026-08-07 a manual dispatch at 07:03 CT - before the market opened -
+          # published a commit called "daily build 2026-08-07" carrying 08-06
+          # bars. That name then blocked the real post-close build: the 16:12 CT
+          # scheduled firing hit this check and skipped, and the day's data was
+          # lost until a human noticed. A build only counts if the page actually
+          # holds today's session, so read the date it captured.
+          named = ("daily build %s" % today) in log
+          try:
+              page = open("index.html").read()
+              captured = json.loads(re.search(r"const BOOKSIG = (.*?);\n",
+                                              page, re.S).group(1)).get("as_of")
+          except Exception:
+              captured = None
+          already = named and captured == today
           # Hour window, and it has to absorb GitHub's drift rather than assume
           # punctuality. Observed on this repo: the 20:30 UTC cron has NEVER
           # fired; the 21:30 one fired at 21:50 (+20m) and 22:37 (+67m). The
