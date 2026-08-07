@@ -98,6 +98,37 @@ code { background: var(--surface-1); border: 1px solid var(--border);
   <div class="tile"><div class="k">Cadence</div><div class="v">50-85</div><div class="d">trades per year, 90-name basket</div></div>
 </div>
 
+<div class="card" id="robsig">
+  <h3>Tonight's scan - signals for the next open</h3>
+<!-- ROBSIG:START -->
+<p class="small">Scan as of the 2026-08-06 bar - 2 raw signal(s), 0 pass all gates. Entry is the NEXT open, ~09:45 ET limit at mid; skip if the open is already above the prior SMA5.</p><div class="tablewrap"><table>
+<tr><th>Ticker</th><th>RSI(2)</th><th>RS252 vs SPY</th><th>IV proxy</th><th>Earnings</th><th>Verdict</th></tr>
+<tr><td><b>TTWO</b></td><td>5.55</td><td>-21%</td><td>30%</td><td>2026-08-07</td><td><span style="font-size:11px;padding:2px 8px;border-radius:10px;border:1px solid #8d8c85;color:#8d8c85;white-space:nowrap">signal, gated out: RS gate, earnings 2026-08-07</span></td></tr>
+<tr><td><b>WDC</b></td><td>8.91</td><td>+473%</td><td>108%</td><td>clear</td><td><span style="font-size:11px;padding:2px 8px;border-radius:10px;border:1px solid #8d8c85;color:#8d8c85;white-space:nowrap">signal, gated out: IV proxy &gt; 60%</span></td></tr>
+</table></div>
+<!-- ROBSIG:END -->
+</div>
+
+<h3 style="font-size:14px;margin:16px 0 6px">Backtest results - locked production spec (all layers: RS gate + event IV + filters + honest friction)</h3>
+<div class="tablewrap">
+<table>
+  <tr><th>Window</th><th>Trades</th><th>Win rate</th><th>Avg/trade</th><th>PF</th><th>CAGR</th><th>Max DD</th><th>Sharpe</th></tr>
+  <tr><td>In-sample 08/2023-08/2026</td><td>167</td><td>68.3%</td><td>+9.97%</td><td>4.140</td><td>108%</td><td>&minus;29.5%</td><td>1.71</td></tr>
+  <tr><td>Out-of-sample 08/2020-08/2023</td><td>120</td><td>70.8%</td><td>+8.63%</td><td>2.396</td><td>59%</td><td>&minus;21.9%</td><td>1.33</td></tr>
+</table>
+</div>
+<h3 style="font-size:14px;margin:16px 0 6px">Universe expansion check - 77 vs 90 names, paired runs both windows</h3>
+<div class="tablewrap">
+<table>
+  <tr><th>Run</th><th>Trades</th><th>Win rate</th><th>Avg/trade</th><th>PF</th><th>CAGR</th><th>Max DD</th><th>Sharpe</th><th>2022 P&amp;L</th></tr>
+  <tr><td>IS - 77 names</td><td>193</td><td>69.9%</td><td>+10.74%</td><td>4.127</td><td>149%</td><td>&minus;36.7%</td><td>1.91</td><td>-</td></tr>
+  <tr><td>IS - 90 names</td><td>227</td><td>70%</td><td>+10.57%</td><td>3.794</td><td>183%</td><td>&minus;38.4%</td><td>1.91</td><td>-</td></tr>
+  <tr><td>OOS - 77 names</td><td>145</td><td>68.3%</td><td>+9.39%</td><td>2.806</td><td>84.7%</td><td>&minus;22%</td><td>1.39</td><td>+$28.3k</td></tr>
+  <tr><td>OOS - 90 names</td><td>176</td><td>67.6%</td><td>+8.49%</td><td>2.423</td><td>93%</td><td>&minus;32.9%</td><td>1.42</td><td>+$37.3k</td></tr>
+</table>
+</div>
+<p class="small">The paired expansion runs use identical wiring on both sides but mark exits slightly richer than the locked-spec prints above - read the 77&rarr;90 deltas, not the absolute levels. Verdict: +18-21% trades, CAGR up both windows, Sharpe flat, 2022 improved; cost = OOS max DD deepens &minus;22% &rarr; &minus;33%. Plan-around: PF 2.0-2.4, +7-9% per trade, DD &minus;25 to &minus;35%, 50-85 trades/yr, bear years &asymp; flat. The 13 adds ran +11.19%/trade IS (43 trades) and +7.02% OOS (38 trades).</p>
+
 <div class="card">
   <h3>What the name means</h3>
   <p><b>Relentless Outperformers</b> - the gate: RS252 &gt; +40% vs SPY at the signal. Only names that beat the market for the past year qualify; the ungated version is nearly a coin flip through the cycle (OOS PF 1.157). <b>Briefly Embarrassed</b> - the trigger: RSI(2) &lt; 10 above the 200-day SMA. A two-day oversold print in a leader is a lapse of dignity, not a breakdown. <b>Rapidly Traded</b> - in at the next open, out at the close over the SMA5; median hold 2.6 bars.</p>
@@ -135,14 +166,6 @@ code { background: var(--surface-1); border: 1px solid var(--border);
   <p class="small">Index ETFs cannot be +40% vs SPY by definition; the seven dashed stocks have never produced a gated signal in either window. Full list: <a href="robert_universe.txt" style="color:#56B4E9">robert_universe.txt</a></p>
 </div>
 
-<h3 style="font-size:14px;margin:16px 0 6px">Backtest, all layers at once (gate + event IV + filters + honest friction)</h3>
-<div class="tablewrap">
-<table>
-  <tr><th>Window</th><th>Trades</th><th>Win rate</th><th>Avg/trade</th><th>PF</th><th>CAGR</th><th>Max DD</th><th>Sharpe</th></tr>
-  <tr><td>In-sample 08/2023-08/2026</td><td>167</td><td>68.3%</td><td>+9.97%</td><td>4.140</td><td>108%</td><td>&minus;29.5%</td><td>1.71</td></tr>
-  <tr><td>Out-of-sample 08/2020-08/2023</td><td>120</td><td>70.8%</td><td>+8.63%</td><td>2.396</td><td>59%</td><td>&minus;21.9%</td><td>1.33</td></tr>
-</table>
-</div>
 <p class="small" style="margin:0 0 14px">Plan-around line: PF 2.0-2.4, +7-9% per trade, drawdowns &minus;22 to &minus;30%, bear years roughly flat. In-sample is regime-flattered; the OOS row is the number that earns trust.</p>
 
 <h3 style="font-size:14px;margin:16px 0 6px">Options vs shares - ROBERT vs the live Agentic leveraged-ETF config, each as-specced</h3>
