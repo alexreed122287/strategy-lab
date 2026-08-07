@@ -113,7 +113,7 @@ code { background: var(--surface-1); border: 1px solid var(--border);
     <li><b>Contract:</b> shallowest strike with extrinsic &lt; 20% of premium (delta lands 0.78-0.80 as an outcome), first monthly 30-50 DTE, OI &ge; 250, quoted spread &le; 5% of mark (quoted overstates realistic cost 2-3x - work the mid)</li>
     <li><b>Exit:</b> sell at the close when close &gt; SMA5, or 10-bar time stop. No stop-loss - path-simulated stops collapse PF to 0.90</li>
     <li><b>Sizing:</b> 6 slots &times; 15% (5-8 slot plateau; concentrated 40/40/20 reliably worst)</li>
-    <li><b>Universe:</b> 90 names screened under pre-stated two-window bars (13 full-market adds 08/07/2026 - SPOT, XPO, RRX, MKSI, BURL, SNX, MOD, EVR, PAAS, SGI, AMKR, ATI, FORM - live chain checks pending); live chain check (OI &ge; 250, spread &le; 5%) mandatory before any name's first trade; re-screen semiannually, no re-ranking on live results</li>
+    <li><b>Universe:</b> 90 names screened under pre-stated two-window bars (13 full-market adds 08/07/2026 - SPOT, XPO, RRX, MKSI, BURL, SNX, MOD, EVR, PAAS, SGI, AMKR, ATI, FORM - live chain checks pending; <a href="robert_universe.txt" style="color:#56B4E9">full 90-ticker list</a>); live chain check (OI &ge; 250, spread &le; 5%) mandatory before any name's first trade; re-screen semiannually, no re-ranking on live results</li>
   </ul>
 </div>
 
