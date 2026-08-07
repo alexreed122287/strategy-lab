@@ -91,6 +91,11 @@ python3 "$REPO/scripts/shadow_book.py" --bars "$TMP/bars.json" \
 python3 "$REPO/scripts/robert_scan.py" --bars "$TMP/bars.json" \
   --earnings "$TMP/earnings.json" --page "$REPO/robert.html" \
   --universe "$REPO/robert_universe.txt" --splice
+# 4c3) ROBERT shadow forward book - automatic stock-leg paper ledger.
+python3 "$REPO/scripts/robert_shadow.py" --bars "$TMP/bars.json" \
+  --earnings "$TMP/earnings.json" --page "$REPO/robert.html" \
+  --universe "$REPO/robert_universe.txt" \
+  --ledger "$REPO/data/robert_shadow.json" --splice
 
 # 4d) Pipeline health stamp shown in the page header.
 python3 - "$REPO/index.html" "$TMP/bars.json" "$TMP/earnings.json" <<'PYEOF'
@@ -133,12 +138,13 @@ python3 - "$REPO/robert.html" <<'PYCHK'
 import sys
 h = open(sys.argv[1]).read()
 assert "ROBSIG:START" in h and "ROBSIG:END" in h, "robert.html ROBSIG markers missing"
+assert "ROBSHADOW:START" in h and "ROBSHADOW:END" in h, "robert.html ROBSHADOW markers missing"
 PYCHK
 
 # 6) Publish (GitHub Pages serves main, so push = deploy). The shadow ledger
 #    is committed too - the forward record must survive machines.
 cd "$REPO"
-git add index.html data/shadow_book.json robert.html
+git add index.html data/shadow_book.json robert.html data/robert_shadow.json
 if git diff --cached --quiet; then
   echo "no changes to publish"
 else
