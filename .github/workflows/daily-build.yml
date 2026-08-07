@@ -113,6 +113,9 @@ jobs:
           python3 scripts/shadow_book.py --bars /tmp/bars.json \
             --page index.html --earnings /tmp/earnings.json \
             --ledger data/shadow_book.json --splice
+          python3 scripts/robert_scan.py --bars /tmp/bars.json \
+            --page robert.html --earnings /tmp/earnings.json \
+            --universe robert_universe.txt --splice
 
       # ---- step 4d: health stamp, marked so its origin is visible on the page
       - name: Health stamp
@@ -155,6 +158,8 @@ jobs:
           assert "robert.html" in html and "paper-log.html" in html, \
               "nav links to ROBERT / Paper-Fill Log missing - interface regressed"
           print("validation OK:", len(track["tickers"]), "tickers as of", track["as_of"])
+          h2 = open("robert.html").read()
+          assert "ROBSIG:START" in h2 and "ROBSIG:END" in h2, "robert.html ROBSIG markers missing"
           PY
 
       # ---- step 6: publish
@@ -164,7 +169,7 @@ jobs:
         run: |
           git config user.name "strategy-lab-bot"
           git config user.email "actions@github.com"
-          git add index.html data/shadow_book.json
+          git add index.html data/shadow_book.json robert.html
           if git diff --cached --quiet; then
             echo "no changes to publish"
             echo "published=false" >> "$GITHUB_OUTPUT"
