@@ -87,6 +87,15 @@ def main():
                 earn[k] = [str(x)[:10] for x in (v if isinstance(v, list) else [v])]
         except Exception:
             earn = {}
+    if not earn:
+        seedp = os.path.join(os.path.dirname(os.path.abspath(page_p)), "data", "robert_earnings.json")
+        if os.path.exists(seedp):
+            try:
+                for k, v in json.load(open(seedp)).items():
+                    earn[k] = [str(x)[:10] for x in (v if isinstance(v, list) else [v])]
+                print("earnings: repo seed fallback (" + str(len(earn)) + " names)", file=sys.stderr)
+            except Exception:
+                pass
     need = [s for s in uni + ["SPY"] if s not in bars]
     tok = token()
     if need and tok:
