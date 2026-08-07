@@ -1,0 +1,378 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Paper-Fill Log - Strategy Lab</title>
+<style>
+/* Design tokens lifted from the Strategy Lab dashboard (Okabe-Ito, dark base)
+   so this page renders as a native part of the site. */
+:root {
+  color-scheme: dark;
+  --surface-1: #000000; --surface-2: #121212; --border: #333330;
+  --text-primary: #f6f6f4; --text-secondary: #c0bfb9; --text-muted: #8d8c85;
+  --series-1: #56B4E9; --good: #009E73; --warning: #F0E442;
+  --serious: #E69F00; --critical: #D55E00;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--surface-1); color: var(--text-primary);
+  font: 14px/1.45 -apple-system, "Segoe UI", Roboto, sans-serif; }
+header { padding: 14px 20px 0; }
+h1 { font-size: 18px; margin: 0 0 2px; }
+.sub { color: var(--text-secondary); font-size: 12px; margin-bottom: 10px; }
+nav { display: flex; gap: 2px; border-bottom: 1px solid var(--border);
+  padding: 0 20px; position: sticky; top: 0; z-index: 30; background: var(--surface-1); }
+nav a, nav span { border-bottom: 2px solid transparent; color: var(--text-secondary);
+  padding: 8px 14px; font-size: 13px; text-decoration: none; white-space: nowrap;
+  border-radius: 8px 8px 0 0; }
+nav span.on { color: var(--text-primary); border-bottom-color: var(--series-1);
+  background: var(--surface-2); font-weight: 600; }
+nav a:hover { color: var(--text-primary); }
+main { padding: 16px 20px 60px; max-width: 1100px; }
+.tiles { display: flex; gap: 12px; flex-wrap: wrap; margin: 10px 0 18px; }
+.tile { background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 12px 16px; min-width: 170px; }
+.tile .k { font-size: 11px; color: var(--text-secondary); text-transform: uppercase;
+  letter-spacing: .04em; }
+.tile .v { font-size: 24px; font-weight: 700; margin-top: 2px; }
+.tile .d { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.meter { background: var(--surface-1); border: 1px solid var(--border);
+  border-radius: 4px; height: 10px; overflow: hidden; margin-top: 6px; max-width: 200px; }
+.meter div { background: var(--series-1); height: 100%; border-radius: 4px; }
+.card { background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 14px 16px; margin-bottom: 12px; }
+.card h3 { margin: 0 0 6px; font-size: 14px; }
+.card p, .card li { color: var(--text-secondary); font-size: 13px; }
+.okbox { border-left: 4px solid var(--good); }
+.warnbox { border-left: 4px solid var(--warning); }
+.killbox { border-left: 4px solid var(--critical); }
+.chip { display: inline-block; border-radius: 10px; padding: 1px 8px; font-size: 11px;
+  font-weight: 600; color: #fff; }
+.chip.take { background: var(--good); }
+.chip.watch { background: var(--warning); color: #1a1a19; }
+.chip.pass { background: var(--serious); }
+.chip.dead { background: var(--critical); }
+.chip.info { background: var(--series-1); }
+.chip.gray { background: var(--text-muted); }
+.controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; margin-bottom: 12px; }
+.controls label { color: var(--text-secondary); font-size: 12px; display: block; margin-bottom: 2px; }
+select, input { background: var(--surface-2); color: var(--text-primary);
+  border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px; font-size: 13px; }
+input.num { width: 84px; } input.sm { width: 64px; }
+button { background: var(--surface-2); color: var(--text-primary);
+  border: 1px solid var(--border); border-radius: 6px; padding: 5px 10px;
+  font-size: 13px; cursor: pointer; }
+button.primary { border-color: var(--series-1); color: var(--series-1); font-weight: 600; }
+button.exp { background: none; border: 1px solid var(--border); border-radius: 4px;
+  color: var(--text-secondary); font-size: 11px; padding: 0 5px; }
+.tablewrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: right; padding: 5px 8px; border-bottom: 1px solid var(--border);
+  white-space: nowrap; }
+th { color: var(--text-secondary); font-weight: 600; position: sticky; top: 0;
+  background: var(--surface-2); user-select: none; }
+th:first-child, td:first-child, th.l, td.l { text-align: left; }
+.tablewrap th:first-child, .tablewrap td:first-child { position: sticky; left: 0;
+  z-index: 2; background: var(--surface-1); }
+.tablewrap th:first-child { z-index: 3; background: var(--surface-2); }
+tr:hover td { background: var(--surface-2); }
+.tablewrap table tr:last-child td { border-bottom: none; }
+details.gloss { background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 9px 12px; margin: 10px 0; }
+details.gloss summary { cursor: pointer; font-size: 12px; font-weight: 600;
+  color: var(--text-secondary); }
+details.gloss[open] summary { margin-bottom: 8px; }
+code { background: var(--surface-1); border: 1px solid var(--border);
+  border-radius: 4px; padding: 1px 6px; font-size: 12px; }
+.small { font-size: 11px; color: var(--text-muted); }
+.footer { color: var(--text-muted); font-size: 11px; margin-top: 30px;
+  border-top: 1px solid var(--border); padding-top: 10px; }
+@media (max-width: 700px) {
+  header { padding: 10px 12px 0; } h1 { font-size: 16px; }
+  nav { padding: 0 8px; overflow-x: auto; scrollbar-width: none; }
+  main { padding: 12px 10px 80px; }
+  th, td { padding: 6px 6px; font-size: 12px; }
+  .controls { gap: 8px; }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>Paper-Fill Log</h1>
+  <div class="sub">Options friction measurement - the go-live gate for the RSI(2) DITM calls line (extends the x28-x37 options research; assign an x-number when armed). Locked spec 08/06/2026.</div>
+</header>
+<nav>
+  <a href="./">&larr; Dashboard</a>
+  <span class="on">Paper-Fill Log</span>
+</nav>
+<main>
+
+<div class="tiles" id="tiles"></div>
+
+<div class="card" id="verdictCard">
+  <h3 id="verdictHead">Verdict - no fills yet</h3>
+  <p id="verdictBody">Log option fills below. The backtest models entry friction at 1.25% of premium and exit friction at 2.5%; the strategy's edge breaks even near <b>4x</b> those numbers. Twenty fills answer whether real execution sits inside that envelope.</p>
+</div>
+
+<div class="card">
+  <h3>Log a fill</h3>
+  <div class="controls">
+    <div><label>Date</label><input type="date" id="fDate"></div>
+    <div><label>Ticker</label><input type="text" id="fTicker" class="sm" placeholder="DVN" style="text-transform:uppercase"></div>
+    <div><label>Side</label><select id="fSide"><option value="E">Entry (buy)</option><option value="X">Exit (sell)</option></select></div>
+    <div><label>Contract</label><input type="text" id="fContract" placeholder="09/18/2026 $37.50C" style="width:150px"></div>
+    <div><label>Bid</label><input type="number" step="0.01" id="fBid" class="num"></div>
+    <div><label>Ask</label><input type="number" step="0.01" id="fAsk" class="num"></div>
+    <div><label>Fill</label><input type="number" step="0.01" id="fFill" class="num"></div>
+    <div><label>Qty</label><input type="number" step="1" id="fQty" class="sm" value="1"></div>
+    <div><label>RS&gt;40 gated</label><select id="fGated"><option value="Y">Yes</option><option value="N">No</option></select></div>
+    <div><label>Notes</label><input type="text" id="fNotes" style="width:160px" placeholder="worked mid 40s"></div>
+    <div><button class="primary" onclick="addFill()">Add fill</button></div>
+  </div>
+  <div class="small">Capture bid/ask at the moment you place the order, not after. Log fills on <b>all</b> RSI(2) signals - gated and ungated - so the sample reaches 20 in weeks, not months. Trade real size only on gated ones.</div>
+  <div class="small" id="storeNote" style="margin-top:4px"></div>
+</div>
+
+<div class="tablewrap">
+<table id="logTable">
+  <thead><tr>
+    <th class="l">Date</th><th class="l">Ticker</th><th class="l">Side</th>
+    <th class="l">Contract</th><th>Bid</th><th>Ask</th><th>Mid</th><th>Fill</th>
+    <th>Spread %</th><th>Slip vs mid</th><th>Model</th><th>Multiple</th>
+    <th class="l">Gated</th><th class="l">Notes</th><th></th>
+  </tr></thead>
+  <tbody id="logBody"></tbody>
+</table>
+</div>
+
+<div class="controls" style="margin-top:12px">
+  <button onclick="exportCSV()">Export CSV</button>
+  <button onclick="copyCSV()">Copy CSV for analysis</button>
+  <label style="align-self:center">Import: <input type="file" id="importFile" accept=".csv" onchange="importCSV(event)" style="border:none;padding:0"></label>
+  <button onclick="clearAll()" style="color:var(--critical)">Clear all</button>
+</div>
+
+<details class="gloss">
+  <summary>Method - what this page measures and why mid is the reference</summary>
+  <p><b>Slip vs mid</b> is the realized cost of one side: for a buy, (fill &minus; mid) / mid; for a sell, (mid &minus; fill) / mid. Positive = you paid; negative = you filled inside the mid. The mid is the reference because the quoted spread overstates realistic cost 2-3x on DITM calls (measured on real closing NBBO, 08/06/2026) - judging fills by the screen width would fail names that execute fine.</p>
+  <p><b>Model</b> is what the locked backtest assumed: 1.25% of premium on entries (09:45 limit at mid), 2.5% on exits (close, limit worked from mid). <b>Multiple</b> = your realized slip &divide; the modeled number for that side, floored at 0 when you beat the mid.</p>
+  <p><b>The gate:</b> the production edge (+7-9% per trade through the cycle) breaks even when friction reaches roughly <b>4x</b> modeled. Blended multiple &le;1.5x means the backtest numbers are conservative; 1.5-2.5x means live results will run below backtest but positive; above 3.5x, do not go live. Twenty fills (both sides represented) is the sample floor - the same n-discipline as x38.</p>
+  <p><b>Entry discipline while logging:</b> limit at mid or better, ~09:45 ET; skip anything that will not fill inside the spread. A missed trade costs nothing; a bad fill is the one variable this page exists to measure honestly - do not chase to complete the log.</p>
+</details>
+
+<div class="footer">
+  Research and education only. Not financial advice. Fills are stored in this browser's localStorage under <code>sl_paper_fills_v1</code> - export regularly; clearing site data deletes the log.
+</div>
+
+</main>
+<script>
+"use strict";
+const KEY = "sl_paper_fills_v1";
+const MODEL = { E: 0.0125, X: 0.025 };
+let mem = [];               // in-memory fallback
+let persistent = true;
+
+function load() {
+  try { const raw = localStorage.getItem(KEY); return raw ? JSON.parse(raw) : []; }
+  catch (e) { persistent = false; return mem; }
+}
+function save(rows) {
+  try { localStorage.setItem(KEY, JSON.stringify(rows)); }
+  catch (e) { persistent = false; mem = rows; }
+}
+function fmt(n, dp) {                       // trim trailing zeros: 2.00 -> 2
+  if (n === null || n === undefined || isNaN(n)) return "-";
+  let s = Number(n).toFixed(dp);
+  if (s.indexOf(".") >= 0) s = s.replace(/0+$/, "").replace(/\.$/, "");
+  return s;
+}
+function mdY(iso) {                          // 2026-08-07 -> 08/07/2026
+  const p = (iso || "").split("-");
+  return p.length === 3 ? p[1] + "/" + p[2] + "/" + p[0] : iso;
+}
+function derive(r) {
+  const mid = (r.b + r.a) / 2;
+  const spread = mid > 0 ? (r.a - r.b) / mid : 0;
+  const slip = mid > 0 ? (r.s === "E" ? (r.f - mid) / mid : (mid - r.f) / mid) : 0;
+  const model = MODEL[r.s];
+  const mult = Math.max(slip, 0) / model;
+  return { mid, spread, slip, model, mult };
+}
+function chipFor(mult) {
+  if (mult <= 1.5) return '<span class="chip take">' + fmt(mult, 1) + 'x</span>';
+  if (mult <= 2.5) return '<span class="chip watch">' + fmt(mult, 1) + 'x</span>';
+  if (mult <= 3.5) return '<span class="chip pass">' + fmt(mult, 1) + 'x</span>';
+  return '<span class="chip dead">' + fmt(mult, 1) + 'x</span>';
+}
+function median(a) {
+  if (!a.length) return NaN;
+  const s = a.slice().sort((x, y) => x - y), m = Math.floor(s.length / 2);
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+}
+function esc(x) {
+  return String(x == null ? "" : x).replace(/[&<>"]/g,
+    c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+}
+function render() {
+  const rows = load();
+  const body = document.getElementById("logBody");
+  body.innerHTML = rows.map((r, i) => {
+    const d = derive(r);
+    const warn = (r.f < Math.min(r.b, r.a) || r.f > Math.max(r.b, r.a))
+      ? ' <span class="chip gray" title="fill outside quoted market - quote stale or typo?">?</span>' : "";
+    return "<tr>" +
+      '<td class="l">' + mdY(r.d) + "</td>" +
+      '<td class="l">' + esc(r.t) + "</td>" +
+      '<td class="l">' + (r.s === "E" ? "Entry" : "Exit") + "</td>" +
+      '<td class="l">' + esc(r.c) + "</td>" +
+      "<td>" + fmt(r.b, 2) + "</td><td>" + fmt(r.a, 2) + "</td>" +
+      "<td>" + fmt(d.mid, 2) + "</td><td>" + fmt(r.f, 2) + warn + "</td>" +
+      "<td>" + fmt(d.spread * 100, 2) + "%</td>" +
+      "<td>" + fmt(d.slip * 100, 2) + "%</td>" +
+      "<td>" + fmt(d.model * 100, 2) + "%</td>" +
+      "<td>" + chipFor(d.mult) + "</td>" +
+      '<td class="l">' + (r.g === "Y" ? "Y" : "N") + "</td>" +
+      '<td class="l">' + esc(r.n) + "</td>" +
+      '<td><button class="exp" onclick="delFill(' + i + ')" title="delete">&times;</button></td>' +
+      "</tr>";
+  }).join("");
+  renderSummary(rows);
+  document.getElementById("storeNote").textContent = persistent ? "" :
+    "Storage unavailable in this preview - fills will not persist here. They persist on the live site.";
+}
+function renderSummary(rows) {
+  const E = rows.filter(r => r.s === "E").map(r => derive(r).slip);
+  const X = rows.filter(r => r.s === "X").map(r => derive(r).slip);
+  const mE = median(E), mX = median(X);
+  const multE = isNaN(mE) ? NaN : Math.max(mE, 0) / MODEL.E;
+  const multX = isNaN(mX) ? NaN : Math.max(mX, 0) / MODEL.X;
+  let blended = NaN;
+  if (!isNaN(mE) && !isNaN(mX)) blended = (Math.max(mE, 0) + Math.max(mX, 0)) / (MODEL.E + MODEL.X);
+  else if (!isNaN(mE)) blended = multE; else if (!isNaN(mX)) blended = multX;
+  const n = rows.length, pct = Math.min(100, n / 20 * 100);
+  document.getElementById("tiles").innerHTML =
+    tile("Fills logged", String(n), n + " of 20 gate &middot; " + E.length + " entry / " + X.length + " exit",
+      '<div class="meter"><div style="width:' + pct + '%"></div></div>') +
+    tile("Entry friction (median)", isNaN(mE) ? "-" : fmt(mE * 100, 2) + "%",
+      "model 1.25% &middot; " + (isNaN(multE) ? "-" : fmt(multE, 1) + "x model")) +
+    tile("Exit friction (median)", isNaN(mX) ? "-" : fmt(mX * 100, 2) + "%",
+      "model 2.5% &middot; " + (isNaN(multX) ? "-" : fmt(multX, 1) + "x model")) +
+    tile("Blended multiple", isNaN(blended) ? "-" : fmt(blended, 1) + "x",
+      "breakeven near 4x modeled");
+  const card = document.getElementById("verdictCard");
+  const head = document.getElementById("verdictHead");
+  const bodyEl = document.getElementById("verdictBody");
+  card.className = "card";
+  if (isNaN(blended)) {
+    head.textContent = "Verdict - no fills yet";
+    return;
+  }
+  if (n < 20) {
+    head.innerHTML = "Verdict - collecting (" + n + " of 20)";
+    bodyEl.innerHTML = "Blended friction so far runs <b>" + fmt(blended, 1) +
+      "x</b> modeled. No conclusions before the 20-fill floor - the same n-discipline the vetted bar uses.";
+    card.className = "card";
+    return;
+  }
+  if (blended <= 1.5) {
+    card.className = "card okbox";
+    head.textContent = "Verdict - friction at or below plan";
+    bodyEl.innerHTML = "Blended <b>" + fmt(blended, 1) + "x</b> modeled. The backtest's cost assumptions hold or are conservative. The go-live friction gate passes; remaining risk is edge, not execution.";
+  } else if (blended <= 2.5) {
+    card.className = "card warnbox";
+    head.textContent = "Verdict - live will run below backtest, still positive";
+    bodyEl.innerHTML = "Blended <b>" + fmt(blended, 1) + "x</b> modeled. Expect roughly a 1-2 point PF haircut vs the locked numbers. Tighten execution (limit at mid, walk in cents, skip wide books) before sizing up.";
+  } else if (blended <= 3.5) {
+    card.className = "card warnbox";
+    head.textContent = "Verdict - friction is eating most of the edge";
+    bodyEl.innerHTML = "Blended <b>" + fmt(blended, 1) + "x</b> modeled against a ~4x breakeven. Do not go live at size. Diagnose: which names and which side drive it? Cut the wide-book names before cutting the strategy.";
+  } else {
+    card.className = "card killbox";
+    head.textContent = "Verdict - at or past breakeven, do not arm";
+    bodyEl.innerHTML = "Blended <b>" + fmt(blended, 1) + "x</b> modeled meets the ~4x breakeven. As measured, execution consumes the edge. This is the kill answer the log exists to find cheaply.";
+  }
+}
+function tile(k, v, d, extra) {
+  return '<div class="tile"><div class="k">' + k + '</div><div class="v">' + v +
+    '</div><div class="d">' + d + "</div>" + (extra || "") + "</div>";
+}
+function addFill() {
+  const g = id => document.getElementById(id);
+  const r = { d: g("fDate").value, t: g("fTicker").value.toUpperCase().trim(),
+    s: g("fSide").value, c: g("fContract").value.trim(),
+    b: parseFloat(g("fBid").value), a: parseFloat(g("fAsk").value),
+    f: parseFloat(g("fFill").value), q: parseInt(g("fQty").value || "1", 10),
+    g: g("fGated").value, n: g("fNotes").value.trim() };
+  if (!r.d || !r.t || isNaN(r.b) || isNaN(r.a) || isNaN(r.f)) {
+    alert("Date, ticker, bid, ask, and fill are required."); return;
+  }
+  const rows = load(); rows.unshift(r); save(rows);
+  ["fTicker", "fContract", "fBid", "fAsk", "fFill", "fNotes"].forEach(x => g(x).value = "");
+  render();
+}
+function delFill(i) {
+  const rows = load(); rows.splice(i, 1); save(rows); render();
+}
+function clearAll() {
+  if (confirm("Delete all logged fills? Export first if you want to keep them.")) {
+    save([]); render();
+  }
+}
+function toCSV(rows) {
+  const head = "date,ticker,side,contract,bid,ask,fill,qty,gated,notes,mid,spread_pct,slip_pct,model_pct,multiple";
+  const q = s => '"' + String(s == null ? "" : s).replace(/"/g, '""') + '"';
+  return [head].concat(rows.map(r => {
+    const d = derive(r);
+    return [mdY(r.d), r.t, r.s === "E" ? "entry" : "exit", q(r.c), r.b, r.a, r.f, r.q,
+      r.g, q(r.n), fmt(d.mid, 4), fmt(d.spread * 100, 3), fmt(d.slip * 100, 3),
+      fmt(d.model * 100, 3), fmt(d.mult, 2)].join(",");
+  })).join("\n");
+}
+function exportCSV() {
+  const blob = new Blob([toCSV(load())], { type: "text/csv" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "paper_fills.csv"; a.click(); URL.revokeObjectURL(a.href);
+}
+function copyCSV() {
+  navigator.clipboard.writeText(toCSV(load())).then(
+    () => alert("CSV copied - paste it into the chat for analysis."),
+    () => alert("Copy failed - use Export CSV instead."));
+}
+function importCSV(ev) {
+  const file = ev.target.files[0]; if (!file) return;
+  const rd = new FileReader();
+  rd.onload = () => {
+    const lines = String(rd.result).split(/\r?\n/).filter(x => x.trim());
+    const out = [];
+    for (let i = 1; i < lines.length; i++) {
+      const c = splitCSV(lines[i]); if (c.length < 9) continue;
+      const dp = c[0].split("/");           // MM/DD/YYYY -> ISO
+      const iso = dp.length === 3 ? dp[2] + "-" + dp[0] + "-" + dp[1] : c[0];
+      out.push({ d: iso, t: c[1], s: c[2].toLowerCase().startsWith("e") ? "E" : "X",
+        c: c[3], b: parseFloat(c[4]), a: parseFloat(c[5]), f: parseFloat(c[6]),
+        q: parseInt(c[7] || "1", 10), g: c[8] === "Y" ? "Y" : "N", n: c[9] || "" });
+    }
+    if (out.length) { save(out.concat(load())); render(); }
+    ev.target.value = "";
+  };
+  rd.readAsText(file);
+}
+function splitCSV(line) {
+  const out = []; let cur = "", inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQ) {
+      if (ch === '"' && line[i + 1] === '"') { cur += '"'; i++; }
+      else if (ch === '"') inQ = false; else cur += ch;
+    } else if (ch === '"') inQ = true;
+    else if (ch === ",") { out.push(cur); cur = ""; }
+    else cur += ch;
+  }
+  out.push(cur); return out;
+}
+document.getElementById("fDate").value = new Date().toISOString().slice(0, 10);
+render();
+</script>
+</body>
+</html>
