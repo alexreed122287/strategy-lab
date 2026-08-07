@@ -86,6 +86,11 @@ python3 "$REPO/scripts/scan_book_signals.py" --bars "$TMP/bars.json" \
 python3 "$REPO/scripts/shadow_book.py" --bars "$TMP/bars.json" \
   --page "$REPO/index.html" --earnings "$TMP/earnings.json" \
   --ledger "$REPO/data/shadow_book.json" --splice
+# 4c2) ROBERT nightly scan -> static signals section spliced into robert.html
+#      between the ROBSIG markers (fail-closed; universe = robert_universe.txt).
+python3 "$REPO/scripts/robert_scan.py" --bars "$TMP/bars.json" \
+  --earnings "$TMP/earnings.json" --page "$REPO/robert.html" \
+  --universe "$REPO/robert_universe.txt" --splice
 
 # 4d) Pipeline health stamp shown in the page header.
 python3 - "$REPO/index.html" "$TMP/bars.json" "$TMP/earnings.json" <<'PYEOF'
@@ -124,11 +129,16 @@ assert "robert.html" in html and "paper-log.html" in html, \
     "nav links to ROBERT / Paper-Fill Log missing - interface regressed, refusing to publish"
 print("validation OK:", len(track["tickers"]), "tickers as of", track["as_of"])
 PYEOF
+python3 - "$REPO/robert.html" <<'PYCHK'
+import sys
+h = open(sys.argv[1]).read()
+assert "ROBSIG:START" in h and "ROBSIG:END" in h, "robert.html ROBSIG markers missing"
+PYCHK
 
 # 6) Publish (GitHub Pages serves main, so push = deploy). The shadow ledger
 #    is committed too - the forward record must survive machines.
 cd "$REPO"
-git add index.html data/shadow_book.json
+git add index.html data/shadow_book.json robert.html
 if git diff --cached --quiet; then
   echo "no changes to publish"
 else
