@@ -1,1 +1,8 @@
-{"open": [], "queued": [], "closed": [], "skipped": [], "closed_total": 0}
+{
+ "open": [],
+ "queued": [],
+ "closed": [],
+ "skipped": [],
+ "closed_total": 0,
+ "last_as_of": "2026-08-06"
+}
