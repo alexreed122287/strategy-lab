@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ROBERT - Strategy Lab</title>
+<style>
+/* Design tokens lifted from the Strategy Lab dashboard (Okabe-Ito, dark base). */
+:root {
+  color-scheme: dark;
+  --surface-1: #000000; --surface-2: #121212; --border: #333330;
+  --text-primary: #f6f6f4; --text-secondary: #c0bfb9; --text-muted: #8d8c85;
+  --series-1: #56B4E9; --good: #009E73; --warning: #F0E442;
+  --serious: #E69F00; --critical: #D55E00;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--surface-1); color: var(--text-primary);
+  font: 14px/1.45 -apple-system, "Segoe UI", Roboto, sans-serif; }
+header { padding: 14px 20px 0; }
+h1 { font-size: 18px; margin: 0 0 2px; }
+h1 b { color: var(--series-1); }
+.sub { color: var(--text-secondary); font-size: 12px; margin-bottom: 10px; }
+nav { display: flex; gap: 2px; border-bottom: 1px solid var(--border);
+  padding: 0 20px; position: sticky; top: 0; z-index: 30; background: var(--surface-1); }
+nav a, nav span { border-bottom: 2px solid transparent; color: var(--text-secondary);
+  padding: 8px 14px; font-size: 13px; text-decoration: none; white-space: nowrap;
+  border-radius: 8px 8px 0 0; }
+nav span.on { color: var(--text-primary); border-bottom-color: var(--series-1);
+  background: var(--surface-2); font-weight: 600; }
+nav a:hover { color: var(--text-primary); }
+main { padding: 16px 20px 60px; max-width: 1100px; }
+.tiles { display: flex; gap: 12px; flex-wrap: wrap; margin: 10px 0 18px; }
+.tile { background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 12px 16px; min-width: 160px; }
+.tile .k { font-size: 11px; color: var(--text-secondary); text-transform: uppercase;
+  letter-spacing: .04em; }
+.tile .v { font-size: 24px; font-weight: 700; margin-top: 2px; }
+.tile .d { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.card { background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 14px 16px; margin-bottom: 12px; }
+.card h3 { margin: 0 0 6px; font-size: 14px; }
+.card p, .card li { color: var(--text-secondary); font-size: 13px; }
+.card ul { margin: 6px 0 2px 18px; padding: 0; }
+.okbox { border-left: 4px solid var(--good); }
+.warnbox { border-left: 4px solid var(--warning); }
+.chip { display: inline-block; border-radius: 10px; padding: 1px 8px; font-size: 11px;
+  font-weight: 600; color: #fff; }
+.chip.info { background: var(--series-1); }
+.chip.watch { background: var(--warning); color: #1a1a19; }
+.tablewrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 10px;
+  margin-bottom: 12px; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: right; padding: 5px 8px; border-bottom: 1px solid var(--border);
+  white-space: nowrap; }
+th { color: var(--text-secondary); font-weight: 600; position: sticky; top: 0;
+  background: var(--surface-2); }
+th:first-child, td:first-child { text-align: left; }
+.tablewrap th:first-child, .tablewrap td:first-child { position: sticky; left: 0;
+  z-index: 2; background: var(--surface-1); }
+.tablewrap th:first-child { z-index: 3; background: var(--surface-2); }
+tr:hover td { background: var(--surface-2); }
+.tablewrap table tr:last-child td { border-bottom: none; }
+details.gloss { background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 9px 12px; margin: 10px 0; }
+details.gloss summary { cursor: pointer; font-size: 12px; font-weight: 600;
+  color: var(--text-secondary); }
+details.gloss[open] summary { margin-bottom: 8px; }
+code { background: var(--surface-1); border: 1px solid var(--border);
+  border-radius: 4px; padding: 1px 6px; font-size: 12px; }
+.small { font-size: 11px; color: var(--text-muted); }
+.footer { color: var(--text-muted); font-size: 11px; margin-top: 30px;
+  border-top: 1px solid var(--border); padding-top: 10px; }
+@media (max-width: 700px) {
+  header { padding: 10px 12px 0; } h1 { font-size: 16px; }
+  nav { padding: 0 8px; overflow-x: auto; scrollbar-width: none; }
+  main { padding: 12px 10px 80px; }
+  th, td { padding: 6px 6px; font-size: 12px; }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>ROBERT - <b>R</b>elentless <b>O</b>utperformers, <b>B</b>riefly <b>E</b>mbarrassed; <b>R</b>apidly <b>T</b>raded</h1>
+  <div class="sub">RSI(2) DITM long-call line. Production spec locked 08/06/2026; validated in-sample 2023-2026 and out-of-sample 2020-2023 including the 2022 bear. <span class="chip watch">RESEARCH - paper-log gate open, nothing armed</span></div>
+</header>
+<nav>
+  <a href="./">&larr; Dashboard</a>
+  <span class="on">ROBERT</span>
+  <a href="paper-log.html">Paper-Fill Log</a>
+</nav>
+<main>
+
+<div class="tiles">
+  <div class="tile"><div class="k">OOS profit factor</div><div class="v">2.396</div><div class="d">2020-2023, includes 2022 bear</div></div>
+  <div class="tile"><div class="k">OOS expectancy</div><div class="v">+8.63%</div><div class="d">per trade, honest friction + event IV</div></div>
+  <div class="tile"><div class="k">OOS max drawdown</div><div class="v">&minus;21.9%</div><div class="d">in-sample &minus;29.5%</div></div>
+  <div class="tile"><div class="k">2022</div><div class="v">+0.9%</div><div class="d">PF 1.02 - bear year &asymp; flat, not profitable</div></div>
+  <div class="tile"><div class="k">Cadence</div><div class="v">40-70</div><div class="d">trades per year, 77-name basket</div></div>
+</div>
+
+<div class="card">
+  <h3>What the name means</h3>
+  <p><b>Relentless Outperformers</b> - the gate: RS252 &gt; +40% vs SPY at the signal. Only names that beat the market for the past year qualify; the ungated version is nearly a coin flip through the cycle (OOS PF 1.157). <b>Briefly Embarrassed</b> - the trigger: RSI(2) &lt; 10 above the 200-day SMA. A two-day oversold print in a leader is a lapse of dignity, not a breakdown. <b>Rapidly Traded</b> - in at the next open, out at the close over the SMA5; median hold 2.6 bars.</p>
+  <p class="small">On the fills, call him Bob - all he does is bounce.</p>
+</div>
+
+<div class="card">
+  <h3>Locked spec</h3>
+  <ul>
+    <li><b>Signal:</b> RSI(2) &lt; 10 AND close &gt; SMA200 on the completed daily bar</li>
+    <li><b>Gates:</b> RS252 vs SPY &gt; +40% at signal (40-60 band acceptable, never higher) &middot; no earnings within 7 days &middot; ATM IV &le; 60%</li>
+    <li><b>Entry:</b> next open, ~09:45 ET limit at mid; skip if the open is already above the prior SMA5</li>
+    <li><b>Contract:</b> shallowest strike with extrinsic &lt; 20% of premium (delta lands 0.78-0.80 as an outcome), first monthly 30-50 DTE, OI &ge; 250, quoted spread &le; 5% of mark (quoted overstates realistic cost 2-3x - work the mid)</li>
+    <li><b>Exit:</b> sell at the close when close &gt; SMA5, or 10-bar time stop. No stop-loss - path-simulated stops collapse PF to 0.90</li>
+    <li><b>Sizing:</b> 6 slots &times; 15% (5-8 slot plateau; concentrated 40/40/20 reliably worst)</li>
+    <li><b>Universe:</b> 77 names screened under pre-stated two-window bars; live chain check (OI &ge; 250, spread &le; 5%) mandatory before any name's first trade; re-screen semiannually, no re-ranking on live results</li>
+  </ul>
+</div>
+
+<h3 style="font-size:14px;margin:16px 0 6px">Backtest, all layers at once (gate + event IV + filters + honest friction)</h3>
+<div class="tablewrap">
+<table>
+  <tr><th>Window</th><th>Trades</th><th>Win rate</th><th>Avg/trade</th><th>PF</th><th>CAGR</th><th>Max DD</th><th>Sharpe</th></tr>
+  <tr><td>In-sample 08/2023-08/2026</td><td>167</td><td>68.3%</td><td>+9.97%</td><td>4.140</td><td>108%</td><td>&minus;29.5%</td><td>1.71</td></tr>
+  <tr><td>Out-of-sample 08/2020-08/2023</td><td>120</td><td>70.8%</td><td>+8.63%</td><td>2.396</td><td>59%</td><td>&minus;21.9%</td><td>1.33</td></tr>
+</table>
+</div>
+<p class="small" style="margin:0 0 14px">Plan-around line: PF 2.0-2.4, +7-9% per trade, drawdowns &minus;22 to &minus;30%, bear years roughly flat. In-sample is regime-flattered; the OOS row is the number that earns trust.</p>
+
+<h3 style="font-size:14px;margin:16px 0 6px">Options vs shares - ROBERT vs the live Agentic leveraged-ETF config, each as-specced</h3>
+<div class="tablewrap">
+<table>
+  <tr><th>Metric</th><th>Shares (live) IS</th><th>ROBERT IS</th><th>Shares (live) OOS</th><th>ROBERT OOS</th></tr>
+  <tr><td>Trades</td><td>54</td><td>167</td><td>44</td><td>120</td></tr>
+  <tr><td>Win rate</td><td>68.5%</td><td>68.3%</td><td>72.7%</td><td>70.8%</td></tr>
+  <tr><td>Avg/trade</td><td>+1.36%</td><td>+9.97%</td><td>+1.87%</td><td>+8.63%</td></tr>
+  <tr><td>Profit factor</td><td>2.034</td><td>4.140</td><td>2.563</td><td>2.396</td></tr>
+  <tr><td>CAGR</td><td>6.8%</td><td>108%</td><td>7.6%</td><td>59%</td></tr>
+  <tr><td>Max drawdown</td><td>&minus;6%</td><td>&minus;29.5%</td><td>&minus;10.2%</td><td>&minus;21.9%</td></tr>
+  <tr><td>Sharpe</td><td>0.73</td><td>1.71</td><td>0.77</td><td>1.33</td></tr>
+  <tr><td>Avg capital deployed</td><td>4.5%</td><td>~25-30%</td><td>4.2%</td><td>~25-30%</td></tr>
+</table>
+</div>
+
+<details class="gloss">
+  <summary>Reading the comparison - same signal, different vehicle, different throughput</summary>
+  <p>Win rates are nearly identical in both vehicles (68-73%) - the vehicle doesn't change whether trades win. The calls pay 5-7x per trade (single names move more than indexes on a bounce, and DITM calls carry more effective leverage than a 3x fund) and fire 2.5-3x as often (77 gated names vs four correlated index sources whose signals mostly overlap and collapse to one position). The live shares config keeps ~95% of capital in cash with &minus;6 to &minus;10% drawdowns and zero execution uncertainty; ROBERT compounds 59-108% at &minus;22 to &minus;30% drawdowns with option friction still to be proven live. Shares config sim: SMH&rarr;SOXL, SPY&rarr;UPRO, QQQ&rarr;TQQQ, XLK&rarr;TECL; 2 slots &times; 27.5%; one index ETF at a time; SOXL never alongside TQQQ/TECL.</p>
+</details>
+
+<div class="card warnbox">
+  <h3>The go-live gate</h3>
+  <p>The one unmeasured variable is realized option friction. The backtest models 1.25% of premium on entries and 2.5% on exits; the edge breaks even near 4x those numbers. Twenty logged fills decide it - <a href="paper-log.html" style="color:var(--series-1)">the Paper-Fill Log</a> is the instrument. Until that gate passes, ROBERT stays research: no allocation, no x-number.</p>
+</div>
+
+<div class="footer">
+  Research and education only. Not financial advice. Spec locked 08/06/2026; options-vs-shares comparison run 08/07/2026. This page is hand-maintained alongside the pipeline-emitted dashboard.
+</div>
+
+</main>
+</body>
+</html>
