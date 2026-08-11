@@ -1504,6 +1504,26 @@ function armStats(sym, strat){
   // Optimal backtest validated end-to-end. Only VETTED arms qualify.
   // Which single-stock indicator fires each book's entry - shown in the Trigger column
   const TRIGL={RSI2:"RSI2",RSI2_LEV:"RSI2",MFI:"MFI",GAPW_RSI2:"RSI2",GAPW_RSI14:"RSI14",ZSCORE:"RSI3"};
+  /* FRESHNESS GATE (08/10/2026) - SIGNALS comes from the Mac-only generator;
+     the cloud build refreshes TRACK/BOOKSIG and leaves SIGNALS at its last
+     publish. Ranking a stale signal set paints expired triggers as buys: on
+     08/10 the page showed TROW RSI2 8.19 TAKE / NEW TODAY at rank 2 while the
+     live bar had RSI2 33.27. A row not stamped with the current TRACK bar is
+     not a buy today, so it does not rank and does not render. */
+  const LIVEBAR=(typeof TRACK!=="undefined"&&TRACK&&TRACK.as_of)||
+    (typeof BOOKSIG!=="undefined"&&BOOKSIG&&BOOKSIG.as_of)||"";
+  const SIGBAR=(SIGNALS.signals||[]).reduce((m,x)=>(x.as_of||"")>m?(x.as_of||""):m,"");
+  const SIGDROP=LIVEBAR?(SIGNALS.signals||[]).filter(
+    x=>x.state!=="WATCH"&&x.as_of!==LIVEBAR).length:0;
+  const staleCard=SIGDROP?`<div class="card killbox"><h3>Signal feed is stale -
+    ranked buys suppressed</h3><p>The generator's per-arm feed (RSI2 / MFI) last
+    produced signals on the <b>${SIGBAR}</b> bar; the live indicator snapshot is
+    <b>${LIVEBAR}</b>. ${SIGDROP} signal row${SIGDROP===1?"":"s"} from the older
+    bar ${SIGDROP===1?"was":"were"} dropped from the ranking rather than shown as
+    today's buys - an entry rule that was true on ${SIGBAR} is not an entry today
+    (verified case: TROW RSI2 was 8.19 on 07/31 and 33.27 on 08/10). Book rows
+    from the daily build (Gap Widen, Z-Score) are current and still rank below.
+    Run the Mac generator to restore RSI2 / MFI coverage.</p></div>`:"";
   const all=SIGNALS.signals.map(x=>{
     const st=armStats(x.sym, x.strat);
     return Object.assign({}, x, {
@@ -1516,7 +1536,8 @@ function armStats(sym, strat){
       pf1922: st&&st.era_1922?st.era_1922.pf:null,
       pf2326: st&&st.era_2326?st.era_2326.pf:null,
       score: st&&st.vetted?+(st.avg_pct*(st.n/(st.n+10))).toFixed(3):null});
-  }).filter(x=>x.state!=="WATCH"); // WATCH = not a buy -> not shown (user rule)
+  }).filter(x=>x.state!=="WATCH")   // WATCH = not a buy -> not shown (user rule)
+    .filter(x=>!LIVEBAR||x.as_of===LIVEBAR); // and neither is a stale bar
   if(typeof BOOKSIG!=="undefined"&&BOOKSIG&&BOOKSIG.rows)for(const r of BOOKSIG.rows){
     if(r.strat==="BB")continue; // KILLED 2026-08-01 (x41 fill-mode gate) - scanner off
     let n=r.n??null, win=r.win??null, avg=r.avg??null, pf=r.pf??null, note="";
@@ -1716,6 +1737,7 @@ function armStats(sym, strat){
       :`<p class="small"><b>Daily email:</b> self-service signup is not switched on yet${NT.owner_contact?` - email <a href="mailto:${escA(NT.owner_contact)}">${escA(NT.owner_contact)}</a> to be added`:""}.</p>`}
   </div>`;
   h+=top4Card+strongestCard+qualifiesCard+dailyFlowCard+alertsCard;
+  if(staleCard)h=staleCard+h;
   el.innerHTML=h;
   (function(){
     const subBtn=document.getElementById("al-sub"), inp=document.getElementById("al-addr"),

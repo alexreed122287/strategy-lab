@@ -47,24 +47,47 @@ const PAGE = 'file://' + path.resolve(__dirname, '..', 'index.html');
   t('signals dropdown has GAPW again (reinstated x52)',
     stratOpts.includes('GAPW_RSI2') || stratOpts.includes('GAPW_RSI14'));
 
-  // ZSCORE filter -> min auto-drops to 12, KNX row shows research stats
+  // ZSCORE filter -> min auto-drops to 0, book z rows show their research stats
   await page.selectOption('#s-strat', 'ZSCORE');
   await page.waitForTimeout(300);
   const minVal = await page.evaluate(() => document.getElementById('s-minn').value);
   t('ZSCORE filter auto-min 0', minVal === '0');
-  const zHtml = await page.evaluate(() => document.getElementById('signals-table').innerHTML);
-  // Was pinned to KNX until it closed on 2026-08-04 and left the signal list.
-  // Assert the property, not a ticker: z rows are research records and must
-  // always say so, whichever names happen to be signalling today.
-  const zRows = await page.evaluate(() =>
-    [...document.querySelectorAll('#signals-table tr')].filter(r => /ZSCORE/.test(r.textContent)).length);
-  t('z rows present and carrying the research-stats caveat',
-    zRows === 0 || zHtml.includes('research stats'));
-  const zStats = await page.evaluate(() => {
-    const tr = [...document.querySelectorAll('#signals-table tr')].find(r => r.textContent.includes('KNX'));
-    return tr ? tr.textContent : '';
+  /* This was 'KNX z row present with research note' from 08-04 to 08-10. KNX was
+     that day's #1 BOOKSIG z row (book #1 by rsi3, as_of 08-03) - not a generator
+     row, so freshness has nothing to do with it. The z book re-ranks by rsi3 on
+     every daily build, so the ticker simply rotated out (08-07: KMI/WDC/TRP;
+     08-10: WPC/TRP/BRX/WSC) and the check went red on data movement, not on a
+     regression - it pinned a rotating value instead of the behavior it was for.
+     It was weak in a second way: the two substrings were tested independently
+     against the whole table, so the note could have come from a different row
+     than the ticker and the check would still have been green.
+     Re-pinned to the behavior, per row, symbol-agnostic: the ZSCORE view renders
+     book rows, and each one's note matches whether the audited z book (ZBOOK,
+     BOOKS.zscore_000 per_name) actually covers that symbol - covered names show
+     the research stats and the executable-estimate factor, uncovered names say
+     they have no per-name record. Same rule as the gate count below: assert the
+     shape, not today's tickers. */
+  const zRows = await page.evaluate(() => {
+    const f = (typeof ZFACTOR !== 'undefined') ? ZFACTOR : null;
+    // No <thead> on this table - the header is a plain <tr> of <th>, so select
+    // on the presence of a data cell rather than on tbody.
+    return [...document.querySelectorAll('#signals-table tr')].filter(r => r.querySelector('td')).map(r => {
+      const txt = r.textContent.replace(/\s+/g, ' ').trim();
+      const sym = r.querySelector('td').textContent.trim();
+      return { sym, txt,
+               inBook: typeof ZBOOK !== 'undefined' && ZBOOK.has(sym),
+               stats: txt.includes('research stats'),
+               noRec: txt.includes('no per-name record'),
+               factor: txt.includes('exec est x' + f) };
+    });
   });
-  console.log('  KNX row text sample:', zStats.replace(/\s+/g, ' ').slice(0, 220));
+  t('ZSCORE view renders book z rows', zRows.length > 0);
+  t('every z row states its research-record status',
+    zRows.length > 0 && zRows.every(r => r.stats !== r.noRec));
+  t('z rows the audited book covers carry research stats + exec estimate',
+    zRows.length > 0 && zRows.every(r => r.inBook ? (r.stats && r.factor) : r.noRec));
+  console.log('  z rows:', zRows.map(r => r.sym).join(', ') || 'none');
+  console.log('  z row text sample:', (zRows[0] ? zRows[0].txt : '').slice(0, 220));
 
   // --- Today <-> Signals correspondence -------------------------------------
   // The two tabs derived their buy lists separately and disagreed completely:
