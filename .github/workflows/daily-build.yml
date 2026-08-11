@@ -49,15 +49,43 @@ jobs:
         id: guard
         run: |
           python3 - <<'PY' >> "$GITHUB_OUTPUT"
-          import datetime, os, subprocess, zoneinfo
+          import datetime, json, os, re, subprocess, zoneinfo
           now = datetime.datetime.now(zoneinfo.ZoneInfo("America/Chicago"))
           manual = os.environ.get("GITHUB_EVENT_NAME") == "workflow_dispatch"
           today = now.date().isoformat()
           log = subprocess.run(["git", "log", "--oneline", "-20"],
                                capture_output=True, text=True).stdout
-          already = ("daily build %s" % today) in log
-          ok = manual or (now.weekday() < 5 and 15 <= now.hour <= 16 and not already)
+          # "Already built" cannot be judged from the commit NAME alone. On
+          # 2026-08-07 a manual dispatch at 07:03 CT - before the market opened -
+          # published a commit called "daily build 2026-08-07" carrying 08-06
+          # bars. That name then blocked the real post-close build: the 16:12 CT
+          # scheduled firing hit this check and skipped, and the day's data was
+          # lost until a human noticed. A build only counts if the page actually
+          # holds today's session, so read the date it captured.
+          named = ("daily build %s" % today) in log
+          try:
+              page = open("index.html").read()
+              captured = json.loads(re.search(r"const BOOKSIG = (.*?);\n",
+                                              page, re.S).group(1)).get("as_of")
+          except Exception:
+              captured = None
+          already = named and captured == today
+          # Hour window, and it has to absorb GitHub's drift rather than assume
+          # punctuality. Observed on this repo: the 20:30 UTC cron has NEVER
+          # fired; the 21:30 one fired at 21:50 (+20m) and 22:37 (+67m). The
+          # original 15..16 CT window would silently skip that 22:37 firing and
+          # lose the session with no error anywhere. The market closes at 15:00
+          # CT, so every bar is final from then on and any build up to the
+          # evening is equally valid - there is no reason to be narrow. Stops
+          # before 19:00 CT, where the UTC date rolls over.
+          ok = manual or (now.weekday() < 5 and 15 <= now.hour <= 18 and not already)
           print("proceed=%s" % ("true" if ok else "false"))
+          # The commit message MUST be stamped with this same Chicago date, not
+          # with the runner's UTC `date +%F`. They differ after 19:00 CT, so a
+          # late or manual evening run stamped TOMORROW's date and then
+          # suppressed tomorrow's real build via the already-built check - the
+          # dashboard simply stops updating and nothing errors. Export it.
+          print("today=%s" % today)
           print("why=%s CT, manual=%s, already_built=%s" % (
               now.strftime("%Y-%m-%d %H:%M"), manual, already))
           PY
@@ -94,12 +122,37 @@ jobs:
             --out /tmp/bars.json --days 400 --ohlcv
           python3 -c "import json;b=json.load(open('/tmp/bars.json'));print('bars for',len(b),'symbols')"
 
-      - name: Earnings (fail-quiet - no local brain cache here)
+      # There is no market-data-brain here, so this used to emit earnings:0 -
+      # which is not cosmetic: Z-Score's exit rule has a pre-earnings condition,
+      # so the cloud was running that book with the rule INERT while the Mac ran
+      # it armed. Same book, two behaviours. The repo-committed seed closes that.
+      # Still fail-quiet: a missing or expired seed means no entry for a symbol
+      # and its flags stay off, never a wrong date.
+      - name: Earnings (repo seed - no local brain cache here)
         if: steps.guard.outputs.proceed == 'true'
         run: |
           mkdir -p /tmp/earn_empty
-          python3 scripts/next_earnings.py --dir /tmp/earn_empty --out /tmp/earnings.json \
+          python3 scripts/next_earnings.py --dir /tmp/earn_empty \
+            --seed-file data/earnings_seed.json --out /tmp/earnings.json \
             || echo '{}' > /tmp/earnings.json
+          # A seed that quietly runs out puts us back where we started, so say so.
+          python3 - <<'PY'
+          import datetime, json, zoneinfo
+          try:
+              s = json.load(open("data/earnings_seed.json"))
+          except Exception:
+              print("::warning::no earnings seed - Z-Score pre-earnings rule is inert")
+              raise SystemExit
+          today = datetime.datetime.now(zoneinfo.ZoneInfo("America/Chicago")).date().isoformat()
+          exp = s.get("_expires") or ""
+          n = len(json.load(open("/tmp/earnings.json")))
+          if exp and today > exp:
+              print(f"::warning::earnings seed expired {exp} (today {today}) - "
+                    f"only {n} symbols still have a future date. Refresh "
+                    f"data/earnings_seed.json or wire a live fetch.")
+          else:
+              print(f"earnings: {n} symbols, seed good through {exp}")
+          PY
 
       # ---- steps 4, 4b, 4c: the splices
       - name: Splice TRACK / BOOKSIG / shadow book
@@ -190,9 +243,12 @@ jobs:
             echo "no changes to publish"
             echo "published=false" >> "$GITHUB_OUTPUT"
           else
-            git commit -m "daily build $(date +%F)"
-            git pull --rebase --autostash origin main
-            git push origin HEAD:main
+            # Chicago date from the guard, NOT `date +%F` (UTC) - see the guard.
+            git commit -m "daily build ${{ steps.guard.outputs.today }}"
+            # Push back to the ref this ran from. Hardcoding main meant a manual
+            # dispatch from a branch would shove that whole branch onto main.
+            git pull --rebase --autostash origin "$GITHUB_REF_NAME"
+            git push origin "HEAD:$GITHUB_REF_NAME"
             echo "published=true" >> "$GITHUB_OUTPUT"
           fi
 

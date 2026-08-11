@@ -89,6 +89,54 @@ const PAGE = 'file://' + path.resolve(__dirname, '..', 'index.html');
   console.log('  z rows:', zRows.map(r => r.sym).join(', ') || 'none');
   console.log('  z row text sample:', (zRows[0] ? zRows[0].txt : '').slice(0, 220));
 
+  // --- Today <-> Signals correspondence -------------------------------------
+  // The two tabs derived their buy lists separately and disagreed completely:
+  // Today read BOOKSIG (Gap Widen + Z-Score, refreshed nightly in the cloud)
+  // while Signals showed SIGNALS (RSI2 + MFI, from the Mac generator), and the
+  // default "min 30 trades" floor deleted every book row on top of that. The
+  // owner saw zero overlap between "today's top three" and the Signals tab.
+  // Earlier tests left the strategy filter on ZSCORE; these assertions are
+  // about the DEFAULT view the owner actually lands on, so reset first.
+  await page.selectOption('#s-strat', 'ALL');
+  await page.evaluate(() => { document.getElementById('s-minn').value = '30'; });
+  await page.evaluate(() => document.getElementById('s-apply').click());
+  await page.waitForTimeout(300);
+  const corr = await page.evaluate(() => {
+    const act = (typeof TODAY_BUYS !== 'undefined' && TODAY_BUYS.act) || [];
+    const html = document.getElementById('signals-table').innerHTML;
+    const marked = [...document.querySelectorAll('#signals-table tr')]
+      .filter(tr => /TODAY(&#039;|')S BUY/.test(tr.innerHTML)).length;
+    return { n: act.length, marked,
+      allPresent: act.every(b => html.includes(b.sym)) };
+  });
+  t('today: buy list is published for the Signals tab to read', corr.n >= 0);
+  t('signals: every Today buy is present in the default view', corr.allPresent);
+  t('signals: every Today buy is marked TODAY\'S BUY', corr.marked === corr.n);
+  const cnt = await page.evaluate(() => document.getElementById('s-count').innerText);
+  t('signals: count line reports the Today overlap',
+    corr.n === 0 || /TODAY'S BUY row/.test(cnt));
+  t('signals: book rows are exempt from the min-trades floor',
+    /book rows? \(Gap Widen \/ Z-Score\) always shown/.test(cnt));
+  // A row from a pipeline that did not refresh must not still claim to be NEW.
+  const staleNew = await page.evaluate(() => {
+    // Resolve the column by header, not by a hardcoded index - the row shape
+    // has changed before and a silently-wrong index makes this assert nothing.
+    const hdr = [...document.querySelectorAll('#signals-table th')]
+      .map(h => h.getAttribute('data-k'));
+    const iAsof = hdr.indexOf('as_of'), iNew = hdr.indexOf('new_today');
+    if (iAsof < 0 || iNew < 0) return -1;
+    const rows = [...document.querySelectorAll('#signals-table tr')].slice(1);
+    const newest = rows.map(r => (r.querySelectorAll('td')[iAsof] || {}).innerText || '')
+      .reduce((m, d) => d > m ? d : m, '');
+    return rows.filter(r => {
+      const asof = (r.querySelectorAll('td')[iAsof] || {}).innerText || '';
+      const cell = (r.querySelectorAll('td')[iNew] || {}).innerHTML || '';
+      return asof && asof < newest && /chip info">NEW</.test(cell);
+    }).length;
+  });
+  t('signals: stale rows do not wear a NEW chip', staleNew === 0);
+  t('signals: the stale-NEW check resolved its columns', staleNew >= 0);
+
   // --- Scan tab ---
   await page.evaluate(() => { document.querySelector('[data-tab="scan"]').click(); });
   await page.waitForTimeout(300);
@@ -258,7 +306,16 @@ const PAGE = 'file://' + path.resolve(__dirname, '..', 'index.html');
   // 2026-08-03: one slot per book (owner decision at zero closed trades)
   t('positions: one slot per book', /1-slot limit|slot limit inside its sleeve/.test(posHtml));
   t('positions: gate states the account basis',
-    posHtml.includes('closed ACCOUNT trades needed'));
+    posHtml.includes('closed SHARED-ACCOUNT trades needed'));
+  // 2026-08-04: real money needs BOTH legs - program-wide shared account AND
+  // the book's own $100k. Neither may quietly become sufficient alone.
+  t('positions: gate is labelled leg 1 of 2', /leg 1 of 2/i.test(posHtml));
+  t('positions: solo accounts card present', posHtml.includes('competing with nobody'));
+  t('positions: solo card states BOTH gates are required',
+    posHtml.includes('Real money needs BOTH gates'));
+  t('positions: solo card does not claim skips are eliminated',
+    posHtml.includes('NOT 100%') && !/no more skipped trades|zero skipped/i.test(posHtml));
+  t('positions: solo table has a per-book gate column', posHtml.includes('Gate 2 of 2'));
   t('positions: per-book Closed column', /<th>Closed<\/th>/.test(posHtml));
 
   t('books: discloses the same-day round-trip correction',
