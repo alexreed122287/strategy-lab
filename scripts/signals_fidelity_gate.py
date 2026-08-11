@@ -26,6 +26,34 @@ neither can be derived from the dashboard alone:
   1. the live scan UNIVERSE rule (which names each arm scans)
   2. the exact entry THRESHOLDS per arm (MFI in particular)
 Once those are recorded here, re-run this gate. Exact match -> wire it in.
+
+EVIDENCE AS OF 2026-08-11 - the claim above that neither fact "can be derived
+from the dashboard alone" turned out to be wrong once a second generator day
+published (07-31 and 08-10, 390 SIGNALS rows on main). Derived and verified:
+
+  * SIGNALS.depth IS the raw indicator value at trigger. Proof: the DD/MFI
+    miss this gate measured at mfi3=15.96 appears in the published 07-31 blob
+    as depth=15.96, exactly.
+  * MFI THRESHOLD IS 20 (fact 2, MFI): highest MFI TAKE depth on record is
+    19.84, lowest MFI WATCH is 20.18. RSI2 confirmed at 10 (9.88 vs 10.16).
+    WATCH is an approach band, not a trigger state (age always 0, never a
+    buy_date, never new_today): RSI2 watch band 10-15, MFI 20-30.
+  * UNIVERSE (fact 1, partially): all 225 distinct signal names across both
+    days are inside TRACK's 966 and 84 of them are NOT in SCAN's 445 - the
+    live universe is a subset of the tracker list, not any SCAN-derived set.
+  * The close>SMA200 gate is CONFIRMED live: on the 08-10 bar all 20 fresh
+    RSI2 fires sat above their (split-adjusted, dividend-unadjusted) SMA200,
+    and 44 of 66 TRACK names under RSI2 10 that did NOT fire sat at/below it,
+    including five utilities (LNT CNP DTE AEP ED) that provably ARE in the
+    universe (they fired on 07-31).
+  * What remains of fact 1: 14 names failed to fire while robustly under
+    RSI2 7 and clearly above SMA200 - they are simply not in the Mac's list:
+      AAL ULCC ALK JBLU (airlines), BNL NTST XHR DRH KRG (small REITs),
+      SCI OUT MQ GTX UNFI.
+    Ask the Mac for the generator's ticker list and diff it against TRACK -
+    that one diff, plus a --mfi-threshold 20 re-run of this gate, finishes
+    the port. (8 more misses sat at RSI2 7-10 where cloud-vs-Mac vendor
+    divergence can flip the threshold; they prove nothing either way.)
 """
 import argparse, json, os, re
 import numpy as np, pandas as pd
@@ -57,7 +85,7 @@ def main():
     ap.add_argument("--brain", default=os.path.expanduser("~/Projects/market-data-brain/daily"))
     ap.add_argument("--page", default="index.html")
     ap.add_argument("--rsi2-threshold", type=float, default=10.0)
-    ap.add_argument("--mfi-threshold", type=float, default=10.0)
+    ap.add_argument("--mfi-threshold", type=float, default=20.0)  # evidenced 2026-08-11: TAKE max 19.84, WATCH min 20.18
     a = ap.parse_args()
 
     page = open(a.page).read()
