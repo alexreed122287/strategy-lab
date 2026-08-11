@@ -117,6 +117,29 @@ def main():
     if len(spy_c) < 260: sys.exit("fail-closed: SPY short")
     spy_r = spy_c[-1]/spy_c[-253] - 1
 
+    # Earnings-feed forward coverage - same guard as robert_scan.py, duplicated
+    # because both scripts are deliberately standalone. len(earn) flatters: a
+    # name whose only dates are past still counts while the 7-day gate has
+    # silently stopped seeing it (the Z-Score seed failure mode, 08-11-2026).
+    # stderr only: without --splice this script's stdout IS the page HTML.
+    e_live = sum(1 for v in earn.values() if any(x >= as_of for x in v))
+    if not earn:
+        print("WARNING: no earnings feed at all - the no-earnings-within-7-days "
+              "gate is INERT for this ledger pass", file=sys.stderr)
+    else:
+        e_pct = 100.0 * e_live / len(earn)
+        e_msg = (f"earnings feed: {e_live}/{len(earn)} names forward-dated "
+                 f"({e_pct:.0f}%) vs bar {as_of}")
+        if e_live == 0:
+            print("WARNING: earnings feed fully spent - the no-earnings-within-"
+                  "7-days gate is INERT for this ledger pass. " + e_msg,
+                  file=sys.stderr)
+        elif e_pct < 50:
+            print("WARNING: earnings feed draining - refresh it. " + e_msg,
+                  file=sys.stderr)
+        else:
+            print(e_msg, file=sys.stderr)
+
     st = {"open": [], "queued": [], "closed": [], "skipped": [], "closed_total": 0}
     if os.path.exists(led_p):
         try: st.update(json.load(open(led_p)))

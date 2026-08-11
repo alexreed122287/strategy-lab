@@ -338,10 +338,31 @@ const NOTIFY = {"ntfy_topic": "", "signup_topic": "", "owner_contact": ""};
 if(typeof HEALTH!=="undefined"&&HEALTH){
   const hd=document.createElement("div");
   hd.className="sub";
+  // HEALTH is stamped only by the cloud workflow. A Mac build refreshes the
+  // data blobs and pushes without touching it, so the stamp can describe a
+  // build OLDER than the data it sits above (seen 08-11-2026: the stamp said
+  // "2026-08-10 16:42 github-actions" over blobs the Mac refreshed later).
+  // So derive freshness from the blobs themselves, disclose when the stamp
+  // lags the data, and never let earnings:0 render as just a number - zero
+  // means Z-Score's pre-earnings exit ran with the gate open.
+  const _hbData=[(typeof TRACK!=="undefined"&&TRACK&&TRACK.as_of)||"",
+    (typeof BOOKSIG!=="undefined"&&BOOKSIG&&BOOKSIG.as_of)||"",
+    (typeof SHADOW!=="undefined"&&SHADOW&&SHADOW.as_of)||"",
+    (typeof SIGNALS!=="undefined"&&SIGNALS&&SIGNALS.signals?
+      SIGNALS.signals.reduce((m,x)=>(x.as_of||"")>m?(x.as_of||""):m,""):"")]
+    .filter(Boolean).reduce((m,d)=>d>m?d:m,"");
+  const _hbStamp=(HEALTH.build||"").slice(0,10);
   hd.textContent="pipeline OK - build "+HEALTH.build
-    +(HEALTH.built_by?" ("+HEALTH.built_by+")":"")+" | bars "+HEALTH.bars_ok+"/"+HEALTH.universe
-    +" | earnings dates "+HEALTH.earnings+" | book signals "+HEALTH.booksig_rows
-    +" | shadow book "+HEALTH.shadow_open+" open / "+HEALTH.shadow_closed+" closed";
+    +(HEALTH.built_by?" ("+HEALTH.built_by+")":"")
+    +(_hbData?" | data through "+_hbData:"")
+    +" | bars "+HEALTH.bars_ok+"/"+HEALTH.universe
+    +" | earnings dates "+HEALTH.earnings
+    +(HEALTH.earnings===0?" (Z-Score pre-earnings exit was INERT in this build)":"")
+    +(HEALTH.signals_stale?" | generator feed stale ("+(HEALTH.signals_as_of||"?")+")":"")
+    +" | book signals "+HEALTH.booksig_rows
+    +" | shadow book "+HEALTH.shadow_open+" open / "+HEALTH.shadow_closed+" closed"
+    +(_hbData&&_hbStamp&&_hbData>_hbStamp?
+      " | NOTE: data postdates this stamp - refreshed by a local build after the last cloud run":"");
   document.querySelector("header").appendChild(hd);
   // Per-blob freshness. A GitHub-Actions build refreshes the book scan and the
   // shadow ledger but CANNOT rebuild SCAN/SIGNALS - the RSI2 and MFI arm rows
