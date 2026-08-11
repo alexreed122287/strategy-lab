@@ -93,9 +93,17 @@ def collect(page_path):
     pool, gw_book, paper = [], [], []
     as_of = booksig.get("as_of") or ""
 
+    # The generator feed can lag the daily build (it runs on the Mac only), and
+    # new_today is computed against ITS bar - so an old row still reads "new".
+    # Anything not stamped with the live TRACK bar is not a buy this session.
+    track = blob(html, "TRACK") or {}
+    live_bar = track.get("as_of") or booksig.get("as_of") or ""
+
     # Generator arms (RSI2 / MFI): vetted, new today only.
     for x in signals.get("signals", []):
         if x.get("state") != "TAKE" or not x.get("new_today"):
+            continue
+        if live_bar and x.get("as_of") != live_bar:
             continue
         st = (scan["tickers"].get(x.get("sym"), {}).get("strats", {})
               .get(x.get("strat")))

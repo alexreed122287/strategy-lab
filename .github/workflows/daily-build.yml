@@ -132,9 +132,13 @@ jobs:
           earn = json.load(open("/tmp/earnings.json"))
           g = lambda n: json.loads(re.search(r"const %s = (.*?);\n" % n, html, re.S).group(1))
           booksig, shadow, track = g("BOOKSIG"), g("SHADOW"), g("TRACK")
+          signals = g("SIGNALS")
+          sig_bar = max([r.get("as_of") or "" for r in signals.get("signals") or []] or [""])
           now = datetime.datetime.now(zoneinfo.ZoneInfo("America/Chicago"))
           h = {"build": now.strftime("%Y-%m-%d %H:%M"), "built_by": "github-actions",
                "bars_ok": len(bars), "universe": max(len(track.get("tickers") or {}), len(bars)),
+               "signals_as_of": sig_bar,
+               "signals_stale": bool(sig_bar and sig_bar != track.get("as_of")),
                "earnings": len(earn), "booksig_rows": len(booksig.get("rows") or []),
                "shadow_open": sum(1 for p in shadow.get("open") or [] if p.get("state") == "open"),
                "shadow_closed": shadow.get("closed_total") or 0}
@@ -161,6 +165,13 @@ jobs:
           assert track and track.get("tickers"), "TRACK is empty - refusing to publish"
           assert "robert.html" in html and "paper-log.html" in html, \
               "nav links to ROBERT / Paper-Fill Log missing - interface regressed"
+          assert "FRESHNESS GATE" in html, \
+              "signals freshness gate missing from index.html - interface regressed"
+          signals = json.loads(re.search(r"const SIGNALS = (.*?);\n", html, re.S).group(1))
+          sig_bar = max([r.get("as_of") or "" for r in signals.get("signals") or []] or [""])
+          if sig_bar and sig_bar != track.get("as_of"):
+              print("::warning::SIGNALS feed is stale (bar %s vs TRACK %s) - "
+                    "the page will suppress those rows" % (sig_bar, track["as_of"]))
           print("validation OK:", len(track["tickers"]), "tickers as of", track["as_of"])
           h2 = open("robert.html").read()
           assert "ROBSIG:START" in h2 and "ROBSIG:END" in h2, "robert.html ROBSIG markers missing"
