@@ -502,7 +502,16 @@ def main():
     exits_today = [{"sym": p["sym"], "book": p["book"], "why": p["exit_reason"],
                     "net": p.get("net")}
                    for p in led["closed"] if p.get("exit_date") == as_of]
-    shadow = {"as_of": led.get("as_of"), "started": led.get("started") or as_of,
+    # "started" must be the record's inception, not today. The old expression
+    # led.get("started") or as_of re-stamped the CURRENT bar every build while
+    # the ledger's null persisted (setdefault never replaces a stored null), so
+    # the book's inception silently drifted forward day by day. Derive it from
+    # the ledger's own earliest event instead - a date the data proves, not one
+    # chosen after the fact - and persist it so it never moves again.
+    _first = min((d for p in (led.get("positions") or []) + (led.get("closed") or [])
+                  for d in (p.get("signal_date"), p.get("entry_date"))
+                  if d), default=None)
+    shadow = {"as_of": led.get("as_of"), "started": led.get("started") or _first or as_of,
               "stats": stats,
               "open": [{k: p.get(k) for k in ["book", "sym", "state", "signal_date",
                         "entry_date", "entry_px", "bars_held"]} for p in led["positions"]],
@@ -510,7 +519,8 @@ def main():
               "closed_total": len([p for p in led["closed"] if p.get("net") is not None]),
               "portfolio": portfolio(led, books),
               "solo": solo_accounts(led, books)}
-    led.setdefault("started", shadow["started"])
+    if not led.get("started"):          # setdefault keeps a stored null forever
+        led["started"] = shadow["started"]
 
     os.makedirs(os.path.dirname(ledger_path), exist_ok=True)
     json.dump(led, open(ledger_path, "w"), indent=1)

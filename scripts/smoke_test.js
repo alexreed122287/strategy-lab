@@ -32,7 +32,12 @@ const PAGE = 'file://' + path.resolve(__dirname, '..', 'index.html');
   await page.evaluate(()=>document.querySelector('[data-tab="signals"]').click());
   await page.waitForTimeout(600);
 
-  const t = (name, cond) => console.log((cond ? 'PASS' : 'FAIL') + ' - ' + name);
+  // A FAIL must be machine-visible, not just a line a human has to read: the
+  // suite used to exit 0 regardless, so nothing wired to it could ever block.
+  const t = (name, cond) => {
+    if (!cond) process.exitCode = 1;
+    console.log((cond ? 'PASS' : 'FAIL') + ' - ' + name);
+  };
 
   // --- Signals tab (default view) ---
   const sigHtml = await page.evaluate(() => document.getElementById('signals-table').innerHTML);
@@ -291,6 +296,45 @@ const PAGE = 'file://' + path.resolve(__dirname, '..', 'index.html');
       ? (hdr.includes('MIXED DATES') && hdr.includes('did NOT refresh in this build'))
       : !hdr.includes('MIXED DATES'));
   t('header: names the build source', /build .*github-actions|build .*\d{4}-\d{2}-\d{2}/.test(hdr));
+  // HEALTH is stamped only by the cloud workflow; a Mac build refreshes the
+  // blobs and pushes without touching it. The pipeline line must (a) show the
+  // newest data bar, (b) carry the stamp-lag NOTE exactly when the data
+  // postdates the stamp, and (c) never render earnings:0 as a bare number -
+  // zero means Z-Score's pre-earnings exit ran with the gate open. Asserted
+  // both ways, same rule as the mixed-date banner above.
+  const hb = await page.evaluate(() => {
+    const data = [(typeof TRACK !== 'undefined' && TRACK && TRACK.as_of) || '',
+      (typeof BOOKSIG !== 'undefined' && BOOKSIG && BOOKSIG.as_of) || '',
+      (typeof SHADOW !== 'undefined' && SHADOW && SHADOW.as_of) || '',
+      (typeof SIGNALS !== 'undefined' && SIGNALS && SIGNALS.signals ?
+        SIGNALS.signals.reduce((m, x) => (x.as_of || '') > m ? (x.as_of || '') : m, '') : '')]
+      .filter(Boolean).reduce((m, d) => d > m ? d : m, '');
+    return { data,
+      stamp: ((typeof HEALTH !== 'undefined' && HEALTH && HEALTH.build) || '').slice(0, 10),
+      earn: (typeof HEALTH !== 'undefined' && HEALTH) ? HEALTH.earnings : null };
+  });
+  // Scope these to the pipeline-OK line itself: "data through" is a substring
+  // of the separate "Price data through" banner, so matching the joined header
+  // would go green with the pipeline clause deleted (caught by mutation test).
+  const pline = await page.evaluate(() =>
+    [...document.querySelectorAll('header .sub')]
+      .map(e => e.textContent).find(s => s.startsWith('pipeline OK')) || '');
+  t('header: pipeline line present', pline.length > 0);
+  t('header: pipeline line shows the newest data bar',
+    !hb.data || pline.includes('data through ' + hb.data));
+  t('header: stamp-lag NOTE iff data postdates the HEALTH stamp'
+    + ` (data ${hb.data}, stamp ${hb.stamp})`,
+    (hb.data && hb.stamp && hb.data > hb.stamp)
+      ? pline.includes('data postdates this stamp')
+      : !pline.includes('data postdates this stamp'));
+  t('header: earnings 0 is labelled inert, never a bare count',
+    hb.earn === 0 ? pline.includes('INERT in this build')
+                  : !pline.includes('INERT in this build'));
+  const hbStale = await page.evaluate(() =>
+    (typeof HEALTH !== 'undefined' && HEALTH) ? !!HEALTH.signals_stale : false);
+  t('header: signals_stale echo iff HEALTH stamps it',
+    hbStale ? pline.includes('generator feed stale')
+            : !pline.includes('generator feed stale'));
   // The header derived its date from SIGNALS alone, so it advertised the STALE
   // pipeline's date as the whole page's - reading as a dead site to the owner.
   const dates = await page.evaluate(() => {
@@ -373,6 +417,7 @@ const PAGE = 'file://' + path.resolve(__dirname, '..', 'index.html');
     booksHtml.includes('this count moved from 1 to'));
   t('books: correction states no rule changed', booksHtml.includes('No rule changed'));
 
+  if (errors.length) process.exitCode = 1;
   console.log(errors.length ? 'ERRORS:\n' + errors.join('\n') : 'NO PAGE ERRORS');
   await browser.close();
 })();

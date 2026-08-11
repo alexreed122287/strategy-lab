@@ -136,6 +136,10 @@ jobs:
             --seed-file data/earnings_seed.json --out /tmp/earnings.json \
             || echo '{}' > /tmp/earnings.json
           # A seed that quietly runs out puts us back where we started, so say so.
+          # Measure LIVE forward coverage, not a static _expires date. The 08-04
+          # seed carried _expires 2026-09-03 and read as healthy while it was
+          # already 64% spent - it kept past dates, so its symbol count flattered
+          # it. What matters is how many symbols still have a date ahead of them.
           python3 - <<'PY'
           import datetime, json, zoneinfo
           try:
@@ -144,14 +148,26 @@ jobs:
               print("::warning::no earnings seed - Z-Score pre-earnings rule is inert")
               raise SystemExit
           today = datetime.datetime.now(zoneinfo.ZoneInfo("America/Chicago")).date().isoformat()
-          exp = s.get("_expires") or ""
+          dates = s.get("dates") or {}
+          seeded = len(dates)
+          live = sum(1 for v in dates.values()
+                     if any(str(x)[:10] >= today for x in (v or [])))
           n = len(json.load(open("/tmp/earnings.json")))
-          if exp and today > exp:
-              print(f"::warning::earnings seed expired {exp} (today {today}) - "
-                    f"only {n} symbols still have a future date. Refresh "
-                    f"data/earnings_seed.json or wire a live fetch.")
+          last = s.get("_last_date") or ""
+          pct = (100.0 * live / seeded) if seeded else 0.0
+          # Thresholds are about usefulness, not correctness: the seed can never
+          # emit a wrong date, it can only run out and go quiet.
+          if live == 0:
+              print(f"::warning::earnings seed fully spent (today {today}, last "
+                    f"date {last}) - Z-Score's pre-earnings exit is INERT again. "
+                    f"Refresh data/earnings_seed.json or wire a live fetch.")
+          elif pct < 50:
+              print(f"::warning::earnings seed {pct:.0f}% forward ({live} of "
+                    f"{seeded} symbols still have a future date, last {last}) - "
+                    f"refresh data/earnings_seed.json soon.")
           else:
-              print(f"earnings: {n} symbols, seed good through {exp}")
+              print(f"earnings: {n} symbols resolved; seed {live}/{seeded} "
+                    f"({pct:.0f}%) still forward-dated, through {last}")
           PY
 
       # ---- steps 4, 4b, 4c: the splices

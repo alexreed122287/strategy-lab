@@ -115,6 +115,29 @@ def main():
     if len(spy_c) < 260: sys.exit("fail-closed: SPY series too short")
     spy_r252 = spy_c[-1]/spy_c[-253] - 1
 
+    # Earnings-feed forward coverage. len(earn) flatters: a name whose only
+    # dates are in the past still counts, while the 7-day gate has silently
+    # stopped seeing it. Count names with a date on/after the bar being
+    # evaluated and say so when the feed drains - the failure mode the
+    # Z-Score seed hit on 08-11-2026 (403 listed, 147 live, no warning).
+    # stderr only: without --splice this script's stdout IS the page HTML.
+    e_live = sum(1 for v in earn.values() if any(x >= as_of for x in v))
+    if not earn:
+        print("WARNING: no earnings feed at all - the no-earnings-within-7-days "
+              "gate is INERT for this scan", file=sys.stderr)
+    else:
+        e_pct = 100.0 * e_live / len(earn)
+        e_msg = (f"earnings feed: {e_live}/{len(earn)} names forward-dated "
+                 f"({e_pct:.0f}%) vs bar {as_of}")
+        if e_live == 0:
+            print("WARNING: earnings feed fully spent - the no-earnings-within-"
+                  "7-days gate is INERT for this scan. " + e_msg, file=sys.stderr)
+        elif e_pct < 50:
+            print("WARNING: earnings feed draining - refresh it. " + e_msg,
+                  file=sys.stderr)
+        else:
+            print(e_msg, file=sys.stderr)
+
     rows = []
     for t in uni:
         if t not in bars: continue
