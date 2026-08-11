@@ -47,6 +47,43 @@ const PAGE = 'file://' + path.resolve(__dirname, '..', 'index.html');
   t('signals dropdown has GAPW again (reinstated x52)',
     stratOpts.includes('GAPW_RSI2') || stratOpts.includes('GAPW_RSI14'));
 
+  // "Strongest qualifying signal per strategy" tiles shipped "overall rank
+  // #undefined" for months: the card was built before render() assigned .rank.
+  // The tiles must carry a real rank, and it must be the SAME rank the table's
+  // Rank column shows for that arm - they are the same ordering or they are
+  // lying. "-" is legitimate only for an arm the deduped ranking excludes.
+  const rankTiles = await page.evaluate(() => {
+    const strip = td => { const c = td.cloneNode(true);
+      c.querySelectorAll('.small,button').forEach(n => n.remove());
+      return c.textContent.trim(); };
+    const rows = [...document.querySelectorAll('#signals-table tr')].map(r => {
+      const c = [...r.querySelectorAll('td')];
+      return c.length > 4 ? { sym: strip(c[0]), rank: strip(c[1]), strat: strip(c[4]) } : null;
+    }).filter(Boolean);
+    return [...document.querySelectorAll('.tile')]
+      .filter(el => /overall rank/.test(el.textContent))
+      .map(el => {
+        const k = el.querySelector('.k').textContent.trim();
+        const sym = el.querySelector('.v').textContent.trim();
+        const strat = k.split(' - ')[0].trim();
+        const shown = (k.match(/overall rank\s+(\S+)/) || [])[1] || '';
+        const row = rows.find(r => r.sym === sym && r.strat === strat);
+        return { k, sym, strat, shown, tableRank: row ? row.rank : null };
+      });
+  });
+  t('signals: strongest-per-strategy tiles render at least one rank',
+    rankTiles.length > 0);
+  t('signals: no "overall rank #undefined" tile (shipped broken until 2026-08-10)',
+    rankTiles.every(x => !/undefined|NaN|null/.test(x.k)));
+  t('signals: every tile rank is a number or the unranked marker',
+    rankTiles.every(x => /^#\d+$/.test(x.shown) || x.shown === '-'));
+  t('signals: at least one tile matched to a table row (cross-check is live)',
+    rankTiles.some(x => x.tableRank !== null));
+  t('signals: tile rank agrees with the table Rank column',
+    rankTiles.every(x => x.tableRank === null ||
+      (x.shown === '#' + x.tableRank) ||
+      (x.shown === '-' && (x.tableRank === '-' || x.tableRank === '·'))));
+
   // ZSCORE filter -> min auto-drops to 0, book z rows show their research stats
   await page.selectOption('#s-strat', 'ZSCORE');
   await page.waitForTimeout(300);
@@ -237,8 +274,22 @@ const PAGE = 'file://' + path.resolve(__dirname, '..', 'index.html');
   // --- Header freshness banner (cloud builds cannot refresh SCAN/SIGNALS) ---
   const hdr = await page.evaluate(() =>
     [...document.querySelectorAll('header .sub')].map(e => e.textContent).join(' | '));
-  t('header: mixed-date banner when BOOKSIG and SIGNALS diverge',
-    hdr.includes('MIXED DATES') && hdr.includes('did NOT refresh in this build'));
+  // Asserted BOTH ways on purpose. The original hard-coded "banner present",
+  // which only held while the generator feed was stuck at 2026-07-31; once the
+  // feed caught up the assertion failed on a page that was behaving correctly.
+  // The real invariant is the banner appearing exactly when the dates diverge -
+  // a banner on aligned dates would be just as wrong as none on mixed dates.
+  const freshness = await page.evaluate(() => {
+    const bs = (typeof BOOKSIG !== 'undefined' && BOOKSIG && BOOKSIG.as_of) || null;
+    const sg = ((typeof SIGNALS !== 'undefined' && SIGNALS && SIGNALS.signals) || [])
+      .reduce((m, x) => x.as_of && x.as_of > m ? x.as_of : m, '') || null;
+    return { bs, sg, diverged: !!(bs && sg && bs !== sg) };
+  });
+  t('header: mixed-date banner iff BOOKSIG and SIGNALS diverge'
+    + ` (booksig ${freshness.bs}, signals ${freshness.sg})`,
+    freshness.diverged
+      ? (hdr.includes('MIXED DATES') && hdr.includes('did NOT refresh in this build'))
+      : !hdr.includes('MIXED DATES'));
   t('header: names the build source', /build .*github-actions|build .*\d{4}-\d{2}-\d{2}/.test(hdr));
   // The header derived its date from SIGNALS alone, so it advertised the STALE
   // pipeline's date as the whole page's - reading as a dead site to the owner.

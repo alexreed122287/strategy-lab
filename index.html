@@ -1610,12 +1610,19 @@ function armStats(sym, strat){
   }
   // STRONGEST PER STRATEGY - side-by-side for cross-book sizing decisions
   const stratsPresent=[...new Set(takes.map(x=>x.strat))];
+  // Overall rank for the tiles: same ordering the table's Rank column uses
+  // (score-descending, one row per ticker) at the 30+ trade bar these tiles
+  // advertise. An arm whose ticker ranks on a different strategy is not in
+  // the deduped ranking at all, so it stays unranked ("-"), same as the table.
+  const takeRank=new Map(); {const seenRank=new Set();
+    for(const x of takes){ if(!seenRank.has(x.sym)){
+      seenRank.add(x.sym); takeRank.set(x, seenRank.size); } } }
   const stratOptions=[...new Set(s.map(x=>x.strat))].sort();
   let strongestCard=`<details><summary class="small"><b>Strongest qualifying signal per strategy</b> (30+ trade arms) - open to compare books</summary><div class="card">
     <div class="tiles">`;
   for(const sn of stratsPresent){
     const b=takes.find(x=>x.strat===sn);
-    strongestCard+=`<div class="tile"><div class="k">${sn} - overall rank #${b.rank}</div>
+    strongestCard+=`<div class="tile"><div class="k">${sn} - overall rank ${takeRank.has(b)?"#"+takeRank.get(b):"-"}</div>
       <div class="v">${b.sym}</div>
       <div class="d">strength ${b.score??"book-level"} | win ${b.hwin??"-"}% | PF ${b.hpf??"-"} | n ${b.hn??"-"}<br>
       avg ${b.havg}%/trade | depth ${b.depth} | close ${b.close}</div></div>`;
