@@ -91,6 +91,48 @@ now small and understood:
 
 The blocker is unchanged in kind but much narrower: the generator's exact
 ticker list. Everything else about the rule is now pinned by evidence.
+
+RESOLVED 2026-08-14, same session, an hour later - THE GENERATOR WAS NEVER
+MISSING. The real script is scripts/signals.py in the strategy-lab-dashboard
+repo (attached to the session all along), importing scan.py beside it. Read
+in full, it settles every question this gate was built to answer:
+
+  universe   = x26 snapshot names + every BRAIN/daily parquet, MINUS names
+               the brain manifest flags (corrupt/flag/spliced/truncated)
+  RSI2       TAKE rsi2<10, WATCH <15      (as evidenced)
+  MFI        TAKE mfi3<20, WATCH <30      (as evidenced)
+  ZSCORE     TAKE c>20 & av50>1e6 & z50<=-1.5 & rsi3<20 (second condition!)
+  earnings   flags RSI2/MFI rows (earnings_soon), EXCLUDES only ZSCORE
+             (state -> PASS-EARNINGS); window: next report within 4 days
+  liquidity  av50>=300k AND $5M dollar-vol - added 7/31 after the SW
+             ticker-splice leak (SW is named in the source comment)
+  age        consecutive bars the FULL entry rule held; new_today = age==1
+
+Then the REAL script was executed against this repo's brain mirror (data
+through 07-31) and diffed name-for-name against the published 07-31 blob:
+
+  147 rows generated vs the Mac's 189
+  145 overlapping rows: ZERO mismatches across all seven fields
+    (state, depth, close, age, buy_date, new_today, earnings_soon)
+  44 missing rows, all on 33 symbols with NO parquet in the 08-01 mirror
+    (the Mac's brain is larger; includes the x26/live-16 ETFs) - data
+    availability, not logic
+  2 extra rows, both AAPL: unflagged + clean in the mirror, emits TAKE
+    here, absent from the Mac's blob. Only self-consistent explanation:
+    AAPL was flagged/broken on the Mac ON 07-31 (the 7.4% earnings-gap
+    session), excluded from that evening's run, repaired before the 08-01
+    mirror push which carries the clean file. Input-snapshot difference,
+    not a rule difference. Unprovable from here; ask the Mac.
+  SW: correctly absent from BOTH runs - the earlier false positive was
+    this gate's harness, not an unknown.
+
+Standing consequence: the fidelity question is CLOSED up to data
+availability. What a cloud refresh of SIGNALS now requires is not code or
+facts but DATA: a current push of market-data-brain (its native basis is
+already Tradier split-only - the same vendor the Actions build uses), plus
+the x26 snapshot if the live-16 ETF names should keep appearing. Wiring the
+real generator into the daily build is a process change to a live feed and
+stays an owner decision.
 """
 import argparse, glob, json, os, re
 import numpy as np, pandas as pd
