@@ -126,6 +126,18 @@ through 07-31) and diffed name-for-name against the published 07-31 blob:
   SW: correctly absent from BOTH runs - the earlier false positive was
     this gate's harness, not an unknown.
 
+WIRED 2026-08-14, owner approval same day ("Do this for me you have my
+permission"). scripts/signals_cloud.py carries the generator's math verbatim
+with cloud loaders (Tradier bars / next-date earnings map / baked universe in
+data/signals_universe.json), and the daily build now runs it fail-quiet
+before the splices. The wiring fidelity test - the EXACT cloud code path,
+410-bar truncated series and all, against the published 07-31 blob - scored
+145/145 comparable rows with zero field mismatches; extras AAPL-only
+(input-snapshot repair), misses all on mirror-absent names. Residual gap:
+x26-side names beyond the 33 observed stay absent until market-data-brain
+or the x26 snapshot is pushed current; on days the Mac generator also runs,
+its fuller feed simply wins the publish race and the guard skips the cloud.
+
 Standing consequence: the fidelity question is CLOSED up to data
 availability. What a cloud refresh of SIGNALS now requires is not code or
 facts but DATA: a current push of market-data-brain (its native basis is

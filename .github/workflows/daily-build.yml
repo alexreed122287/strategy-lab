@@ -119,7 +119,7 @@ jobs:
         if: steps.guard.outputs.proceed == 'true'
         run: |
           python3 scripts/dump_closes.py --index index.html \
-            --out /tmp/bars.json --days 400 --ohlcv
+            --out /tmp/bars.json --days 600 --ohlcv
           python3 -c "import json;b=json.load(open('/tmp/bars.json'));print('bars for',len(b),'symbols')"
 
       # There is no market-data-brain here, so this used to emit earnings:0 -
@@ -169,6 +169,23 @@ jobs:
               print(f"earnings: {n} symbols resolved; seed {live}/{seeded} "
                     f"({pct:.0f}%) still forward-dated, through {last}")
           PY
+
+      # The RSI2/MFI/z signal generator, cloud-wired per owner approval
+      # 2026-08-14. The math is the Mac generator's verbatim (see
+      # scripts/signals_cloud.py header and signals_fidelity_gate.py for the
+      # 145/145 fidelity record); bars are Tradier split-only - the brain's
+      # own native basis - so this is the same rule on the same kind of data.
+      # Fail-quiet on purpose: if this step fails, SIGNALS stays at its last
+      # publish and the page's freshness gate + banner handle it as before.
+      # The 600-day fetch above exists for this step (len>=320 gate).
+      - name: Generate SIGNALS (cloud generator)
+        if: steps.guard.outputs.proceed == 'true'
+        run: |
+          if ! python3 scripts/signals_cloud.py --bars /tmp/bars.json \
+               --earnings /tmp/earnings.json \
+               --universe data/signals_universe.json --splice index.html; then
+            echo "::warning::cloud signals generator failed - SIGNALS left at its last publish (page shows it as stale)"
+          fi
 
       # ---- steps 4, 4b, 4c: the splices
       - name: Splice TRACK / BOOKSIG / shadow book
