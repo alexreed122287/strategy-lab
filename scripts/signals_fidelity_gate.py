@@ -145,6 +145,26 @@ already Tradier split-only - the same vendor the Actions build uses), plus
 the x26 snapshot if the live-16 ETF names should keep appearing. Wiring the
 real generator into the daily build is a process change to a live feed and
 stays an owner decision.
+
+INCIDENT 2026-08-14 (run #26, the first wired build): signals_cloud.py died
+at import time - ModuleNotFoundError: numpy - because the Actions runner
+has no numpy/pandas and the workflow deliberately has no pip step (every
+other build script is stdlib-only; the wiring was only ever executed in a
+sandbox that happened to have pandas). Fail-quiet behaved exactly as
+designed: the step warned, SIGNALS stayed at its 08-11 publish, HEALTH
+stamped signals_stale=true, and the page disclosed the stale feed. Fix:
+signals_cloud.py rewritten as a pure-stdlib line-for-line port (explicit
+loops for ewm/rolling/Wilder/MFI, None standing in for NaN with NaN
+comparison semantics). Revalidated same day through this gate's standard
+before replacing the pandas version: (a) byte-identical signals array vs
+the pandas implementation's saved output on the same simulated 07-31
+inputs, 147/147 rows, zero differences including order; (b) the wiring
+fidelity test reproduced its exact verdict - overlap 145, field mismatches
+0, extras AAPL-only, misses all mirror-absent - PASS. Lesson recorded:
+validating runner-bound code requires the runner's import surface, not
+just its data; stdlib-only is the build's contract, not a style choice.
+NOTE: this gate script itself still imports pandas/numpy - it runs on the
+Mac or in an analysis sandbox, never on the Actions runner.
 """
 import argparse, glob, json, os, re
 import numpy as np, pandas as pd
