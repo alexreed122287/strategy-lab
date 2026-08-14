@@ -44,13 +44,35 @@ const PAGE = 'file://' + path.resolve(__dirname, '..', 'index.html');
   t('signals: no BB rows', !/>BB</.test(sigHtml));
   const stratOpts = await page.evaluate(() =>
     [...document.getElementById('s-strat').options].map(o => o.value));
-  t('signals dropdown has ZSCORE', stratOpts.includes('ZSCORE'));
+  /* The strategy dropdown is data-driven: it lists exactly the strats present
+     in the view's row set (fresh vetted generator rows + today's book rows).
+     'dropdown has ZSCORE' as an absolute went red on 08-14 when the z book
+     produced its first zero-candidate day (z50 <= -1.5 is rare in a strong
+     tape) while the freshness gate was already suppressing the stale
+     generator rows - data movement, not a regression. Same defect class as
+     the 08-13 tile checks: pin the iff, not today's data. ZSCORE and the
+     GAPW pair are book-fed (ZSCORE generator rows are never vetted, GAPW is
+     book-only), so the expectation mirrors the page's own sources. */
+  const dropExpect = await page.evaluate(() => {
+    const live = (typeof TRACK !== 'undefined' && TRACK && TRACK.as_of) ||
+                 (typeof BOOKSIG !== 'undefined' && BOOKSIG && BOOKSIG.as_of) || '';
+    const genVetted = st => ((typeof SIGNALS !== 'undefined' && SIGNALS.signals) || [])
+      .some(x => x.strat === st && x.state !== 'WATCH' && (!live || x.as_of === live) &&
+        !!(SCAN.tickers[x.sym] && SCAN.tickers[x.sym].strats[st] &&
+           SCAN.tickers[x.sym].strats[st].vetted));
+    const book = st => ((typeof BOOKSIG !== 'undefined' && BOOKSIG && BOOKSIG.rows) || [])
+      .some(r => r.strat === st);
+    return { z: genVetted('ZSCORE') || book('ZSCORE'),
+             gapw: book('GAPW_RSI2') || book('GAPW_RSI14') };
+  });
+  t(`signals dropdown has ZSCORE iff z rows exist today (expected=${dropExpect.z})`,
+    stratOpts.includes('ZSCORE') === dropExpect.z);
   t('signals dropdown has no BB', !stratOpts.includes('BB'));
   // Gap Widen was pulled 2026-08-02 and REINSTATED by x52 once the owner
-  // supplied MIO's own ticker lists - so it must be back on the live surface.
-  // BB stays off: its kill survived the same test (x59).
-  t('signals dropdown has GAPW again (reinstated x52)',
-    stratOpts.includes('GAPW_RSI2') || stratOpts.includes('GAPW_RSI14'));
+  // supplied MIO's own ticker lists - so when its book has rows they must be
+  // on the live surface. BB stays off: its kill survived the same test (x59).
+  t(`signals dropdown has GAPW iff its book has rows (expected=${dropExpect.gapw})`,
+    (stratOpts.includes('GAPW_RSI2') || stratOpts.includes('GAPW_RSI14')) === dropExpect.gapw);
 
   // "Strongest qualifying signal per strategy" tiles shipped "overall rank
   // #undefined" for months: the card was built before render() assigned .rank.
@@ -104,7 +126,14 @@ const PAGE = 'file://' + path.resolve(__dirname, '..', 'index.html');
       (x.shown === '#' + x.tableRank) ||
       (x.shown === '-' && (x.tableRank === '-' || x.tableRank === '·'))));
 
-  // ZSCORE filter -> min auto-drops to 0, book z rows show their research stats
+  // ZSCORE filter -> min auto-drops to 0, book z rows show their research stats.
+  // The walk-through only exists when the dropdown carries the option (see the
+  // iff check above) - selecting a missing option is a hard playwright timeout
+  // that killed the whole suite on 08-14, so the zero-z-day skip is explicit.
+  if (!stratOpts.includes('ZSCORE')) {
+    t('ZSCORE filter walk-through skipped - zero-z day, dropdown correctly omits it',
+      !dropExpect.z);
+  } else {
   await page.selectOption('#s-strat', 'ZSCORE');
   await page.waitForTimeout(300);
   const minVal = await page.evaluate(() => document.getElementById('s-minn').value);
@@ -145,6 +174,7 @@ const PAGE = 'file://' + path.resolve(__dirname, '..', 'index.html');
     zRows.length > 0 && zRows.every(r => r.inBook ? (r.stats && r.factor) : r.noRec));
   console.log('  z rows:', zRows.map(r => r.sym).join(', ') || 'none');
   console.log('  z row text sample:', (zRows[0] ? zRows[0].txt : '').slice(0, 220));
+  }
 
   // --- Today <-> Signals correspondence -------------------------------------
   // The two tabs derived their buy lists separately and disagreed completely:
