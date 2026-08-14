@@ -76,14 +76,29 @@ const PAGE = 'file://' + path.resolve(__dirname, '..', 'index.html');
         return { k, sym, strat, shown, tableRank: row ? row.rank : null };
       });
   });
-  t('signals: strongest-per-strategy tiles render at least one rank',
-    rankTiles.length > 0);
+  /* These tiles are built from the GENERATOR pool (RSI2/MFI), so they exist
+     only when that feed is on the live bar. The freshness gate added 08-10
+     drops every stale generator row from the ranking - the correct behavior
+     for a cloud-only build, and the normal state between Mac generator runs.
+     Asserting "at least one tile" unconditionally therefore went red on a
+     page behaving perfectly: on the 08-13 build, SIGNALS sat at 08-11, 106
+     rows were suppressed, and 0 tiles rendered. Same defect class the KNX
+     check had - it pinned a transient data condition, not a behavior.
+     Pinned both ways instead: tiles present iff the generator feed is live,
+     absent iff it is stale. The absent case now PROVES the gate fired. */
+  const genLive = await page.evaluate(() => {
+    const live = (typeof TRACK !== 'undefined' && TRACK && TRACK.as_of) || '';
+    const rows = (typeof SIGNALS !== 'undefined' && SIGNALS && SIGNALS.signals) || [];
+    return !!live && rows.some(x => x.state !== 'WATCH' && x.as_of === live);
+  });
+  t(`signals: rank tiles present iff the generator feed is live (live=${genLive})`,
+    genLive ? rankTiles.length > 0 : rankTiles.length === 0);
   t('signals: no "overall rank #undefined" tile (shipped broken until 2026-08-10)',
     rankTiles.every(x => !/undefined|NaN|null/.test(x.k)));
   t('signals: every tile rank is a number or the unranked marker',
     rankTiles.every(x => /^#\d+$/.test(x.shown) || x.shown === '-'));
-  t('signals: at least one tile matched to a table row (cross-check is live)',
-    rankTiles.some(x => x.tableRank !== null));
+  t('signals: a live tile cross-checks against a table row',
+    !genLive || rankTiles.some(x => x.tableRank !== null));
   t('signals: tile rank agrees with the table Rank column',
     rankTiles.every(x => x.tableRank === null ||
       (x.shown === '#' + x.tableRank) ||
