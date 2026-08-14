@@ -54,8 +54,45 @@ published (07-31 and 08-10, 390 SIGNALS rows on main). Derived and verified:
     that one diff, plus a --mfi-threshold 20 re-run of this gate, finishes
     the port. (8 more misses sat at RSI2 7-10 where cloud-vs-Mac vendor
     divergence can flip the threshold; they prove nothing either way.)
+
+RUN 2026-08-14 - first execution against a brain cache (the repo mirror at
+/workspace/market-data-brain/daily, 465 names through 2026-07-31), scored on
+the 07-31 reference blob (commit c655cdf). Still FAILS, but the residue is
+now small and understood:
+
+    --universe vetted --mfi-threshold 10 : 34 cand, 51 missed,  1 FP
+    --universe vetted --mfi-threshold 20 : 34 cand, 51 missed,  1 FP
+    --universe brain  --mfi-threshold 20 : 94 cand, 13 missed,  6 FP
+                                           (Mac: 110 TAKEs, 77 new-today)
+
+  * THE UNIVERSE IS NOT THE VETTED SET. Widening the candidate pool to every
+    brain name cut missed new-today from 51 to 13 - the single biggest step
+    this gate has taken. Added as --universe brain so it is reproducible.
+  * INDICATOR MATH REMAINS EXACT at the wider universe: 0 depth mismatches
+    and 0 close mismatches across all 94 candidates. The arithmetic is not
+    in question; only membership is.
+  * ALL 13 RESIDUAL MISSES ARE MIRROR DATA GAPS, not logic: none of the 13
+    (AHR ALLY HOG IVE IWN IWR JEF MLKN PRU RBA REXR RSP ...) has a 07-31 bar
+    in this 465-name mirror. The Mac's brain is larger. They are not evidence
+    of a rule difference.
+  * EARNINGS IS NOT A GATE - HYPOTHESIS RAISED AND REFUTED IN THIS RUN. All
+    6 false positives have earnings within 9 days of the bar, which looked
+    decisive until the signalled set was checked: CHD, D, FRT, LIN and TROW
+    all report ON 07-31 and are signalled anyway, carrying earnings_soon=true.
+    The generator FLAGS earnings, it does not exclude on them. Do not add an
+    earnings filter to a port on the strength of the false positives alone.
+  * WHAT IS ACTUALLY LEFT: 6 false positives, i.e. names this gate flags that
+    the Mac does not. Five (AIG CL CSX EG SW) are absent from SCAN entirely,
+    consistent with a generator ticker list narrower than the brain. The sixth,
+    AAPL/RSI2, is IN SCAN and vetted:true with n=67, sat at rsi2 3.53 well
+    above its SMA200, was not held by any book, and still did not fire. AAPL
+    is the one case no membership rule so far explains, and it is the thread
+    to pull next.
+
+The blocker is unchanged in kind but much narrower: the generator's exact
+ticker list. Everything else about the rule is now pinned by evidence.
 """
-import argparse, json, os, re
+import argparse, glob, json, os, re
 import numpy as np, pandas as pd
 
 
@@ -85,6 +122,8 @@ def main():
     ap.add_argument("--brain", default=os.path.expanduser("~/Projects/market-data-brain/daily"))
     ap.add_argument("--page", default="index.html")
     ap.add_argument("--rsi2-threshold", type=float, default=10.0)
+    ap.add_argument("--universe", choices=("vetted", "brain"), default="vetted",
+                    help="candidate set: SCAN-vetted arms, or every name in the brain")
     ap.add_argument("--mfi-threshold", type=float, default=20.0)  # evidenced 2026-08-11: TAKE max 19.84, WATCH min 20.18
     a = ap.parse_args()
 
@@ -97,9 +136,17 @@ def main():
     vetted = {arm: {s for s, v in SCAN["tickers"].items()
                     if (v.get("strats", {}).get(arm) or {}).get("vetted")}
               for arm in thr}
+    # --universe brain scans every name the brain has, which the 08-14 run
+    # showed is far closer to the generator's real list than the vetted set.
+    if a.universe == "brain":
+        allbrain = sorted(os.path.basename(p)[:-8]
+                          for p in glob.glob(os.path.join(a.brain, "*.parquet")))
+        cand = {arm: allbrain for arm in thr}
+    else:
+        cand = {arm: sorted(vetted[arm]) for arm in thr}
     mine = {}
     for arm, trig in (("RSI2", "rsi2"), ("MFI", "mfi3")):
-        for s in sorted(vetted[arm]):
+        for s in cand[arm]:
             p = f"{a.brain}/{s}.parquet"
             if not os.path.exists(p):
                 continue
