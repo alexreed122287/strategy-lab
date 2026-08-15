@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Strategy Lab Dashboard</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27><rect width=%2716%27 height=%2716%27 rx=%273%27 fill=%27%23121212%27/><path d=%27M2 12 L6 7 L9 9 L14 3%27 stroke=%27%2356B4E9%27 stroke-width=%272%27 fill=%27none%27/></svg>">
 <style>
 :root {
   color-scheme: dark;
@@ -536,6 +537,8 @@ for (const [sym, rec] of Object.entries(SCAN.tickers)) {
   for (const [strat, st] of Object.entries(rec.strats)) {
     if (strat === "ZSCORE" && ZBOOK.has(sym)) continue;
     rows.push({sym, grade: rec.grade, strat, st,
+      inactive: rec.inactive || null,
+      svint: rec.stats_through || null,
       bh: rec.bh_cagr_pct, cagr: st.arm_cagr_pct,
       expo: st.exposure_pct, vehicle: st.vehicle || "",
       vetted: !!st.vetted,
@@ -552,6 +555,7 @@ if(typeof BOOKS!=="undefined"&&BOOKS.strategies)for(const s of BOOKS.strategies)
       st:{n:e.n, pf:e.pf??null, win_pct:+(e.win*100).toFixed(1),
           avg_pct:+(e.avg_net*100).toFixed(2), vetted:prio.has(e.signal),
           gwv:e.trade!==e.signal?e.trade:"1x"},
+      inactive:(SCAN.tickers[e.signal]||{}).inactive||null,
       bh:null, cagr:null, expo:null, vehicle:e.trade!==e.signal?e.trade:"",
       vetted:prio.has(e.signal), pf1922:null, pf2326:null});
   }
@@ -564,6 +568,7 @@ if(typeof BOOKS!=="undefined"&&BOOKS.strategies)for(const s of BOOKS.strategies)
     rows.push({sym:e.signal, grade:strat==="ZSCORE"?"Z-BOOK":"BB-KILLED", strat,
       st:{n:e.n, pf:e.pf??null, win_pct:+(e.win*100).toFixed(1),
           avg_pct:+(e.avg_net*100).toFixed(2), vetted:false},
+      inactive:(SCAN.tickers[e.signal]||{}).inactive||null,
       bh:null, cagr:null, expo:null, vehicle:"", vetted:false,
       pf1922:null, pf2326:null});
   }
@@ -587,6 +592,10 @@ function renderScan(){
   }).filter(Boolean).filter(x =>
     (fs==="ALL"||x.strat===fs) &&
     (!!q||fg!=="V"||x.vetted) &&
+    // inactive names (feed frozen/delisted, e.g. EA post take-private) never
+    // rank - their history is real but nothing here is buyable. A direct
+    // ticker search still shows them, labeled.
+    (!!q||!x.inactive) &&
     (!!q||x.fullN>=mn) && (wk==="full"||x.n>=3) && (!q||x.sym.includes(q)));
   // percentile rank score within filter + selected window
   const pct = (arr,v)=>arr.filter(a=>a<v).length/Math.max(arr.length-1,1)*100;
@@ -598,7 +607,7 @@ function renderScan(){
     ["avg","Avg/trade %"],["n","Trades"],["cagr","Arm CAGR %"],["bh","Stock B&H %"],
     ["expo","Exposure %"],["pf1922","PF 19-22"],["pf2326","PF 23-26"]];
   let h="<tr>"+cols.map(c=>`<th class="${c[2]||""}" data-k="${c[0]}" title="${SCANHELP[c[0]]||""}">${c[1]}${sortKey===c[0]?(sortDir>0?" v":" ^"):""}</th>`).join("")+"</tr>";
-  h+=r.slice(0,400).map(x=>`<tr><td>${x.sym}</td><td title="${ENTRYBASIS[x.strat]||""}">${x.strat}</td><td style="white-space:normal">${vehChip(x.sym,x.st)}</td>`+
+  h+=r.slice(0,400).map(x=>`<tr><td>${x.sym}${x.inactive?` <span class="chip dead" title="feed inactive - last bar ${x.inactive} (delisted/frozen); history shown, nothing buyable">INACTIVE</span>`:""}${x.svint?` <span class="chip gray" title="this row's stats come from the static validation-vintage cache and stop at ${x.svint}; the name itself is live (Signals uses fresh bars)">stats thru ${x.svint}</span>`:""}</td><td title="${ENTRYBASIS[x.strat]||""}">${x.strat}</td><td style="white-space:normal">${vehChip(x.sym,x.st)}</td>`+
     `<td>${x.vetted?'<span class="chip take">VETTED</span>':'<span class="chip gray">no</span>'}</td>`+
     `<td><b>${x.score}</b></td><td>${x.pf??"-"}</td><td>${x.win??""}</td>`+
     `<td>${x.avg??""}</td><td>${x.n}</td><td>${x.cagr??""}</td><td>${x.bh??""}</td>`+
@@ -1951,6 +1960,159 @@ function armStats(sym, strat){
       test:t=>t.ema7!=null&&t.close>t.ema7, action:"SELL at today's close"},
     OTHER:{label:"manual - time-stop tracking only", test:null, action:"manual"}};
   const chipf=(cls,txt)=>`<span class="chip ${cls}">${txt}</span>`;
+  /* Trade-history drill-in. The page embeds only ledger SUMMARIES (the SHADOW
+     blob carries stats + open rows, closed_total but not the closed list), so
+     the full per-trade record is fetched from data/shadow_book.json - the same
+     file every nightly build commits, same-origin on Pages. Never fetch under
+     file://: the Playwright smoke suite loads the page from disk and treats any
+     console error (including a blocked fetch) as a FAIL. */
+  let HIST=null,HIST_ERR=null,HIST_REQ=false;
+  function loadHist(){
+    if(HIST_REQ)return;HIST_REQ=true;
+    if(!/^https?:$/.test(location.protocol)){
+      HIST_ERR="offline preview - the full trade history loads on the hosted site "
+        +"(fetching data/shadow_book.json is blocked under file://)";
+      render();return;}
+    Promise.all([
+      fetch("data/shadow_book.json").then(r=>{
+        if(!r.ok)throw new Error("shadow_book.json HTTP "+r.status);return r.json();}),
+      fetch("data/robert_shadow.json").then(r=>r.ok?r.json():null).catch(()=>null)
+    ]).then(([sb,rb])=>{HIST={sb:sb,rb:rb};render();})
+     .catch(e=>{HIST_ERR="could not load the ledger: "
+        +(e&&e.message?e.message:e);render();});
+  }
+  const netCell=n=>n==null?"":`<b style="color:var(--${n>=0?"good":"critical"})">${
+    n>=0?"+":""}${(n*100).toFixed(2)}</b>`;
+  function spark(nets){
+    if(nets.length<2)return "";
+    let cum=0;const pts=[0];
+    for(const n of nets){cum+=n*100;pts.push(cum);}
+    const W=560,H=64,P=6;
+    const mn=Math.min(0,...pts),mx=Math.max(0,...pts);
+    const sx=i=>P+(W-2*P)*i/(pts.length-1);
+    const sy=v=>mx===mn?H/2:P+(H-2*P)*(mx-v)/(mx-mn);
+    const d=pts.map((v,i)=>(i?"L":"M")+sx(i).toFixed(1)+" "+sy(v).toFixed(1)).join(" ");
+    const last=pts[pts.length-1];
+    return `<div style="margin:4px 0 8px">
+      <svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:560px;height:auto;display:block"
+        role="img" aria-label="cumulative net per trade over ${nets.length} closed trades, ending ${last.toFixed(2)} percent">
+      <line x1="${P}" y1="${sy(0).toFixed(1)}" x2="${W-P}" y2="${sy(0).toFixed(1)}"
+        stroke="var(--border)" stroke-dasharray="3 3"/>
+      <path d="${d}" fill="none" stroke="var(--series-1)" stroke-width="2"/>
+      <circle cx="${sx(pts.length-1).toFixed(1)}" cy="${sy(last).toFixed(1)}" r="3"
+        fill="var(--series-1)"/></svg>
+      <span class="small">cumulative net in exit order: <b>${last>=0?"+":""}${last.toFixed(2)}%</b>
+      - per-trade nets ADDED (1 unit each, not compounded; the full table below is the record)</span></div>`;
+  }
+  const HIST_TH=`<tr><th class="l">Sym</th><th class="l">State</th><th class="l">Basis</th>
+    <th class="l">Signal</th><th class="l">Entry</th><th>Entry px</th><th class="l">Exit</th>
+    <th>Exit px</th><th class="l">Exit rule hit</th><th>Bars</th><th>Net %</th></tr>`;
+  const histMark=x=>x.state==="open"&&x.entry_px&&hasTrack&&TRACK.tickers[x.sym]
+    &&TRACK.tickers[x.sym].close!=null?TRACK.tickers[x.sym].close/x.entry_px-1:null;
+  function trHist(x){
+    const st=x.state==="closed"?'<span class="chip gray">closed</span>'
+      :x.state==="pending_open"?'<span class="chip watch">queued</span>'
+      :'<span class="chip take">open</span>';
+    const mk=histMark(x);
+    return `<tr><td>${esc(x.sym)}</td><td class="l">${st}</td>
+      <td class="l small">${esc(x.basis)}${x.note?` <span title="${esc(x.note).replace(/"/g,"&quot;")}">*</span>`:""}</td>
+      <td class="l">${esc(x.signal_date)}</td><td class="l">${esc(x.entry_date)}</td>
+      <td>${x.entry_px??""}</td><td class="l">${esc(x.exit_date)}</td>
+      <td>${x.exit_px??""}</td><td class="l small">${esc(x.exit_reason)}</td>
+      <td>${x.bars_held??""}</td><td>${x.state==="closed"?netCell(x.net)
+        :mk!=null?netCell(mk)+'<span class="small"> @mark</span>':""}</td></tr>`;
+  }
+  function histCard(){
+    let h=`<div class="card"><h3>Trade history - the skip-free ledger, drill into any book</h3>`;
+    if(HIST_ERR){h+=`<p class="small">${esc(HIST_ERR)}</p></div>`;return h;}
+    if(!HIST){h+=`<p class="small">loading data/shadow_book.json&hellip;</p></div>`;return h;}
+    const sb=HIST.sb||{};
+    h+=`<p class="small">Every row the automated shadow book has logged since
+      ${esc(sb.started||"seeding")} (ledger as of ${esc(sb.as_of||"?")}), one unit per
+      trade at the basis recorded ON the row: next-morning open ("moo") for all five
+      books since 2026-08-03; earlier RSI2/MFI rows were close fills ("close") and are
+      disclosed as logged, not rewritten. Friction: Gap Widen netted 0.05%/side,
+      Z-Score netted 0.02pp, RSI2/MFI gross. A * beside the basis marks a row with a
+      correction or repair note - hover it. This is the LEDGER - it takes every
+      qualifying signal and ignores slots and cash, so it is the evidence feed, not
+      the tradable record; the $100k account replay above shows what capital could
+      actually hold. Sums are per-trade nets added, never compounded. One honesty
+      note: closed-only stats flatter a young book - the exit rules bank winners fast
+      while laggards sit open - so open rows carry an indicative mark at the last
+      close and each book states its open P&amp;L next to the closed sum.</p>`;
+    const all=[].concat(sb.closed||[],sb.positions||[]);
+    const by={};for(const t of all)(by[t.book]=by[t.book]||[]).push(t);
+    for(const b of Object.keys(by).sort()){
+      const rows=by[b];
+      const closed=rows.filter(x=>x.state==="closed"&&x.net!=null)
+        .sort((x,y)=>(x.exit_date||"")<(y.exit_date||"")?-1
+          :(x.exit_date||"")>(y.exit_date||"")?1
+          :(x.entry_date||"")<(y.entry_date||"")?-1
+          :(x.entry_date||"")>(y.entry_date||"")?1:0);
+      const open=rows.filter(x=>x.state!=="closed")
+        .sort((x,y)=>(x.signal_date||"")>(y.signal_date||"")?-1:1);
+      const nets=closed.map(x=>x.net);
+      const wins=nets.filter(n=>n>0);
+      const sum=nets.reduce((s,n)=>s+n,0)*100;
+      const gw=wins.reduce((s,n)=>s+n,0);
+      const gl=Math.abs(nets.filter(n=>n<=0).reduce((s,n)=>s+n,0));
+      const pf=gl>0?(gw/gl).toFixed(2):(gw>0?"all wins":"-");
+      h+=`<details class="gloss"><summary>${esc(b)} - ${nets.length} closed, ${open.length} open/queued
+        | win ${nets.length?Math.round(100*wins.length/nets.length)+"%":"-"}
+        | avg ${nets.length?(sum/nets.length).toFixed(2)+"%":"-"} | PF ${pf}
+        | sum <b style="color:var(--${sum>=0?"good":"critical"})">${sum>=0?"+":""}${sum.toFixed(2)}%</b></summary>`
+        +spark(nets)
+        +`<div class="tablewrap"><table>`+HIST_TH
+        +open.map(trHist).join("")+closed.slice().reverse().map(trHist).join("")
+        +`</table></div>
+        <p class="small"><button data-histcsv="${esc(b)}">Copy CSV</button>
+        ${nets.length+open.length} rows, open first then closed newest-first - bases
+        present: ${[...new Set(rows.map(r=>r.basis).filter(Boolean))].join(", ")||"-"};
+        friction ${b.indexOf("GAPW")===0?"0.05%/side":b==="ZSCORE"?"0.02pp":"none (gross)"}.${(()=>{
+          const mks=open.map(histMark).filter(m=>m!=null);
+          if(!mks.length)return "";
+          const om=mks.reduce((s,n)=>s+n,0)*100;
+          return ` Open P&amp;L at last-close marks: <b style="color:var(--${om>=0?"good":"critical"})">${
+            om>=0?"+":""}${om.toFixed(2)}%</b> summed across ${mks.length} of ${open.length} open (gross, indicative - exit rules not yet applied).`;
+        })()}</p></details>`;
+    }
+    const rb=HIST.rb;
+    if(rb){
+      const rc=rb.closed||[],ro=rb.open||[],rq=rb.queued||[];
+      const rnets=rc.map(x=>x.net).filter(n=>n!=null);
+      const rsum=rnets.reduce((s,n)=>s+n,0)*100;
+      h+=`<details class="gloss"><summary>ROBERT stock leg - ${rc.length} closed, ${ro.length+rq.length} open/queued${
+        rnets.length?` | sum <b style="color:var(--${rsum>=0?"good":"critical"})">${rsum>=0?"+":""}${rsum.toFixed(2)}%</b>`:""}</summary>`;
+      if(!rc.length&&!ro.length&&!rq.length)
+        h+=`<p class="small">Zero trades so far, and the scan IS running (nightly stamp
+          ${esc(rb.last_as_of)}). The entry funnel is strict by design - RSI(2) &lt; 10
+          above the 200-SMA, 12-month relative strength &gt; +40pp vs SPY, realized-vol
+          blend &le; 60%, no earnings inside 7 days - and no name has passed it yet.
+          An empty ledger here means the funnel is holding, not that the feed died.
+          Spec and nightly signal scan: <a href="robert.html">ROBERT page</a>.</p>`;
+      else h+=spark(rnets)+`<div class="tablewrap"><table>`+HIST_TH
+        +rq.map(x=>`<tr><td>${esc(x.t)}</td><td class="l"><span class="chip watch">queued</span></td>
+          <td class="l small"></td>
+          <td class="l">${esc(x.signal_date)}</td><td class="l"></td><td></td><td class="l"></td>
+          <td></td><td class="l small">rsi2 ${x.rsi2??""}</td><td></td><td></td></tr>`).join("")
+        +ro.map(x=>`<tr><td>${esc(x.t)}</td><td class="l"><span class="chip take">open</span></td>
+          <td class="l small">moo</td>
+          <td class="l">${esc(x.signal_date)}</td><td class="l">${esc(x.entry_date)}</td>
+          <td>${x.entry_px??""}</td><td class="l"></td><td></td><td class="l small"></td>
+          <td></td><td></td></tr>`).join("")
+        +rc.slice().reverse().map(x=>`<tr><td>${esc(x.t)}</td>
+          <td class="l"><span class="chip gray">closed</span></td>
+          <td class="l small">moo</td><td class="l"></td>
+          <td class="l">${esc(x.entry_date)}</td><td>${x.entry_px??""}</td>
+          <td class="l">${esc(x.exit_date)}</td><td>${x.exit_px??""}</td>
+          <td class="l small">${esc(x.reason)}</td><td>${x.bars??""}</td>
+          <td>${netCell(x.net)}</td></tr>`).join("")
+        +`</table></div>`;
+      h+=`</details>`;
+    }
+    h+=`</div>`;
+    return h;
+  }
   function flagCell(p){
     const rule=RULES[p.strat]||RULES.OTHER;
     const b=bars(p.entry_date,asof);
@@ -2070,13 +2232,15 @@ function armStats(sym, strat){
     } else {
       h+=`<p class="small">Seeded - starts accumulating automatically at the next daily build.</p>`;
     }
-    h+=`<p class="small">Every qualifying TAKE gets logged by the nightly build at its
-      VALIDATED basis (close fills for RSI2/MFI; next-morning open for Gap Widen and
-      Z-Score paper), and exits apply each book's exact rule at the close (GW netted
-      0.05%/side, z netted 0.02pp; close-basis books gross, labeled). No human in the
+    h+=`<p class="small">Every qualifying TAKE gets logged by the nightly build at the
+      next-morning open - ALL five books, since 2026-08-03 (RSI2/MFI recorded close
+      fills before that; the ~15% MOO haircut they carry is measured and disclosed in
+      the build script). Exits apply each book's exact rule at the close (GW netted
+      0.05%/side, z netted 0.02pp, RSI2/MFI gross). No human in the
       loop = no skipped days, no cherry-picking - this is the forward evidence the
       program owes itself, and the Evidence Parity "Forward" cells flip automatically
       at 20 closed trades per book. The manual book below is for YOUR real fills.</p></div>`;
+    h+=histCard();
     h+=`<div class="card okbox"><h3>Paper book - $100k start</h3><div class="tiles">
       <div class="tile"><div class="k">Paper equity</div>
         <div class="v">$${Math.round(eq).toLocaleString()}</div>
@@ -2203,6 +2367,18 @@ function armStats(sym, strat){
       <textarea id="p-imp" style="width:100%;height:50px"></textarea>
       <button id="p-impbtn">Import</button></details>`;
     el.innerHTML=h;
+    el.querySelectorAll("button[data-histcsv]").forEach(bt=>bt.onclick=()=>{
+      const rows=[].concat((HIST&&HIST.sb&&HIST.sb.closed)||[],
+        (HIST&&HIST.sb&&HIST.sb.positions)||[]).filter(x=>x.book===bt.dataset.histcsv);
+      const cols=["book","sym","state","signal_date","basis","entry_date","entry_px",
+        "exit_date","exit_px","exit_reason","bars_held","net"];
+      const csv=[cols.join(",")].concat(rows.map(r=>cols.map(c=>
+        r[c]==null?"":String(r[c]).replace(/,/g,";")).join(","))).join("\n");
+      (navigator.clipboard&&navigator.clipboard.writeText
+        ?navigator.clipboard.writeText(csv):Promise.reject())
+        .then(()=>{bt.textContent="copied "+rows.length+" rows";})
+        .catch(()=>{bt.textContent="clipboard blocked - use the table";});
+    });
     document.getElementById("p-add").onclick=()=>{
       const sym=document.getElementById("p-sym").value.trim().toUpperCase();
       const date=document.getElementById("p-date").value;
@@ -2264,6 +2440,7 @@ function armStats(sym, strat){
       rd.readAsText(f);};
   }
   render();
+  loadHist();
 })();
 
 // ---------- DAILY OPTIMAL TAB ----------
