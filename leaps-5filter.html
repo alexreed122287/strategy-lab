@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LEAPS 5-Filter - Strategy Lab</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27><rect width=%2716%27 height=%2716%27 rx=%273%27 fill=%27%23121212%27/><path d=%27M2 12 L6 7 L9 9 L14 3%27 stroke=%27%2356B4E9%27 stroke-width=%272%27 fill=%27none%27/></svg>">
+<style>
+/* Design tokens lifted from the Strategy Lab dashboard (Okabe-Ito, dark base). */
+:root {
+  color-scheme: dark;
+  --surface-1: #000000; --surface-2: #121212; --border: #333330;
+  --text-primary: #f6f6f4; --text-secondary: #c0bfb9; --text-muted: #8d8c85;
+  --series-1: #56B4E9; --good: #009E73; --warning: #F0E442;
+  --serious: #E69F00; --critical: #D55E00;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--surface-1); color: var(--text-primary);
+  font: 14px/1.45 -apple-system, "Segoe UI", Roboto, sans-serif; }
+header { padding: 14px 20px 0; }
+h1 { font-size: 18px; margin: 0 0 2px; }
+h1 b { color: var(--series-1); }
+.sub { color: var(--text-secondary); font-size: 12px; margin-bottom: 10px; }
+nav { display: flex; gap: 2px; border-bottom: 1px solid var(--border);
+  padding: 0 20px; position: sticky; top: 0; z-index: 30; background: var(--surface-1); }
+nav a, nav span { border-bottom: 2px solid transparent; color: var(--text-secondary);
+  padding: 8px 14px; font-size: 13px; text-decoration: none; white-space: nowrap;
+  border-radius: 8px 8px 0 0; }
+nav span.on { color: var(--text-primary); border-bottom-color: var(--series-1);
+  background: var(--surface-2); font-weight: 600; }
+nav a:hover { color: var(--text-primary); }
+main { padding: 16px 20px 60px; max-width: 1100px; }
+.tiles { display: flex; gap: 12px; flex-wrap: wrap; margin: 10px 0 18px; }
+.tile { background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 12px 16px; min-width: 160px; }
+.tile .k { font-size: 11px; color: var(--text-secondary); text-transform: uppercase;
+  letter-spacing: .04em; }
+.tile .v { font-size: 24px; font-weight: 700; margin-top: 2px; }
+.tile .d { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.card { background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 14px 16px; margin-bottom: 12px; }
+.card h3 { margin: 0 0 6px; font-size: 14px; }
+.card p, .card li { color: var(--text-secondary); font-size: 13px; }
+.card ul { margin: 6px 0 2px 18px; padding: 0; }
+.okbox { border-left: 4px solid var(--good); }
+.warnbox { border-left: 4px solid var(--warning); }
+.killbox { border-left: 4px solid var(--critical); }
+.chip { display: inline-block; border-radius: 10px; padding: 1px 8px; font-size: 11px;
+  font-weight: 600; color: #fff; }
+.chip.info { background: var(--series-1); }
+.chip.watch { background: var(--warning); color: #1a1a19; }
+.chip.take { background: var(--good); }
+.chip.gray { background: transparent; border: 1px solid var(--text-muted);
+  color: var(--text-muted); }
+.tablewrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 10px;
+  margin-bottom: 12px; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: right; padding: 5px 8px; border-bottom: 1px solid var(--border);
+  white-space: nowrap; }
+th { color: var(--text-secondary); font-weight: 600; position: sticky; top: 0;
+  background: var(--surface-2); }
+th:first-child, td:first-child { text-align: left; }
+.tablewrap th:first-child, .tablewrap td:first-child { position: sticky; left: 0;
+  z-index: 2; background: var(--surface-1); }
+.tablewrap th:first-child { z-index: 3; background: var(--surface-2); }
+tr:hover td { background: var(--surface-2); }
+.tablewrap table tr:last-child td { border-bottom: none; }
+td.l, th.l { text-align: left; white-space: normal; }
+details.gloss { background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 9px 12px; margin: 10px 0; }
+details.gloss summary { cursor: pointer; font-size: 12px; font-weight: 600;
+  color: var(--text-secondary); }
+details.gloss[open] summary { margin-bottom: 8px; }
+details.gloss p, details.gloss li { color: var(--text-secondary); font-size: 13px; }
+code { background: var(--surface-1); border: 1px solid var(--border);
+  border-radius: 4px; padding: 1px 6px; font-size: 12px; }
+.small { font-size: 11px; color: var(--text-muted); }
+.footer { color: var(--text-muted); font-size: 11px; margin-top: 30px;
+  border-top: 1px solid var(--border); padding-top: 10px; }
+ol.filters { margin: 0; padding: 0 0 0 18px; }
+ol.filters > li { margin-bottom: 10px; color: var(--text-secondary); font-size: 13px; }
+ol.filters > li > b { color: var(--text-primary); }
+@media (max-width: 700px) {
+  header { padding: 10px 12px 0; } h1 { font-size: 16px; }
+  nav { padding: 0 8px; overflow-x: auto; scrollbar-width: none; }
+  main { padding: 12px 10px 80px; }
+  th, td { padding: 6px 6px; font-size: 12px; }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>LEAPS <b>5-Filter</b></h1>
+  <div class="sub">A trend-following LEAPS entry checklist transcribed from a public trading-education video, implemented as a TradingView indicator. <span class="chip watch">SPEC ONLY - NOT BACKTESTED</span></div>
+</header>
+<nav>
+  <a href="./">&larr; Dashboard</a>
+  <span class="on">LEAPS 5-Filter</span>
+  <a href="robert.html">ROBERT</a>
+  <a href="paper-log.html">Paper-Fill Log</a>
+</nav>
+<main>
+
+<div class="card killbox">
+  <h3>Read this before anything else on the page</h3>
+  <p>Every performance claim elsewhere on this site is backed by a run you can cite. <b>This line has none.</b> It has never been backtested, never paper-traded, and the Pine implementation has never been compiled in TradingView. There are no in-sample or out-of-sample tables below because there is nothing to put in them, and no placeholder numbers have been invented to fill the gap.</p>
+  <p>What follows is a <b>specification</b>: the five entry conditions, what the script can and cannot actually measure, and where it substitutes a proxy for the thing the source video describes. Treat it as a documented idea awaiting evidence, not as a strategy.</p>
+</div>
+
+<div class="tiles">
+  <div class="tile"><div class="k">Backtest</div><div class="v">None</div><div class="d">no IS/OOS windows run</div></div>
+  <div class="tile"><div class="k">Fully automated</div><div class="v">2 of 5</div><div class="d">trend, weekly stochastic</div></div>
+  <div class="tile"><div class="k">Proxy stand-in</div><div class="v">2 of 5</div><div class="d">quality, implied volatility</div></div>
+  <div class="tile"><div class="k">Manual entry</div><div class="v">1 of 5</div><div class="d">valuation / analyst upside</div></div>
+  <div class="tile"><div class="k">Status</div><div class="v">Spec</div><div class="d">not armed, no allocation</div></div>
+</div>
+
+<h3 style="font-size:14px;margin:16px 0 6px">The five filters</h3>
+<div class="card">
+  <ol class="filters">
+    <li><b>Trend.</b> Price above both the 50 and 200 SMA, the 50 above the 200 ("stacked bullish"), and the 200 itself sloping up. The slope condition is what separates this from a simple moving-average cross - a flat or falling 200 with price temporarily above it does not qualify.</li>
+    <li><b>Weekly stochastic.</b> %K above 20 <i>and turning up</i>. The source is explicit that the <i>turn</i> is the signal, not the oversold reading on its own; a stochastic pinned under 20 and still falling is not an entry.</li>
+    <li><b>Quality.</b> A profitable company carrying sane leverage - the qualitative "could this survive a rough year" read.</li>
+    <li><b>Valuation and upside.</b> Price meaningfully below the analyst consensus target, so there is room to run.</li>
+    <li><b>Implied volatility.</b> Options cheap relative to their own history. Note this is the <i>opposite</i> of the premium-selling logic used elsewhere on this site: as a buyer of long-dated calls, low IV at entry is the favourable condition.</li>
+  </ol>
+</div>
+
+<div class="card">
+  <h3>Contract selection and exits</h3>
+  <p>Once a name clears all five filters, the source specifies <b>roughly 0.70 delta at roughly 365 DTE</b>. Neither leg of that rule is checked by the indicator - both require a live option chain the script cannot reach.</p>
+  <p>Two mechanical exit triggers: a <b>trend break</b> (close below the 200 MA) or a <b>weekly stochastic rollover</b>. A third exit - "something fundamentally changed" - is judgment and is not expressible as code.</p>
+</div>
+
+<h3 style="font-size:14px;margin:16px 0 6px">What the script actually measures - real vs. proxy vs. manual</h3>
+<div class="tablewrap">
+<table>
+  <tr><th class="l">Filter</th><th class="l">Automation</th><th class="l">What the implementation really does</th></tr>
+  <tr>
+    <td class="l"><b>1. Trend</b></td>
+    <td class="l"><span class="chip take">automated</span></td>
+    <td class="l">Standard moving-average logic on the chart series. No caveats - this filter is measured exactly as described.</td>
+  </tr>
+  <tr>
+    <td class="l"><b>2. Weekly stochastic</b></td>
+    <td class="l"><span class="chip take">automated</span></td>
+    <td class="l">Pulled with <code>request.security(..., "W", ...)</code> under <code>lookahead_off</code>, so the weekly value is non-repainting regardless of the chart's own timeframe.</td>
+  </tr>
+  <tr>
+    <td class="l"><b>3. Quality</b></td>
+    <td class="l"><span class="chip watch">proxy</span></td>
+    <td class="l">TradingView <code>request.financials()</code> for trailing-twelve-month net income and debt/equity. A loose solvency sanity check - it is <i>not</i> the qualitative "can it survive a rough year" judgement the source describes.</td>
+  </tr>
+  <tr>
+    <td class="l"><b>4. Valuation / upside</b></td>
+    <td class="l"><span class="chip info">manual</span></td>
+    <td class="l">Pine has no analyst-price-target feed. The percentage upside is typed in by hand per ticker via an input field, sourced from Market Chameleon or the FMP connector. Nothing validates that the number entered is current or correct.</td>
+  </tr>
+  <tr>
+    <td class="l"><b>5. Implied volatility</b></td>
+    <td class="l"><span class="chip watch">proxy</span></td>
+    <td class="l">Historical-volatility percentile stands in for true options-chain IV, which Pine cannot retrieve for an arbitrary underlying without a specialised feed. HV and IV correlate but diverge - most sharply around earnings, which is exactly when the filter matters most.</td>
+  </tr>
+  <tr>
+    <td class="l"><b>Contract selection</b></td>
+    <td class="l"><span class="chip gray">off-chart</span></td>
+    <td class="l">The 0.70-delta / 365-DTE rule needs a live option chain. Not checked anywhere in the script.</td>
+  </tr>
+  <tr>
+    <td class="l"><b>"Fundamentals changed" exit</b></td>
+    <td class="l"><span class="chip gray">off-chart</span></td>
+    <td class="l">Inherently a judgement call. Not automatable, and not attempted.</td>
+  </tr>
+</table>
+</div>
+
+<details class="gloss">
+  <summary>&#9432; Why the proxies matter more than they look</summary>
+  <p>A checklist is only as strong as its weakest measurement. Two of the five conditions here are measured by something adjacent to the real quantity rather than the quantity itself, and a third is whatever the operator typed in. That means even a clean backtest of this script would be testing <i>the proxies</i>, not the strategy as the source describes it - and the two would only agree to the extent HV tracks IV and the financials screen tracks business quality.</p>
+  <p>The IV substitution is the sharpest edge case. HV is backward-looking realised movement; IV is the forward-looking price of options. They diverge most around scheduled events - so a name can screen as "cheap options" on HV percentile precisely when IV is bid up into an earnings print, which is the opposite of the intended condition.</p>
+</details>
+
+<div class="card warnbox">
+  <h3>Where this sits against everything else on this site</h3>
+  <p>The pipeline other lines here went through is: backtest &rarr; in-sample / out-of-sample validation &rarr; paper trading &rarr; a two-leg real-money gate. ROBERT has cleared the first two and is sitting in the third, and it <i>still</i> carries "no allocation, no x-number" on its own page until the fill-log gate closes.</p>
+  <p>This line has cleared none of them. Accordingly it gets <b>no VETTED badge</b> (the <code>n&ge;20 / PF&ge;1.3 / win&ge;60 / both eras</code> bar needs trades that do not exist), <b>no x-number</b> (the registry is reserved for research lines with runs behind them; the site's own precedent is that a number is assigned when armed, not when written down), and <b>no live signal column</b> feeding the watchlist or the mail digest.</p>
+</div>
+
+<div class="card">
+  <h3>Family - this is not a ROBERT variant</h3>
+  <p>ROBERT is <b>mean-reversion</b>: RSI(2) oversold in a relative-strength leader, held a median 2.6 bars, deep-in-the-money calls at 30-50 DTE. This is <b>trend-following</b>: stacked moving averages and a weekly momentum turn, held roughly a year at 0.70 delta. Opposite premise, opposite holding period, opposite IV posture at entry. Nothing learned about one transfers to the other, and the two should never be evaluated against a shared benchmark.</p>
+</div>
+
+<div class="card">
+  <h3>The Pine implementation</h3>
+  <p><code>leaps_5filter_screener.pine</code> - Pine Script v6, <code>overlay=true</code>. The script was written in a separate session and has <b>not yet been committed to this repository</b>, so there is nothing to link here yet. It has also never been compiled in TradingView; if it has since been run and corrected, the corrected version is the one that should land.</p>
+  <p class="small">When the file is added to the repo, this section should link it directly and this note should come out.</p>
+</div>
+
+<div class="card">
+  <h3>Source and attribution</h3>
+  <p>The five-filter checklist is transcribed from a public trading-education video by <b>Rashad</b> ("Trade Freedom IQ" / the "Bull Premium" newsletter). The framework is his; the Pine implementation, the proxy substitutions, and the caveats on this page are ours and should not be attributed to him.</p>
+  <p>His own disclaimer travels with the material and is reproduced rather than paraphrased: <i>not financial advice, results may vary.</i> Nothing on this page constitutes an endorsement of the source, the newsletter, or the checklist - it is documented here because it was worth writing down, not because it has been shown to work.</p>
+</div>
+
+<details class="gloss">
+  <summary>&#9432; What would have to happen for this to earn a real page</summary>
+  <p>In the order the other lines went through it: compile the indicator and confirm it runs clean; convert it to a screener form that can be run across a universe; backtest it over at least two distinct market eras with the proxies clearly labelled as proxies; then, only if it survives that, paper-trade it. Each of those is a separate piece of work and none of it has been started or scheduled.</p>
+  <p>The honest expected outcome is worth stating in advance: a five-condition checklist this restrictive will fire rarely, and a rare signal takes a long time to accumulate the sample size the VETTED bar asks for. That is a reason to test it early rather than a reason to trust it.</p>
+</details>
+
+<div class="footer">
+  Research and education only. Not financial advice. Specification transcribed and page created 08/15/2026 - no backtest, paper trade, or live allocation exists for this line as of that date. The underlying checklist is the work of a third-party content creator (see attribution above) and carries his own "not financial advice" disclaimer. This page is hand-maintained alongside the pipeline-emitted dashboard.
+</div>
+
+</main>
+</body>
+</html>
