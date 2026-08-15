@@ -27,6 +27,26 @@ indicator("LEAPS 5-Filter Screener [Rashad Checklist]", shorttitle="LEAPS-5F", o
 // Automated exit triggers (from the checklist's two chart-based exit rules):
 //   - Trend break: close falls back below the 200 MA
 //   - Weekly stochastic rollover: %K turns down after having been rising
+//
+// ---------------------------------------------------------------------------
+// Measurement choices worth knowing about (both are inputs, not hard-coded):
+//
+//   Weekly comparisons are week-over-week, not chart-bar-over-chart-bar.
+//   A naive `wkK > wkK[1]` on a daily chart compares yesterday's reading of the
+//   still-forming weekly bar against today's - i.e. day-over-day - so the "turn"
+//   flickers on and off through the week and only settles at the weekly close.
+//   Both the current and prior weekly values are therefore pulled from inside the
+//   weekly context in a single request, so [1] means "previous week".
+//   `confirmWeekly` (default on) goes one step further and reads only closed
+//   weekly bars, so a signal never changes after it prints. Turn it off to trade
+//   the forming week - earlier, but it can flip until Friday's close.
+//
+//   Exit tracking is armed by the chart-verifiable filters by default.
+//   The manual valuation field starts at 0% against a 10% minimum, so the full
+//   five can never pass until a number is typed in - correct for entries, but if
+//   exits were gated the same way no exit marker could ever fire on a fresh
+//   chart. `armExitsOnCoreOnly` (default on) arms exit tracking from the four
+//   automated filters so the exit rules stay useful without manual data entry.
 // ============================================================================
 
 // ---- Inputs ------------------------------------------------------------------
@@ -40,6 +60,7 @@ stochLen   = input.int(14, "Stochastic Length", group = grpStoch)
 smoothK    = input.int(3,  "%K Smoothing",      group = grpStoch)
 smoothD    = input.int(3,  "%D Smoothing",      group = grpStoch)
 stochFloor = input.int(20, "Oversold Line",     group = grpStoch)
+confirmWeekly = input.bool(true, "Use closed weekly bars only", group = grpStoch, tooltip = "On: read only completed weekly bars, so a signal never changes after it prints (costs up to a week of lag). Off: read the forming week - earlier, but the turn can flip until Friday's close.")
 
 grpQual = "3. Quality (proxy - see notes)"
 useQualityCheck = input.bool(true,   "Enable Quality Filter", group = grpQual)
@@ -54,6 +75,9 @@ hvLen           = input.int(20,  "HV Lookback (days)",             group = grpIV
 hvPctLen        = input.int(252, "HV Percentile Lookback (days)",  group = grpIV)
 maxHvPercentile = input.float(50.0, "Max HV Percentile (cheap = below this)", group = grpIV)
 
+grpExit = "Exit tracking"
+armExitsOnCoreOnly = input.bool(true, "Arm exits on the core four (ignore manual valuation)", group = grpExit, tooltip = "On: exit tracking arms from the four chart-verifiable filters, so exit markers work without typing in an analyst upside. Off: exits only arm once all five pass, including the manual field - with a blank valuation input that means no exit can ever fire.")
+
 grpTable = "Display"
 tablePos        = input.string("Top Right", "Table Position", options = ["Top Right", "Top Left", "Bottom Right", "Bottom Left"], group = grpTable)
 showExitSignals = input.bool(true, "Show Exit Signals", group = grpTable)
@@ -65,9 +89,24 @@ slowSlopeUp  = ma200 > ma200[slopeBars]
 trendPass    = close > ma50 and close > ma200 and ma50 > ma200 and slowSlopeUp
 
 // ---- Filter 2: Weekly Stochastic (HTF-safe, non-repainting) --------------------
-wkK = request.security(syminfo.tickerid, "W", ta.sma(ta.stoch(close, high, low, stochLen), smoothK), lookahead = barmerge.lookahead_off)
-wkD = request.security(syminfo.tickerid, "W", ta.sma(ta.sma(ta.stoch(close, high, low, stochLen), smoothK), smoothD), lookahead = barmerge.lookahead_off)
-wkRisingFromFloor = wkK > stochFloor and wkK > wkK[1]
+// Every value below is offset INSIDE the weekly context, so [1] means "previous
+// week" rather than "previous chart bar". Requesting them in one call also keeps
+// the whole set consistent with each other.
+f_weeklyStoch() =>
+    k = ta.sma(ta.stoch(close, high, low, stochLen), smoothK)
+    d = ta.sma(k, smoothD)
+    [k, k[1], k[2], k[3], d, d[1]]
+
+[wkK0, wkK1, wkK2, wkK3, wkD0, wkD1] = request.security(syminfo.tickerid, "W", f_weeklyStoch(), lookahead = barmerge.lookahead_off)
+
+// confirmWeekly shifts the whole window back one weekly bar, so only closed
+// weeks are read and a printed signal never changes afterwards.
+wkK    = confirmWeekly ? wkK1 : wkK0
+wkKp1  = confirmWeekly ? wkK2 : wkK1
+wkKp2  = confirmWeekly ? wkK3 : wkK2
+wkD    = confirmWeekly ? wkD1 : wkD0
+
+wkRisingFromFloor = wkK > stochFloor and wkK > wkKp1
 stochPass = wkRisingFromFloor
 
 // ---- Filter 3: Quality proxy (fundamentals) -------------------------------------
@@ -90,15 +129,21 @@ coreAutoPass = trendPass and stochPass and qualityPass and ivPass   // the 4 fil
 allFivePass  = coreAutoPass and valuationPass                       // full checklist incl. manual valuation entry
 
 // ---- Setup / exit state tracking -----------------------------------------------
+// Exit tracking arms from the chart-verifiable filters by default. Gating it on
+// allFivePass would make every exit depend on the manual valuation entry, so a
+// blank input would silence the exit rules entirely.
+armCondition = armExitsOnCoreOnly ? coreAutoPass : allFivePass
+
 var bool inSetup = false
-if allFivePass and not inSetup
+if armCondition and not inSetup
     inSetup := true
 if inSetup and close < ma200
     inSetup := false
 
 exitTrendBreak = inSetup[1] and close < ma200
 
-wkTurnedDown       = wkK < wkK[1] and wkK[1] >= wkK[2]
+// Week-over-week rollover: down this week, after having been flat-to-rising into it.
+wkTurnedDown       = wkK < wkKp1 and wkKp1 >= wkKp2
 exitStochRollover  = inSetup[1] and wkTurnedDown
 
 if inSetup and wkTurnedDown
@@ -137,7 +182,7 @@ if barstate.islast
 
     f_labelCell(screenTable, 2, "2. Weekly Stochastic", stochPass)
     f_statusCell(screenTable, 2, stochPass)
-    table.cell(screenTable, 2, 2, "K:" + str.tostring(wkK, "#.#") + " D:" + str.tostring(wkD, "#.#"), text_color = color.white, text_size = size.small)
+    table.cell(screenTable, 2, 2, "K:" + str.tostring(wkK, "#.#") + " D:" + str.tostring(wkD, "#.#") + (confirmWeekly ? " (closed wk)" : " (forming wk)"), text_color = color.white, text_size = size.small)
 
     f_labelCell(screenTable, 3, "3. Quality (proxy)", qualityPass)
     f_statusCell(screenTable, 3, qualityPass)
