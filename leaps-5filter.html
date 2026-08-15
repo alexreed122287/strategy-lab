@@ -193,8 +193,9 @@ ol.filters > li > b { color: var(--text-primary); }
 
 <div class="card">
   <h3>The Pine implementation</h3>
-  <p><code>leaps_5filter_screener.pine</code> - Pine Script v6, <code>overlay=true</code>. The script was written in a separate session and has <b>not yet been committed to this repository</b>, so there is nothing to link here yet. It has also never been compiled in TradingView; if it has since been run and corrected, the corrected version is the one that should land.</p>
-  <p class="small">When the file is added to the repo, this section should link it directly and this note should come out.</p>
+  <p><a href="leaps_5filter_screener.pine" style="color:var(--series-1)"><code>leaps_5filter_screener.pine</code></a> - Pine Script v6, <code>overlay=true</code>. Plots the 50 and 200 MA, shades bars where the checklist clears, prints a per-filter PASS/FAIL table, and carries three <code>alertcondition</code> hooks (core-four confirmed, trend-break exit, stochastic-rollover exit).</p>
+  <p>It separates <b>"core four"</b> - the conditions Pine can evaluate on its own - from the full five, which needs the analyst-upside figure typed in. The manual field defaults to <code>0%</code> against a <code>10%</code> minimum, so the checklist <b>fails closed</b> until a real number is entered rather than silently passing.</p>
+  <p class="small">Still uncompiled - it has not been run in TradingView. Two behaviours to confirm on a live chart before trusting it: the weekly-stochastic turn is evaluated bar-over-bar against a still-forming weekly value, so on a daily chart it reads day-over-day and can toggle mid-week rather than settling only at the weekly close; and both exit markers are gated behind the same setup state that requires the manual upside entry, so with default inputs no exit signal can fire. Neither is a syntax problem - they are design choices worth a deliberate look.</p>
 </div>
 
 <div class="card">
