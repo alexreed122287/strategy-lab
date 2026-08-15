@@ -399,7 +399,7 @@ TABS.forEach(([id,label],k)=>{
   b.onclick=()=>show(id); if(k===0)b.classList.add("on");
   b.dataset.tab=id; nav.appendChild(b);
 });
-[["robert.html","ROBERT"],["paper-log.html","Paper Log"]].forEach(([href,label])=>{
+[["robert.html","ROBERT"],["paper-log.html","Paper Log"],["leaps-5filter.html","LEAPS 5-Filter"]].forEach(([href,label])=>{
   const a=document.createElement("a"); a.textContent=label; a.href=href;
   a.style.cssText="color:var(--text-secondary);padding:8px 14px;font-size:13px;text-decoration:none;white-space:nowrap;flex:0 0 auto";
   nav.appendChild(a);
