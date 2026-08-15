@@ -28,6 +28,7 @@ on:
 
 permissions:
   contents: write
+  issues: write  # failure-notify step opens/comments the reusable issue
 
 concurrency:
   group: daily-build
