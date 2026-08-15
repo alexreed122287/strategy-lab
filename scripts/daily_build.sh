@@ -27,6 +27,20 @@ git pull --ff-only origin main \
 
 cd "$WORK"
 
+# 0b) Tradier token self-heal (2026-08-15). dump_closes/robert_* PREFER
+#     ~/.tradier_token over the env var by design, so a rotation that lands in
+#     the canonical ~/options-platform/.env but not in this copy 401s the whole
+#     build fail-closed (happened 8/12-8/14, three lost sessions). Sync the copy
+#     from the canonical source whenever they differ.
+#     The || true keeps a missing .env / absent key from killing the build via
+#     set -e: self-heal is best-effort, the preflight below still fail-closes.
+CANON="$( { grep '^TRADIER_ACCESS_TOKEN=' "$HOME/options-platform/.env" 2>/dev/null || true; } | head -1 | cut -d= -f2-)"
+if [ -n "$CANON" ] && [ "$CANON" != "$(cat "$HOME/.tradier_token" 2>/dev/null)" ]; then
+  printf '%s' "$CANON" > "$HOME/.tradier_token"
+  chmod 600 "$HOME/.tradier_token"
+  echo "tradier token: refreshed ~/.tradier_token from options-platform/.env"
+fi
+
 # 1-2) Refresh data + regenerate the dashboard blobs — CONFIG-DRIVEN, no script
 #    edit needed. Put your one-line build command (data refresh + blob rebuild,
 #    ending with index.html written into $REPO) in EITHER:

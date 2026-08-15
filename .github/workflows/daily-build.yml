@@ -77,10 +77,33 @@ jobs:
           # original 15..16 CT window would silently skip that 22:37 firing and
           # lose the session with no error anywhere. The market closes at 15:00
           # CT, so every bar is final from then on and any build up to the
-          # evening is equally valid - there is no reason to be narrow. Stops
-          # before 19:00 CT, where the UTC date rolls over.
-          ok = manual or (now.weekday() < 5 and 15 <= now.hour <= 18 and not already)
+          # evening is equally valid - there is no reason to be narrow.
+          # Widened past 19:00 CT on 2026-08-15: on 8/6 BOTH crons flushed at
+          # 19:56/20:03 CT and the 15..18 window skipped them - a whole session
+          # lost silently. The old reason to stop at 19:00 (UTC date rollover
+          # corrupting the commit stamp) died when the stamp moved to the
+          # Chicago date below; the two remaining UTC-date consumers are pinned
+          # to this guard's Chicago date where they are invoked (earnings
+          # --today, the TRACK --source stamp).
+          ok = manual or (now.weekday() < 5 and 15 <= now.hour <= 21 and not already)
           print("proceed=%s" % ("true" if ok else "false"))
+          # Feed states the page held BEFORE this run. The runner is stateless,
+          # so notify_buys' ~/.strategy_lab_notify_state.json dedupe never
+          # survives between runs - on 8/14 three same-evening publishes each
+          # re-sent the alert and digest. The durable dedupe signal: notify only
+          # when this build ADVANCES a feed - BOOKSIG.as_of (new session) OR the
+          # SIGNALS bar (a rerun that brings a previously-stale generator up to
+          # the session must alert, or the RSI2/MFI buys of an 8/14-style
+          # recovery would never be emailed). A re-publish that advances
+          # neither sends nothing.
+          print("pre_asof=%s" % (captured or ""))
+          try:
+              pre_sig = max([r.get("as_of") or "" for r in json.loads(
+                  re.search(r"const SIGNALS = (.*?);\n", page, re.S).group(1)
+                  ).get("signals") or []] or [""])
+          except Exception:
+              pre_sig = ""
+          print("pre_sig=%s" % pre_sig)
           # The commit message MUST be stamped with this same Chicago date, not
           # with the runner's UTC `date +%F`. They differ after 19:00 CT, so a
           # late or manual evening run stamped TOMORROW's date and then
@@ -133,7 +156,13 @@ jobs:
         if: steps.guard.outputs.proceed == 'true'
         run: |
           mkdir -p /tmp/earn_empty
+          # --today pins the forward filter to the CHICAGO session date: after
+          # 19:00 CT the runner's UTC date is tomorrow, which would silently
+          # drop earnings dated the current session and disarm Z-Score's
+          # pre-earnings exit on exactly the drift-delayed runs the widened
+          # guard window now allows.
           python3 scripts/next_earnings.py --dir /tmp/earn_empty \
+            --today "${{ steps.guard.outputs.today }}" \
             --seed-file data/earnings_seed.json --out /tmp/earnings.json \
             || echo '{}' > /tmp/earnings.json
           # A seed that quietly runs out puts us back where we started, so say so.
@@ -194,7 +223,7 @@ jobs:
         run: |
           python3 scripts/track_snapshot_reference.py /tmp/bars.json \
             --earnings /tmp/earnings.json --splice index.html \
-            --source "tradier github-actions $(date +%F)"
+            --source "tradier github-actions $(TZ=America/Chicago date +%F)"
           python3 scripts/scan_book_signals.py --bars /tmp/bars.json \
             --page index.html --earnings /tmp/earnings.json --splice
           python3 scripts/shadow_book.py --bars /tmp/bars.json \
@@ -285,10 +314,15 @@ jobs:
             git push origin "HEAD:$GITHUB_REF_NAME"
             echo "published=true" >> "$GITHUB_OUTPUT"
           fi
+          new_session=$(python3 -c "import json,re;h=open('index.html').read();g=lambda n:json.loads(re.search(r'const %s = (.*?);\n'%n,h,re.S).group(1));pb=g('BOOKSIG').get('as_of') or '';ps=max([r.get('as_of') or '' for r in g('SIGNALS').get('signals') or []] or ['']);print('true' if (pb>'${{ steps.guard.outputs.pre_asof }}' or ps>'${{ steps.guard.outputs.pre_sig }}') else 'false')")
+          echo "new_session=$new_session" >> "$GITHUB_OUTPUT"
 
-      # ---- step 7: notifications. Never fail the run over email.
+      # ---- step 7: notifications. Never fail the run over email. Only a build
+      # that ADVANCES the session (new BOOKSIG bar date) notifies - re-publishes
+      # of an already-alerted session send nothing (the runner-local dedupe
+      # state file cannot do this job, see the guard).
       - name: Send alert and digest
-        if: steps.guard.outputs.proceed == 'true' && steps.publish.outputs.published == 'true'
+        if: steps.guard.outputs.proceed == 'true' && steps.publish.outputs.published == 'true' && steps.publish.outputs.new_session == 'true'
         run: |
           python3 scripts/notify_buys.py --page index.html || echo "alert failed (non-fatal)"
           python3 scripts/notify_buys.py --page index.html --simple || echo "digest failed (non-fatal)"
