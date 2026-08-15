@@ -357,10 +357,27 @@ def main():
         sys.exit("fail-closed: only %d of %d universe names had usable bars"
                  % (covered, len(uni)))
 
-    order = {"TAKE": 0, "PASS-EARNINGS": 1, "WATCH": 2}
+    # Port of demote_stale() added to the Mac generator on 2026-08-14 (lab
+    # repo commit 415a884) - this file's parity contract includes it. `age`
+    # counts from the symbol's OWN last bar, so a ticker whose feed froze
+    # reports age=1/new_today=true forever: EA sat in the TAKE list for ten
+    # days after its take-private closed. Universe removal (PR #78) patched
+    # that one name; this is the class fix. The market's last close is the max
+    # as_of across the corpus, so one frozen name cannot drag it backwards.
+    market_asof = max((r["as_of"] for r in signals), default=None)
+    for r in signals:
+        lag = (date.fromisoformat(market_asof)
+               - date.fromisoformat(r["as_of"])).days
+        r["stale_days"] = max(lag, 0)
+        if lag > 0:
+            r["state"] = "PASS-STALE"
+            r["new_today"] = False
+
+    order = {"TAKE": 0, "PASS-EARNINGS": 1, "WATCH": 2, "PASS-STALE": 4}
     signals.sort(key=lambda r: (order.get(r["state"], 3), r["depth"]))
     blob = {"generated": datetime.now().strftime("%Y-%m-%d %H:%M")
             + " cloud generator",
+            "market_asof": market_asof,
             "signals": signals}
     if out_p:
         json.dump(blob, open(out_p, "w"), indent=1)
