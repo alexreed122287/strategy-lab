@@ -1705,14 +1705,15 @@
    "signal_date": "2026-07-31",
    "basis": "close",
    "bars_held": 9,
-   "signal_close": 96.38,
+   "signal_close": 48.19,
    "entry_date": "2026-07-31",
-   "entry_px": 96.38,
+   "entry_px": 48.19,
    "exit_date": "2026-08-13",
    "exit_px": 46.68,
    "exit_reason": "close>ema7",
-   "net": -0.51567,
-   "state": "closed"
+   "net": -0.03133,
+   "state": "closed",
+   "note": "corp-action correction 2026-08-15: MNST 2:1 split effective 2026-08-11 landed mid-hold; provider back-adjusted history so the recorded pre-split entry_px 96.38 was compared against the post-split exit close. Entry rebased 96.38 -> 48.19 (split-adjusted, EODHD-verified ratio 2/1); net corrected -0.51567 -> -0.03133. No exit rule or date changed."
   },
   {
    "book": "ZSCORE",

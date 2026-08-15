@@ -56,12 +56,25 @@ def rsi(closes, n):
 
 
 def snapshot(closes_by_sym, earnings=None, source="local build"):
+    # Corpus max first: a frozen feed (EA sat at its 08-04 take-private close,
+    # volume 0, for ten days) must not ship a stale close that sell-flag logic
+    # and P&L cells then treat as live. Symbols trailing the market's last bar
+    # by more than a week are dropped - the page renders them "not in
+    # snapshot", which is the honest state. Symbols 1-7 days behind keep their
+    # row but carry last_bar so consumers can see the lag.
+    corpus_max = max((s[-1][0] for s in closes_by_sym.values() if s), default=None)
     as_of, tickers = None, {}
     for sym, series in closes_by_sym.items():
         if len(series) < 15:
             continue
         dates = [r[0] for r in series]
         closes = [float(r[4] if len(r) >= 6 else r[1]) for r in series]
+        if corpus_max and dates[-1] < corpus_max:
+            import datetime as _dt
+            lag = (_dt.date.fromisoformat(corpus_max)
+                   - _dt.date.fromisoformat(dates[-1])).days
+            if lag > 7:
+                continue
         as_of = max(as_of or dates[-1], dates[-1])
         row = {
             "close": round(closes[-1], 4),
@@ -73,6 +86,8 @@ def snapshot(closes_by_sym, earnings=None, source="local build"):
             "ema7": round(ema(closes, 7), 4),
             "next_earnings": (earnings or {}).get(sym),
         }
+        if corpus_max and dates[-1] < corpus_max:
+            row["last_bar"] = dates[-1]
         tickers[sym] = row
     return {"as_of": as_of, "source": source, "tickers": tickers}
 

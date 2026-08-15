@@ -415,7 +415,43 @@ def main():
             return closes[sym][:ds.index(date) + 1]
         return None
 
-    if led.get("as_of") != as_of:
+    # Corporate-action guard (2026-08-15, after MNST's 2:1 split landed mid-hold
+    # and booked a -51.6% phantom loss): the provider back-adjusts history, so
+    # the stored entry_px silently changes basis the day a split lands. Re-anchor
+    # every open position against the CURRENT series at its entry date and
+    # rebase when the deviation is corporate-action sized, logging the repair on
+    # the row. Sub-2% drift (dividend adjustments) is deliberately left alone.
+    for p in led["positions"]:
+        if p.get("state") != "open" or not p.get("entry_px") or not p.get("entry_date"):
+            continue
+        ds = dates.get(p["sym"]) or []
+        if p["entry_date"] not in ds:
+            continue
+        i = ds.index(p["entry_date"])
+        ref = (opens[p["sym"]][i] if p.get("basis") == "moo"
+               else closes[p["sym"]][i])
+        if not ref:
+            # 2-field bars carry no open: a moo row can't be re-anchored, and a
+            # silent skip would re-create the exact bug class this guard exists
+            # for. Say so loudly; the fetch should always run with --ohlcv.
+            print("shadow: WARNING corp-action guard cannot check %s %s - no "
+                  "open in bars (fetch without --ohlcv?)"
+                  % (p["book"], p["sym"]), file=sys.stderr)
+            continue
+        if abs(ref / p["entry_px"] - 1.0) <= 0.02:
+            continue
+        old_e, ratio = p["entry_px"], ref / p["entry_px"]
+        p["entry_px"] = round(ref, 4)
+        if p.get("signal_close"):
+            p["signal_close"] = round(p["signal_close"] * ratio, 4)
+        p["note"] = ((p.get("note") + " ") if p.get("note") else "") + (
+            "corp-action rebase %s: entry_px %s -> %s (x%.4f vs current adjusted series)"
+            % (as_of, old_e, p["entry_px"], ratio))
+        print("shadow: corp-action rebase %s %s entry %s -> %s"
+              % (p["book"], p["sym"], old_e, p["entry_px"]), file=sys.stderr)
+
+    first_pass = led.get("as_of") != as_of
+    if first_pass:
         # 1) fill queued MOO entries at the first bar AFTER the signal date
         for p in led["positions"]:
             if p["state"] != "pending_open":
@@ -457,37 +493,51 @@ def main():
         led["closed"] += [p for p in led["positions"] if p["state"] == "closed"]
         led["positions"] = [p for p in led["positions"] if p["state"] != "closed"]
 
-        # 3) today's signals
-        have = {(p["book"], p["sym"]) for p in led["positions"]}
-        def queue(book, sym, sig_close):
-            if (book, sym) in have:
-                return
-            have.add((book, sym))
-            basis = BASIS[book]
-            p = {"book": book, "sym": sym, "signal_date": as_of,
-                 "basis": basis, "bars_held": 0, "signal_close": sig_close,
-                 "entry_date": None, "entry_px": None,
-                 "exit_date": None, "exit_px": None, "exit_reason": None, "net": None,
-                 "state": "pending_open"}
-            if basis == "close":
-                p.update(state="open", entry_date=as_of, entry_px=sig_close)
-            led["positions"].append(p)
+    # 3) today's signals - on EVERY build for this bar, not only the first pass.
+    # 2026-08-14 lesson: the 20:57Z scheduled build advanced as_of with a
+    # numpy-broken signals_cloud.py (SIGNALS stale at 08-11), and the as_of
+    # idempotency lock then refused the fixed evening reruns their queue pass -
+    # 11 vetted RSI2/MFI TAKEs were silently lost from the forward record.
+    # Requeuing is safe outside the first pass: queue() dedupes on (book, sym)
+    # against current positions, both feeds are row-filtered to as_of, and a
+    # same-bar entry can never carry outcome information (exits only run on the
+    # first pass of a NEWER bar).
+    have = {(p["book"], p["sym"]) for p in led["positions"]}
+    def queue(book, sym, sig_close):
+        if (book, sym) in have:
+            return
+        have.add((book, sym))
+        basis = BASIS[book]
+        p = {"book": book, "sym": sym, "signal_date": as_of,
+             "basis": basis, "bars_held": 0, "signal_close": sig_close,
+             "entry_date": None, "entry_px": None,
+             "exit_date": None, "exit_px": None, "exit_reason": None, "net": None,
+             "state": "pending_open"}
+        if basis == "close":
+            p.update(state="open", entry_date=as_of, entry_px=sig_close)
+        led["positions"].append(p)
+        if not first_pass:
+            p["note"] = ("late-queued %s: feed was stale when this bar was first "
+                         "processed; fills at the next session open, same as a "
+                         "first-pass queue" % as_of)
+            print("shadow: late-queue %s %s (feed fresh on rerun)"
+                  % (book, sym), file=sys.stderr)
 
-        if (booksig.get("as_of") == as_of):
-            for r in booksig.get("rows", []):
-                if r.get("state") == "TAKE" and r.get("strat") in BASIS:
-                    queue(r["strat"], r["sym"], r.get("close"))
-        for x in signals.get("signals", []):
-            if (x.get("state") == "TAKE" and x.get("new_today")
-                    and x.get("as_of") == as_of
-                    # RSI2 kept live 2026-08-02 by owner decision (brain evidence);
-                    # x47's contrary fold is recorded on the dashboard, not enforced.
-                    and x.get("strat") in ("RSI2", "MFI")):
-                st = (scan["tickers"].get(x["sym"], {}).get("strats", {})
-                      .get(x["strat"]))
-                if st and st.get("vetted") and (st.get("n") or 0) >= 30:
-                    queue(x["strat"], x["sym"], x.get("close"))
-        led["as_of"] = as_of
+    if (booksig.get("as_of") == as_of):
+        for r in booksig.get("rows", []):
+            if r.get("state") == "TAKE" and r.get("strat") in BASIS:
+                queue(r["strat"], r["sym"], r.get("close"))
+    for x in signals.get("signals", []):
+        if (x.get("state") == "TAKE" and x.get("new_today")
+                and x.get("as_of") == as_of
+                # RSI2 kept live 2026-08-02 by owner decision (brain evidence);
+                # x47's contrary fold is recorded on the dashboard, not enforced.
+                and x.get("strat") in ("RSI2", "MFI")):
+            st = (scan["tickers"].get(x["sym"], {}).get("strats", {})
+                  .get(x["strat"]))
+            if st and st.get("vetted") and (st.get("n") or 0) >= 30:
+                queue(x["strat"], x["sym"], x.get("close"))
+    led["as_of"] = as_of
 
     # stats + blob
     books = ["RSI2", "MFI", "GAPW_RSI2", "GAPW_RSI14", "ZSCORE"]
@@ -522,7 +572,7 @@ def main():
     if not led.get("started"):          # setdefault keeps a stored null forever
         led["started"] = shadow["started"]
 
-    os.makedirs(os.path.dirname(ledger_path), exist_ok=True)
+    os.makedirs(os.path.dirname(ledger_path) or ".", exist_ok=True)
     json.dump(led, open(ledger_path, "w"), indent=1)
     line = "const SHADOW = " + json.dumps(shadow, separators=(",", ":")) + ";"
     assert "</" not in line
