@@ -193,8 +193,10 @@ ol.filters > li > b { color: var(--text-primary); }
 
 <div class="card">
   <h3>The Pine implementation</h3>
-  <p><code>leaps_5filter_screener.pine</code> - Pine Script v6, <code>overlay=true</code>. The script was written in a separate session and has <b>not yet been committed to this repository</b>, so there is nothing to link here yet. It has also never been compiled in TradingView; if it has since been run and corrected, the corrected version is the one that should land.</p>
-  <p class="small">When the file is added to the repo, this section should link it directly and this note should come out.</p>
+  <p><a href="leaps_5filter_screener.pine" style="color:var(--series-1)"><code>leaps_5filter_screener.pine</code></a> - Pine Script v6, <code>overlay=true</code>. Plots the 50 and 200 MA, shades bars where the checklist clears, prints a per-filter PASS/FAIL table, and carries three <code>alertcondition</code> hooks (core-four confirmed, trend-break exit, stochastic-rollover exit).</p>
+  <p>It separates <b>"core four"</b> - the conditions Pine can evaluate on its own - from the full five, which needs the analyst-upside figure typed in. The manual field defaults to <code>0%</code> against a <code>10%</code> minimum, so the checklist <b>fails closed</b> until a real number is entered rather than silently passing.</p>
+  <p>Two measurement choices are exposed as inputs rather than baked in. <b>Weekly comparisons are week-over-week</b>: the current and prior weekly readings are pulled from inside the weekly context in one request, so <code>[1]</code> means "previous week" rather than "previous chart bar" - a naive bar-over-bar test on a daily chart would compare two readings of the same forming week and flicker until Friday. <code>confirmWeekly</code> (on by default) reads only closed weekly bars, so a printed signal never changes afterwards; turning it off trades the forming week - earlier, but unstable. <b>Exit tracking arms from the core four</b> by default, because gating it on all five would tie every exit to the manual valuation field and silence the exit rules entirely on a chart where nothing has been typed in.</p>
+  <p class="small">Still uncompiled - it has not been run in TradingView, so treat the input defaults as reasoned rather than verified. The <code>TOTAL_DEBT_TO_TOTAL_EQUITY</code> scale in particular is worth checking against a live value: the filter assumes TradingView returns it as a percentage.</p>
 </div>
 
 <div class="card">

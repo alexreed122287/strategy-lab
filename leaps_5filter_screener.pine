@@ -1,0 +1,206 @@
+//@version=6
+indicator("LEAPS 5-Filter Screener [Rashad Checklist]", shorttitle="LEAPS-5F", overlay=true)
+
+// ============================================================================
+// LEAPS 5-Filter Screener
+//
+// Implements the entry checklist from Rashad's LEAPS video:
+//   1. Trend               - price/MA structure                    (fully automated)
+//   2. Weekly Stochastic   - turning up from below the floor line  (fully automated, HTF-safe)
+//   3. Quality             - profitability + leverage sanity check (automated PROXY via
+//                            TradingView fundamentals - not a full qualitative read)
+//   4. Valuation / Upside  - price vs. analyst target               (MANUAL INPUT - Pine has
+//                            no analyst-target data feed; pull the number from Market
+//                            Chameleon or your FMP connector and type it in per ticker)
+//   5. Implied Volatility  - automated PROXY via Historical Volatility percentile
+//                            (Pine can't pull options-chain IV for an arbitrary underlying
+//                            without a specialized options data feed - this uses realized
+//                            vol as a stand-in, which correlates with but is NOT the same
+//                            as IV, especially around earnings)
+//
+// NOT automatable in Pine (do these off-chart once a ticker clears the 5 filters):
+//   - Contract selection: ~0.70 delta, ~365 DTE expiration (needs a live option chain -
+//     use Market Chameleon or your broker)
+//   - True analyst price target (filter 4 above) and true options IV (filter 5 above)
+//   - "Something fundamentally changed" exit trigger - inherently a judgment call
+//
+// Automated exit triggers (from the checklist's two chart-based exit rules):
+//   - Trend break: close falls back below the 200 MA
+//   - Weekly stochastic rollover: %K turns down after having been rising
+//
+// ---------------------------------------------------------------------------
+// Measurement choices worth knowing about (both are inputs, not hard-coded):
+//
+//   Weekly comparisons are week-over-week, not chart-bar-over-chart-bar.
+//   A naive `wkK > wkK[1]` on a daily chart compares yesterday's reading of the
+//   still-forming weekly bar against today's - i.e. day-over-day - so the "turn"
+//   flickers on and off through the week and only settles at the weekly close.
+//   Both the current and prior weekly values are therefore pulled from inside the
+//   weekly context in a single request, so [1] means "previous week".
+//   `confirmWeekly` (default on) goes one step further and reads only closed
+//   weekly bars, so a signal never changes after it prints. Turn it off to trade
+//   the forming week - earlier, but it can flip until Friday's close.
+//
+//   Exit tracking is armed by the chart-verifiable filters by default.
+//   The manual valuation field starts at 0% against a 10% minimum, so the full
+//   five can never pass until a number is typed in - correct for entries, but if
+//   exits were gated the same way no exit marker could ever fire on a fresh
+//   chart. `armExitsOnCoreOnly` (default on) arms exit tracking from the four
+//   automated filters so the exit rules stay useful without manual data entry.
+// ============================================================================
+
+// ---- Inputs ------------------------------------------------------------------
+grpTrend = "1. Trend"
+fastLen    = input.int(50,  "Fast MA Length",        group = grpTrend)
+slowLen    = input.int(200, "Slow MA Length",        group = grpTrend)
+slopeBars  = input.int(10,  "Slope Lookback (bars)", group = grpTrend, tooltip = "Slow MA must be higher now than this many bars ago")
+
+grpStoch   = "2. Weekly Stochastic"
+stochLen   = input.int(14, "Stochastic Length", group = grpStoch)
+smoothK    = input.int(3,  "%K Smoothing",      group = grpStoch)
+smoothD    = input.int(3,  "%D Smoothing",      group = grpStoch)
+stochFloor = input.int(20, "Oversold Line",     group = grpStoch)
+confirmWeekly = input.bool(true, "Use closed weekly bars only", group = grpStoch, tooltip = "On: read only completed weekly bars, so a signal never changes after it prints (costs up to a week of lag). Off: read the forming week - earlier, but the turn can flip until Friday's close.")
+
+grpQual = "3. Quality (proxy - see notes)"
+useQualityCheck = input.bool(true,   "Enable Quality Filter", group = grpQual)
+maxDebtToEquity = input.float(200.0, "Max Debt/Equity %",     group = grpQual, tooltip = "Loose leverage sanity check, not a full balance-sheet read. TradingView typically returns this as a percentage (150 = 1.5x) - verify against the live value once compiled.")
+
+grpVal = "4. Valuation / Analyst Upside (MANUAL)"
+analystUpsideInput = input.float(0.0,  "Upside to Analyst Target (%) - enter manually", group = grpVal, tooltip = "Pine has no analyst-target feed. Pull this from Market Chameleon or your FMP connector and type it in for the ticker you're checking.")
+minUpsidePct        = input.float(10.0, "Minimum Required Upside %",                     group = grpVal)
+
+grpIV = "5. Implied Volatility (HV proxy)"
+hvLen           = input.int(20,  "HV Lookback (days)",             group = grpIV)
+hvPctLen        = input.int(252, "HV Percentile Lookback (days)",  group = grpIV)
+maxHvPercentile = input.float(50.0, "Max HV Percentile (cheap = below this)", group = grpIV)
+
+grpExit = "Exit tracking"
+armExitsOnCoreOnly = input.bool(true, "Arm exits on the core four (ignore manual valuation)", group = grpExit, tooltip = "On: exit tracking arms from the four chart-verifiable filters, so exit markers work without typing in an analyst upside. Off: exits only arm once all five pass, including the manual field - with a blank valuation input that means no exit can ever fire.")
+
+grpTable = "Display"
+tablePos        = input.string("Top Right", "Table Position", options = ["Top Right", "Top Left", "Bottom Right", "Bottom Left"], group = grpTable)
+showExitSignals = input.bool(true, "Show Exit Signals", group = grpTable)
+
+// ---- Filter 1: Trend -----------------------------------------------------------
+ma50         = ta.sma(close, fastLen)
+ma200        = ta.sma(close, slowLen)
+slowSlopeUp  = ma200 > ma200[slopeBars]
+trendPass    = close > ma50 and close > ma200 and ma50 > ma200 and slowSlopeUp
+
+// ---- Filter 2: Weekly Stochastic (HTF-safe, non-repainting) --------------------
+// Every value below is offset INSIDE the weekly context, so [1] means "previous
+// week" rather than "previous chart bar". Requesting them in one call also keeps
+// the whole set consistent with each other.
+f_weeklyStoch() =>
+    k = ta.sma(ta.stoch(close, high, low, stochLen), smoothK)
+    d = ta.sma(k, smoothD)
+    [k, k[1], k[2], k[3], d, d[1]]
+
+[wkK0, wkK1, wkK2, wkK3, wkD0, wkD1] = request.security(syminfo.tickerid, "W", f_weeklyStoch(), lookahead = barmerge.lookahead_off)
+
+// confirmWeekly shifts the whole window back one weekly bar, so only closed
+// weeks are read and a printed signal never changes afterwards.
+wkK    = confirmWeekly ? wkK1 : wkK0
+wkKp1  = confirmWeekly ? wkK2 : wkK1
+wkKp2  = confirmWeekly ? wkK3 : wkK2
+wkD    = confirmWeekly ? wkD1 : wkD0
+
+wkRisingFromFloor = wkK > stochFloor and wkK > wkKp1
+stochPass = wkRisingFromFloor
+
+// ---- Filter 3: Quality proxy (fundamentals) -------------------------------------
+netIncomeTTM = request.financials(syminfo.tickerid, "NET_INCOME", "TTM", ignore_invalid_symbol = true)
+debtToEquity = request.financials(syminfo.tickerid, "TOTAL_DEBT_TO_TOTAL_EQUITY", "FQ", ignore_invalid_symbol = true)
+qualityDataOk = not na(netIncomeTTM)
+qualityPass = not useQualityCheck or (qualityDataOk and netIncomeTTM > 0 and (na(debtToEquity) or debtToEquity < maxDebtToEquity))
+
+// ---- Filter 4: Valuation / Analyst Upside (manual) -------------------------------
+valuationPass = analystUpsideInput >= minUpsidePct
+
+// ---- Filter 5: IV proxy via Historical Volatility percentile ---------------------
+logRet        = math.log(close / close[1])
+hv            = ta.stdev(logRet, hvLen) * math.sqrt(252) * 100
+hvPercentile  = ta.percentrank(hv, hvPctLen)
+ivPass        = hvPercentile < maxHvPercentile
+
+// ---- Combine ----------------------------------------------------------------------
+coreAutoPass = trendPass and stochPass and qualityPass and ivPass   // the 4 filters Pine can check on its own
+allFivePass  = coreAutoPass and valuationPass                       // full checklist incl. manual valuation entry
+
+// ---- Setup / exit state tracking -----------------------------------------------
+// Exit tracking arms from the chart-verifiable filters by default. Gating it on
+// allFivePass would make every exit depend on the manual valuation entry, so a
+// blank input would silence the exit rules entirely.
+armCondition = armExitsOnCoreOnly ? coreAutoPass : allFivePass
+
+var bool inSetup = false
+if armCondition and not inSetup
+    inSetup := true
+if inSetup and close < ma200
+    inSetup := false
+
+exitTrendBreak = inSetup[1] and close < ma200
+
+// Week-over-week rollover: down this week, after having been flat-to-rising into it.
+wkTurnedDown       = wkK < wkKp1 and wkKp1 >= wkKp2
+exitStochRollover  = inSetup[1] and wkTurnedDown
+
+if inSetup and wkTurnedDown
+    inSetup := false
+
+// ---- Plots --------------------------------------------------------------------
+plot(ma50,  "50 MA",  color = color.new(color.orange, 0), linewidth = 1)
+plot(ma200, "200 MA", color = color.new(color.blue, 0),   linewidth = 2)
+
+bgcolor(allFivePass ? color.new(color.green, 90) : coreAutoPass ? color.new(color.yellow, 92) : na, title = "All-Clear Shading")
+
+plotshape(showExitSignals and exitTrendBreak,    title = "Exit: Trend Break",           style = shape.xcross,       location = location.abovebar, color = color.red,    size = size.small)
+plotshape(showExitSignals and exitStochRollover, title = "Exit: Stochastic Rollover",   style = shape.triangledown, location = location.abovebar, color = color.orange, size = size.small)
+
+// ---- Status table -----------------------------------------------------------------
+tablePosition = tablePos == "Top Right" ? position.top_right : tablePos == "Top Left" ? position.top_left : tablePos == "Bottom Right" ? position.bottom_right : position.bottom_left
+
+var table screenTable = table.new(tablePosition, 3, 7, border_width = 1)
+
+f_labelCell(_table, _row, _text, _pass) =>
+    bg = _pass ? color.new(color.green, 70) : color.new(color.red, 70)
+    table.cell(_table, 0, _row, _text, bgcolor = bg, text_color = color.white, text_size = size.small)
+
+f_statusCell(_table, _row, _pass) =>
+    bg = _pass ? color.new(color.green, 70) : color.new(color.red, 70)
+    table.cell(_table, 1, _row, _pass ? "PASS" : "FAIL", bgcolor = bg, text_color = color.white, text_size = size.small)
+
+if barstate.islast
+    table.cell(screenTable, 0, 0, "Filter", bgcolor = color.new(color.gray, 50), text_color = color.white, text_size = size.small)
+    table.cell(screenTable, 1, 0, "Status", bgcolor = color.new(color.gray, 50), text_color = color.white, text_size = size.small)
+    table.cell(screenTable, 2, 0, "Value",  bgcolor = color.new(color.gray, 50), text_color = color.white, text_size = size.small)
+
+    f_labelCell(screenTable, 1, "1. Trend", trendPass)
+    f_statusCell(screenTable, 1, trendPass)
+    table.cell(screenTable, 2, 1, str.tostring(close, "#.##") + " vs " + str.tostring(ma200, "#.##"), text_color = color.white, text_size = size.small)
+
+    f_labelCell(screenTable, 2, "2. Weekly Stochastic", stochPass)
+    f_statusCell(screenTable, 2, stochPass)
+    table.cell(screenTable, 2, 2, "K:" + str.tostring(wkK, "#.#") + " D:" + str.tostring(wkD, "#.#") + (confirmWeekly ? " (closed wk)" : " (forming wk)"), text_color = color.white, text_size = size.small)
+
+    f_labelCell(screenTable, 3, "3. Quality (proxy)", qualityPass)
+    f_statusCell(screenTable, 3, qualityPass)
+    table.cell(screenTable, 2, 3, qualityDataOk ? "NI $" + str.tostring(netIncomeTTM / 1000000, "#.##") + "M" : "no data", text_color = color.white, text_size = size.small)
+
+    f_labelCell(screenTable, 4, "4. Valuation (MANUAL)", valuationPass)
+    f_statusCell(screenTable, 4, valuationPass)
+    table.cell(screenTable, 2, 4, str.tostring(analystUpsideInput, "#.#") + "% upside", text_color = color.white, text_size = size.small)
+
+    f_labelCell(screenTable, 5, "5. IV Proxy (HV %ile)", ivPass)
+    f_statusCell(screenTable, 5, ivPass)
+    table.cell(screenTable, 2, 5, str.tostring(hvPercentile, "#.#") + " pctile", text_color = color.white, text_size = size.small)
+
+    table.cell(screenTable, 0, 6, "ALL 5 CLEAR", bgcolor = color.new(color.gray, 30), text_color = color.white, text_size = size.small)
+    table.cell(screenTable, 1, 6, allFivePass ? "YES" : "NO", bgcolor = allFivePass ? color.new(color.green, 30) : color.new(color.red, 40), text_color = color.white, text_size = size.small)
+    table.cell(screenTable, 2, 6, coreAutoPass ? "4/4 auto" : "check above", text_color = color.white, text_size = size.small)
+
+// ---- Alerts -------------------------------------------------------------------
+alertcondition(coreAutoPass and not coreAutoPass[1], title = "LEAPS Core 4 Confirmed", message = "{{ticker}}: Trend + Weekly Stochastic + Quality + IV-proxy all passed. Check analyst upside manually before entering.")
+alertcondition(exitTrendBreak,     title = "LEAPS Exit: Trend Break",             message = "{{ticker}}: closed below the 200 MA - trend thesis broken.")
+alertcondition(exitStochRollover,  title = "LEAPS Exit: Weekly Stochastic Rollover", message = "{{ticker}}: weekly stochastic turned down - momentum thesis broken.")
