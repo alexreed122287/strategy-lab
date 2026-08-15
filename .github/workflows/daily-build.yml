@@ -295,3 +295,24 @@ jobs:
       - name: Wipe credentials
         if: always()
         run: rm -f "$HOME/.tradier_token" "$HOME/.strategy_lab_notify.json"
+
+      # A failed build is otherwise SILENT - notify_buys only fires on a
+      # successful publish. The 2026-08-14 TRACK-clobber failure ("no `const
+      # TRACK = ...;` line found") would have killed every nightly with no
+      # signal anywhere. Same reusable-issue pattern as scanner's gex_scan.
+      - name: Notify on failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          gh label create daily-build-failure --description "Daily build workflow failures" --color d73a4a 2>/dev/null || true
+          existing=$(gh issue list --label daily-build-failure --state open --json number --jq '.[0].number' || echo "")
+          run_url="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          ts=$(date -u +%Y-%m-%dT%H:%MZ)
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body "Daily build failed again on ${ts}. Run: ${run_url}"
+          else
+            body="The Daily build failed on ${ts}. Run: ${run_url}. Known causes: a page blob was deleted rather than replaced (log shows 'no \`const X = ...;\` line found' - restore index.html from the last good cloud build), TRADIER_TOKEN expired, or a transient fetch error. This issue is reused for subsequent failures."
+            gh issue create --title "Daily build failed: $(date -u +%Y-%m-%d)" --label daily-build-failure --body "$body"
+          fi
