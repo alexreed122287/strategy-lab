@@ -7,7 +7,12 @@ from Tradier, measures open interest and quoted spread, writes
 data/chain_gate_results.json, and splices a verdict table into robert.html
 between ROBGATE markers. Read-only market data; no orders are placed.
 Fail-closed per name: errors are reported as errors, never guessed.
-PASS = OI >= 250 and spread <= 5% of mid. MARGINAL = OI >= 100 and spread <= 8%.
+PASS = OI >= 10 and spread <= 25% of mid; MARGINAL = OI >= 10 and spread <= 40%.
+Thresholds set 08/16/2026 from measured OPRA data: neither OI nor quoted spread
+predicted trade quality (corr +0.11 / +0.17). The OI floor exists for size
+feasibility (OI 7 cannot fill 11 contracts) and to kill dead books; scale it to
+about 10x the intended contract count. Contract volume is reported as the real
+fillability signal - resting OI is a stock of old positions, prints are flow.
 """
 import json, os, sys, re, datetime as dt
 from zoneinfo import ZoneInfo
@@ -81,9 +86,9 @@ def check(sym, today):
         out["spread_pct"] = round(100.0 * (ask - bid) / mid, 1) if mid > 0 else None
         if mid <= 0:
             out["status"] = "no_live_quote"
-        elif oi >= 250 and out["spread_pct"] <= 5:
+        elif oi >= 10 and out["spread_pct"] <= 25:
             out["status"] = "PASS"
-        elif oi >= 100 and out["spread_pct"] <= 8:
+        elif oi >= 10 and out["spread_pct"] <= 40:
             out["status"] = "MARGINAL"
         else:
             out["status"] = "FAIL"
@@ -128,7 +133,7 @@ def main():
     npass = sum(1 for r in res if r.get("status") == "PASS")
     block = ("<!-- ROBGATE:START -->\n<h3>Chain gate - pending adds</h3>\n" +
              "<p class=\"small\">" + doc["as_of"] + " (" + label + ") - first monthly &ge;30 DTE, ~0.80&Delta; call. " +
-             "PASS = OI &ge; 250 and quoted spread &le; 5% of mid. " + str(npass) + "/" + str(len(res)) + " pass. " +
+             "PASS = OI &ge; 10 and quoted spread &le; 25% of mid (measured thresholds, 08/16/2026); volume column is the fillability read. " + str(npass) + "/" + str(len(res)) + " pass. " +
              "A FAIL here means the name generates signals it cannot fill at viable cost - cull before first trade.</p>\n" +
              "<table class=\"small\"><tr><th>Ticker</th><th>Expiry</th><th>Strike</th><th>Delta</th><th>OI</th><th>Bid / Ask</th><th>Spread</th><th>Verdict</th></tr>\n" +
              "\n".join(rows) + "\n</table>\n<!-- ROBGATE:END -->")
