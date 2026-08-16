@@ -1,0 +1,19 @@
+{
+ "tickers": [
+  "SPOT",
+  "XPO",
+  "RRX",
+  "MKSI",
+  "BURL",
+  "SNX",
+  "MOD",
+  "EVR",
+  "PAAS",
+  "SGI",
+  "AMKR",
+  "ATI",
+  "FORM"
+ ],
+ "queued": "2026-08-15",
+ "purpose": "first-trade chain gate for the 13 full-market adds - OI>=250, spread<=5% at the ~0.80-delta first monthly"
+}
