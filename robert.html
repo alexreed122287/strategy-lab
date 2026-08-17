@@ -169,7 +169,7 @@ code { background: var(--surface-1); border: 1px solid var(--border);
     <li><b>Signal:</b> RSI(2) &lt; 10 AND close &gt; SMA200 on the completed daily bar</li>
     <li><b>Gates:</b> RS252 vs SPY &gt; +40% at signal (40-60 band acceptable, never higher) &middot; no earnings within 7 days &middot; ATM IV &le; 60%</li>
     <li><b>Entry:</b> next open, ~09:45 ET limit at mid; skip if the open is already above the prior SMA5</li>
-    <li><b>Contract:</b> shallowest strike with extrinsic &lt; 20% of premium (delta lands 0.78-0.80 as an outcome), first monthly 30-50 DTE, OI &ge; 250, quoted spread &le; 5% of mark (quoted overstates realistic cost 2-3x - work the mid). <span style="color:#E69F00">The frozen spec still reads 250/5%, but the operational chain gate was retuned 08/16/2026 to OI &ge; 10 / spread &le; 25% - see the chain-gate card below. The spec has not been amended to match.</span></li>
+    <li><b>Contract:</b> shallowest strike with extrinsic &lt; 20% of premium (delta lands 0.78-0.80 as an outcome), first monthly 30-50 DTE, <b>OI &ge; 10, quoted spread &le; 25% of mid</b> (amended 08/17/2026 from OI &ge; 250 / 5%; quoted width overstates realistic cost 2-3x - work the mid, and read contract volume rather than OI for fillability)</li>
     <li><b>Exit:</b> sell at the close when close &gt; SMA5, or 10-bar time stop. No stop-loss - path-simulated stops collapse PF to 0.90</li>
     <li><b>Sizing:</b> 6 slots &times; 15% (5-8 slot plateau; concentrated 40/40/20 reliably worst)</li>
     <li><b>Universe:</b> 89 names screened under pre-stated two-window bars (13 full-market adds 08/07/2026 - SPOT, XPO, RRX, MKSI, BURL, SNX, MOD, EVR, PAAS, SGI, AMKR, ATI, FORM - chain-gated nightly, see the chain-gate block above; <a href="robert_universe.txt" style="color:#56B4E9">full 89-ticker list</a>); a live chain check remains mandatory before any name's first trade; re-screen semiannually, no re-ranking on live results</li>
@@ -177,15 +177,16 @@ code { background: var(--surface-1); border: 1px solid var(--border);
 </div>
 
 <div class="card warnbox">
-  <h3>Chain gate - thresholds under revision</h3>
-  <p>The order-time liquidity gate was <b>retuned on 08/16/2026</b> against measured OPRA data, and the result overturns the original assumption: <b>neither open interest nor quoted spread predicted trade quality</b> (correlation +0.11 and +0.17 respectively). The gate now passes at OI &ge; 10 and quoted spread &le; 25% of mid, with <b>contract volume</b> reported as the real fillability read - resting OI is a stock of old positions, prints are flow. The OI floor survives only for size feasibility (OI 7 cannot fill 11 contracts) and to kill dead books; scale it to roughly 10x the intended contract count.</p>
-  <p>Scored across all 89 names on the 08/15 chains, the threshold change is close to a reversal:</p>
+  <h3>Chain gate - thresholds amended 08/17/2026</h3>
+  <p>The order-time liquidity gate moved from <b>OI &ge; 250 / spread &le; 5%</b> to <b>OI &ge; 10 / spread &le; 25% of mid</b>, with <b>contract volume</b> reported alongside as the fillability read - resting OI is a stock of old positions, prints are flow. The OI floor now exists only for size feasibility (OI 7 cannot fill 11 contracts) and to kill dead books; scale it to roughly 10x the intended contract count.</p>
+  <p><b>The reason, stated precisely.</b> The 250/5% floor was never isolated in a backtest: the model-marks run priced options off Black-Scholes, which cannot produce open interest at all, so that gate never bound on anything. It was an inherited assumption that excluded roughly 90% of the basket for no measured reason - and that is the whole case for loosening it. The <i>weaker</i> argument, which this page deliberately does not lean on, is that OI and quoted spread barely correlate with trade quality (+0.11 / +0.17) in the real-OPRA reprice: that study measured entry-mid to exit-mid P&amp;L, which never pays the spread, so it structurally cannot detect what a spread gate exists to control.</p>
+  <p>Scored across the 89 names on the 08/15 chains, the change is close to a reversal:</p>
   <div class="tablewrap"><table>
     <tr><th>Gate</th><th>Pass</th><th>Marginal</th><th>Fail</th></tr>
-    <tr><td>Frozen spec - OI &ge; 250, spread &le; 5%</td><td>8</td><td>-</td><td>81</td></tr>
-    <tr><td>Measured - OI &ge; 10, spread &le; 25%</td><td><b>69</b></td><td>8</td><td>12</td></tr>
+    <tr><td>Former - OI &ge; 250, spread &le; 5%</td><td>8</td><td>-</td><td>81</td></tr>
+    <tr><td>Amended - OI &ge; 10, spread &le; 25%</td><td><b>69</b></td><td>8</td><td>12</td></tr>
   </table></div>
-  <p class="small">Twelve names fail under either gate: DD, EME, EVR, HUBB, IBKR, MKSI, MSCI, ROP, RRX, SGI, SPGI, TPR. <b>Open item:</b> the frozen spec and the live gate now disagree by a wide margin, and the spec has not been amended. Until it is, "passes the gate" means different things depending on which document you read.</p>
+  <p class="small">Twelve names fail under either gate: DD, EME, EVR, HUBB, IBKR, MKSI, MSCI, ROP, RRX, SGI, SPGI, TPR. <b>Counter-evidence kept in view:</b> the friction work measured 0.80-delta half-spreads running 13.0% down to 3.4% across liquidity quintiles, with only the most liquid tier breaking even - which points the other way from a loose gate. That tension is not resolved here. The 09/01 pilot is the first thing that pays real spreads, and it is what decides whether a loose gate survives contact with actual fills.</p>
 </div>
 
 <div class="card">
