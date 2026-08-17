@@ -11,8 +11,8 @@ from bars.json are fetched straight from Tradier (TRADIER_TOKEN env or
 Signal bar = the LAST bar in the feed (the 15:30 CT build evaluates the
 running bar near the close, same as BOOKSIG). Gates: RSI(2)<10, close>SMA200,
 RS252 vs SPY > +40%, no earnings within 7 days, rv-blend IV proxy <= 60%.
-The chain gate (OI>=250, spread<=5%) cannot be computed from daily bars and
-is rendered as an order-time reminder.
+The chain gate (OI>=10, spread<=25%, amended 08/17/2026) cannot be computed from
+daily bars and is rendered as an order-time reminder.
 
 Usage:
   robert_scan.py --bars bars.json --page robert.html --universe robert_universe.txt
@@ -175,7 +175,7 @@ def main():
             rs_txt = f'{r["rs"]*100:+.0f}%' if r["rs"] is not None else "n/a"
             iv_txt = f'{r["ivp"]*100:.0f}%' if r["ivp"] is not None else "n/a"
             if r["take"]:
-                verdict = chip("TAKE - verify chain at 09:45 (OI&ge;250, spread&le;5%)", "take")
+                verdict = chip("TAKE - verify chain at 09:45 (OI&ge;10, spread&le;25%)", "take")
             else:
                 why = []
                 if not r["gates"]["rs"]: why.append("RS gate")
