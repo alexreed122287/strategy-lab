@@ -2658,7 +2658,9 @@ var TODAY_BUYS={asof:"",act:[],rest:[]};
     }
 
     if(nb){
-      h+=`<h4 class="tsec">${ns?"2. Then buy":"1. Buy"}, best evidence first</h4><div class="tlist">`;
+      h+=`<h4 class="tsec">${ns?"2. Then buy":"1. Buy"}, best evidence first${
+        rest.length?` &mdash; showing only books with a free slot (${act.length} of ${
+        act.length+rest.length}; ${rest.length} deferred for want of a slot)`:""}</h4><div class="tlist">`;
       for(const b of act){
         const fs=freeSlots(b.book), sz=perPos(b.book);
         h+=`<div class="trow buy">
