@@ -20,10 +20,19 @@ name: Daily build
 on:
   schedule:
     # GitHub cron is UTC with no DST handling, so both are listed and the guard
-    # step below keeps exactly one of them. 20:30 UTC = 15:30 CDT (summer),
-    # 21:30 UTC = 15:30 CST (winter).
-    - cron: "30 20 * * 1-5"
+    # step below keeps exactly one of them. 21:30 UTC = 16:30 CDT (summer),
+    # 22:30 UTC = 16:30 CST (winter).
+    #
+    # Moved an hour later on 2026-08-17. These previously targeted 15:30 CT -
+    # the same minute as the Mac's own launchd build (com.alex.strategylab.daily,
+    # 15:30 CT). On 08-17 the Mac pushed at 16:01 CT while the cloud run was
+    # still mid-build; the cloud's `git pull --rebase` then could not replay its
+    # own "daily build 2026-08-17" commit onto the moved main and the run died
+    # (issue #81). The cloud is a BACKSTOP for days the Mac is asleep, so it
+    # should start after the Mac would have finished, find `already` true and
+    # exit - not race it for the same commit.
     - cron: "30 21 * * 1-5"
+    - cron: "30 22 * * 1-5"
   workflow_dispatch:        # run it by hand from the GitHub UI - works on a phone
 
 permissions:
@@ -85,7 +94,11 @@ jobs:
           # Chicago date below; the two remaining UTC-date consumers are pinned
           # to this guard's Chicago date where they are invoked (earnings
           # --today, the TRACK --source stamp).
-          ok = manual or (now.weekday() < 5 and 15 <= now.hour <= 21 and not already)
+          # Lower bound raised 15 -> 16 on 2026-08-17 with the schedule shift:
+          # under CST the 21:30 UTC firing lands at 15:30 CT, exactly when the Mac
+          # builds. Rejecting hour 15 stops the winter firing racing it; the 22:30
+          # UTC firing (16:30 CST) carries the session instead.
+          ok = manual or (now.weekday() < 5 and 16 <= now.hour <= 21 and not already)
           print("proceed=%s" % ("true" if ok else "false"))
           # Feed states the page held BEFORE this run. The runner is stateless,
           # so notify_buys' ~/.strategy_lab_notify_state.json dedupe never

@@ -99,10 +99,33 @@ def check(sym, today):
 
 def main():
     now = dt.datetime.now(ZoneInfo("America/New_York"))
-    in_window = (now.weekday() == 0 and now.hour == 9)
+    # A window, not an exact hour. The dual cron fires 13:40 and 14:40 UTC so
+    # that one lands at 09:40 ET in either DST regime - but GitHub's scheduler
+    # drifts by tens of minutes, and on 2026-08-17 BOTH firings arrived at 10:03
+    # and 10:56 ET. An `hour == 9` guard rejected both, so the sweep silently
+    # did not run and the workflow still reported success. Widened to
+    # 09:30-11:00 ET to absorb that drift; the duplicate this admits under EDT
+    # is killed by the already-swept check below, not by the clock.
+    in_window = (now.weekday() == 0
+                 and dt.time(9, 30) <= now.time() <= dt.time(11, 0))
     if not FORCE and not in_window:
         print("outside the Monday-morning window; exiting cleanly")
         return
+    # Idempotency. Under EDT both firings (09:40 and 10:40 ET) now fall inside
+    # the window. Whichever arrives first sweeps; the second finds today's live
+    # result on disk and exits. Keyed on the result file rather than the clock,
+    # so that if the first firing died before writing, the second correctly
+    # takes over instead of skipping the week.
+    if not FORCE:
+        try:
+            prev = json.load(open("data/chain_gate_results.json"))
+            if (prev.get("mode") == "live sweep" and str(prev.get("as_of", ""))
+                    .startswith(now.strftime("%Y-%m-%d"))):
+                print("today's live sweep already recorded (%s); exiting cleanly"
+                      % prev.get("as_of"))
+                return
+        except Exception:
+            pass
     if not TOK:
         print("no TRADIER_TOKEN; failing"); sys.exit(1)
     try:
