@@ -44,6 +44,8 @@ Usage:
   --dry-run : print exactly what would be sent, send nothing
   --test    : send a "wiring works" message through every configured channel
 """
+import datetime as _dt
+import hashlib
 import json
 import os
 import re
@@ -55,6 +57,11 @@ import urllib.request
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.utils import formatdate
+try:
+    from zoneinfo import ZoneInfo
+    _CHI = ZoneInfo("America/Chicago")
+except Exception:
+    _CHI = None
 
 
 # Ported verbatim from index.html so the email and the Signals tab cannot drift.
@@ -76,6 +83,36 @@ def score(avg, n):
     if avg is None or n is None:
         return None
     return round(avg * (n / (n + 10.0)), 3)
+
+
+def last_completed_session(now=None):
+    """The most recent weekday whose 15:00 CT close has passed.
+
+    Holidays are deliberately NOT modelled. On the session after a holiday this
+    returns the holiday itself, so the freshness gate below refuses rather than
+    sends. Refusing is the safe direction for a mail that carries a "buy at the
+    market open" imperative; pass --session YYYY-MM-DD when you know better.
+    """
+    now = now or (_dt.datetime.now(_CHI) if _CHI else _dt.datetime.now())
+    d = now.date()
+    if now.hour < 15:            # before the close, today is not complete yet
+        d -= _dt.timedelta(days=1)
+    while d.weekday() >= 5:      # Sat/Sun -> walk back to Friday
+        d -= _dt.timedelta(days=1)
+    return d.isoformat()
+
+
+def payload_hash(as_of, ranked, gw_book, paper, exits):
+    """Idempotency key over what the mail actually SAYS, not when it was built.
+
+    `last_sent == as_of` could not tell a no-op re-publish from a rerun that
+    genuinely recovered a stale generator and added signals: it suppressed both.
+    Keying on content sends the second and still suppresses the first.
+    """
+    payload = json.dumps({"as_of": as_of or "", "ranked": ranked,
+                          "gw_book": gw_book, "paper": paper, "exits": exits},
+                         sort_keys=True, default=str)
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
 def collect(page_path):
@@ -457,14 +494,44 @@ def main():
         if not ranked and not gw_book and not paper and not exits:
             print("notify: no new buys or sells for", as_of or "latest scan", "- nothing sent")
             return
+        # FRESHNESS GATE. The digest backstop fires on a clock and reads
+        # whatever index.html is on disk. If the build has not finished, or
+        # failed, the page still holds the PREVIOUS session - and this mail
+        # carries a "buy at the market open" imperative, so sending it is worse
+        # than sending nothing. Refuse unless the page's session is the last
+        # completed one.
+        expected = opt("--session") or last_completed_session()
+        if as_of != expected and "--allow-stale" not in args:
+            print("notify: REFUSING to send - page holds session %s but the last "
+                  "completed session is %s. Nothing sent. (--session YYYY-MM-DD "
+                  "to set the expected date, --allow-stale to bypass.)"
+                  % (as_of or "(none)", expected))
+            return
+
         state = {}
         if os.path.exists(state_path):
             try:
                 state = json.load(open(state_path))
             except Exception:
                 state = {}
-        if not force and state.get("last_sent") == as_of and as_of:
-            print("notify: already sent for", as_of, "- skipping (--force to resend)")
+        # IDEMPOTENCY KEY. Content hash, not the session date: a rerun that
+        # recovers a stale generator and adds signals must still be able to
+        # send, while a re-publish that changes nothing must not.
+        digest_key = payload_hash(as_of, ranked, gw_book, paper, exits)
+        if not force and state.get("last_hash") == digest_key:
+            print("notify: identical payload already sent (key %s) - skipping "
+                  "(--force to resend)" % digest_key[:12])
+            return
+        # Legacy state written before the hash key existed carries only
+        # last_sent. Without this fallback the first run after deploying the
+        # hash key finds no last_hash, matches nothing, and re-sends a session
+        # that already went out - which is exactly what happened on 08/17 when
+        # this was tested against live state. Fall back to the old date rule
+        # until a send writes a hash.
+        if not force and "last_hash" not in state \
+                and state.get("last_sent") == as_of and as_of:
+            print("notify: already sent for %s under the pre-hash state format "
+                  "- skipping (--force to resend)" % as_of)
             return
         if simple:
             subject, body, html = compose_simple(as_of, ranked, gw_book, paper,
@@ -472,6 +539,20 @@ def main():
         else:
             subject, body = compose(as_of, ranked, gw_book, paper, exits,
                                     cfg.get("dashboard_url"))
+
+    # STAMP. Every payload carries the session it describes and the key that
+    # deduped it, so a mail found in an inbox can be dated without guessing.
+    if not test:
+        stamp = ("Session %s | key %s | composed %s CT"
+                 % (as_of or "unknown", digest_key[:12],
+                    (_dt.datetime.now(_CHI) if _CHI else _dt.datetime.now())
+                    .strftime("%Y-%m-%d %H:%M")))
+        body = body + "\n\n-- \n" + stamp
+        if html:
+            safe = (stamp.replace("&", "&amp;").replace("<", "&lt;")
+                         .replace(">", "&gt;"))
+            html = html + ('<p style="font:11px -apple-system,sans-serif;'
+                           'color:#8d8c85;margin:12px 0 0">%s</p>' % safe)
 
     # The digest may go to a wider list than the personal alert. "to_digest"
     # wins when --simple is set; otherwise it falls back to "to".
@@ -497,8 +578,10 @@ def main():
     for line in results + failures:
         print("notify:", line)
     if not test and not failures and any(r.startswith(("email: sent", "push: sent", "sms: sent")) for r in results):
-        as_of = collect(page)[0]
-        json.dump({"last_sent": as_of}, open(state_path, "w"))
+        json.dump({"last_sent": as_of, "last_hash": digest_key,
+                    "sent_at": (_dt.datetime.now(_CHI) if _CHI
+                                else _dt.datetime.now()).isoformat(timespec="seconds")},
+                   open(state_path, "w"))
     if failures and not results:
         sys.exit(1)
 
