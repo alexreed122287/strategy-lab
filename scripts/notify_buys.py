@@ -85,6 +85,22 @@ def score(avg, n):
     return round(avg * (n / (n + 10.0)), 3)
 
 
+# Evidence floors for anything presented as a ranked buy.
+#
+# GEN_MIN_N matches index.html's own gate exactly (`!st.vetted || st.n < 30`).
+# The mailer previously checked `vetted` but no sample floor, so it was looser
+# than the dashboard it claims to mirror - two systems disagreeing about what is
+# rankable is itself the defect.
+#
+# GW_MIN_N is deliberately lower: the Gap Widen book is validated at BOOK level
+# and its per-name samples are small by design, so a 30 floor erases the book
+# entirely (measured 2026-08-17: 0 of 9 rows survive). Below 10 a single trade
+# moves the average by more than ten percent and win rates read as 100% on five
+# trades - that is an artifact, not evidence, and must not lead an email.
+GEN_MIN_N = 30
+GW_MIN_N = 10
+
+
 def last_completed_session(now=None):
     """The most recent weekday whose 15:00 CT close has passed.
 
@@ -146,6 +162,8 @@ def collect(page_path):
               .get(x.get("strat")))
         if not st or not st.get("vetted"):
             continue
+        if (st.get("n") or 0) < GEN_MIN_N:
+            continue
         as_of = max(as_of, x.get("as_of") or "")
         e19, e23 = st.get("era_1922") or {}, st.get("era_2326") or {}
         pool.append({
@@ -180,8 +198,16 @@ def collect(page_path):
                    "trig": ("%s %s" % (TRIGL.get(strat, ""), r.get("rsi"))).strip(),
                    "earnings": False,
                    "entry": "MOO next 9:30 open (validated basis)"}
+            # A row with no per-name record cannot be ranked on evidence it
+            # does not have, and one with negative expectancy must never sit
+            # under a "buy at the market open" heading. Such rows stay VISIBLE
+            # in the book section below - demoted, not deleted - but they do
+            # not enter the ranked pool and never reach the wider digest.
+            row["rankable"] = ((r.get("n") or 0) >= GW_MIN_N
+                               and (r.get("avg") or 0) > 0)
             gw_book.append(row)
-            pool.append(row)
+            if row["rankable"]:
+                pool.append(row)
         elif strat == "ZSCORE":
             e = zstats.get(r["sym"])
             avg = (round(e["avg_net"] * 100 * zfactor, 2) if e else r.get("avg"))
@@ -236,10 +262,14 @@ def compose(as_of, ranked, gw_book, paper, exits, url):
         lines.append("GAP WIDEN BOOK (book-level validated at MOO; per-name samples are small "
                      "by design - in-book order is rs252):")
         for b in gw_book:
+            why = ("no per-name record" if not b.get("n")
+                   else "negative expectancy" if (b.get("avg") or 0) <= 0
+                   else "n < %d" % GW_MIN_N)
             lines.append(
                 f"  #{fmt(b['rank'])} {b['sym']:<6} {b['strat']:<11}"
                 f" | close {fmt(b['close'])} | rs252 {fmt(b['rs252'],'%')}"
-                f" | win {fmt(b['win'],'%')} | avg {fmt(b['avg'],'%')} | n {fmt(b['n'])}")
+                f" | win {fmt(b['win'],'%')} | avg {fmt(b['avg'],'%')} | n {fmt(b['n'])}"
+                + ("" if b.get("rankable", True) else "   [NOT RANKED - %s]" % why))
     if paper:
         lines.append("")
         lines.append("PAPER / RESEARCH (z-score - killed for real-money wiring; forward test only):")
@@ -281,6 +311,8 @@ def compose_simple(as_of, ranked, gw_book, paper, url):
     recommendation."""
     rows, seen = [], set()
     for r in list(ranked) + list(gw_book) + list(paper):
+        if not r.get("rankable", True):
+            continue          # demoted rows never reach the wider digest list
         key = (r["sym"], r["strat"])
         if key in seen:
             continue
