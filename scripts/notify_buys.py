@@ -168,6 +168,9 @@ def collect(page_path):
         e19, e23 = st.get("era_1922") or {}, st.get("era_2326") or {}
         pool.append({
             "sym": x["sym"], "strat": x["strat"], "close": x.get("close"),
+            # Gated above on vetted + GEN_MIN_N, so these are rankable by
+            # construction - but say so rather than relying on a default.
+            "rankable": True,
             "n": st.get("n"), "win": st.get("win_pct"), "pf": st.get("pf"),
             "avg": st.get("avg_pct"), "score": score(st.get("avg_pct"), st.get("n")),
             # Signals-tab parity columns: the two era profit factors are the
@@ -215,6 +218,11 @@ def collect(page_path):
             win = round(e["win"] * 100, 1) if e else r.get("win")
             paper.append({
                 "sym": r["sym"], "strat": strat, "close": r.get("close"),
+                # Z-Score is a small-sample research book, so it takes the GAPW
+                # floor rather than the generator one. Without this the row had
+                # no rankable key at all and rode the filter's default into the
+                # digest ungated - the same bypass just closed for GAPW.
+                "rankable": ((n or 0) >= GW_MIN_N and (avg or 0) > 0),
                 "n": n, "win": win, "avg": avg, "score": score(avg, n),
                 "pf": (e or {}).get("pf"), "pf1922": None, "pf2326": None,
                 "depth": r.get("z50"),
@@ -311,7 +319,11 @@ def compose_simple(as_of, ranked, gw_book, paper, url):
     recommendation."""
     rows, seen = [], set()
     for r in list(ranked) + list(gw_book) + list(paper):
-        if not r.get("rankable", True):
+        # Fail CLOSED. Every construction site above sets this explicitly, so a
+        # missing key means a branch was added without deciding - and an
+        # undecided row must not appear in a buy email. Defaulting True is how
+        # the Z-Score rows bypassed this gate on 08/17.
+        if not r.get("rankable"):
             continue          # demoted rows never reach the wider digest list
         key = (r["sym"], r["strat"])
         if key in seen:
