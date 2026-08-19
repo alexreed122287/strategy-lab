@@ -150,6 +150,25 @@ code { background: var(--surface-1); border: 1px solid var(--border);
   <tr><td>Out-of-sample 08/2020-08/2023</td><td>120</td><td>70.8%</td><td>+8.63%</td><td>2.396</td><td>59%</td><td>&minus;21.9%</td><td>1.33</td></tr>
 </table>
 </div>
+<div class="card warnbox" style="margin-top:10px">
+  <h3>Corrected 2026-08-19 &mdash; the OOS row above is not out-of-sample</h3>
+  <p>This label was wrong. The 89-name universe's own admission rule requires n&ge;3 trades <b>and a positive
+  average return</b> in each of two scoring windows, and 08/2020-08/2023 is one of them - the same window
+  labeled "Out-of-sample" above. A name could only be in this universe today because it already performed
+  well in that window. That is a second selection window, not a held-out test.</p>
+  <p>Measured genuinely out of era - 2010-2020, entirely before either admission window, where a name's
+  presence in the universe could not have depended on how it did there - the universe's edge over a matched
+  control is <b>+0.43pp/trade, t=1.14</b>. That is not statistically significant. Inside the two scored
+  windows the same comparison reads +1.32pp/trade. The gap between those two numbers is roughly what
+  selecting the universe on its own outcome is worth.</p>
+  <p>The IS-vs-OOS PF gap (4.140 vs 2.396) is not edge decay either: it is dollar-weighted over a sleeve that
+  compounded 9.15x across IS and 4.03x across OOS, while Avg/trade beside it is trade-weighted. Equal-weighted,
+  the two windows are 2.934 and 2.896 - a 1.3% difference where the table above shows 42%. The "in-sample is
+  regime-flattered" reasoning below measured the order position sizes grew, not any change in edge.</p>
+  <p class="small">None of this means the strategy has no edge - the RS252 gate does appear to do real work
+  inside its scored windows. It means the OOS row cannot be read as confirmation, and the honest edge estimate
+  for sizing purposes is closer to the pre-admission number than to either row in the table above.</p>
+</div>
 <h3 style="font-size:14px;margin:16px 0 6px">Universe expansion check - 77 vs 90 names, paired runs both windows</h3>
 <div class="tablewrap">
 <table>
@@ -209,12 +228,21 @@ code { background: var(--surface-1); border: 1px solid var(--border);
   <div class="uhead">Active incumbents (65)</div>
   <div class="uwrap"><span class="uchip">AAPL</span><span class="uchip">ADBE</span><span class="uchip">AMAT</span><span class="uchip">AMD</span><span class="uchip">ANET</span><span class="uchip">APH</span><span class="uchip">ARES</span><span class="uchip">ASML</span><span class="uchip">AVGO</span><span class="uchip">BLDR</span><span class="uchip">BNY</span><span class="uchip">COHR</span><span class="uchip">CVNA</span><span class="uchip">DD</span><span class="uchip">DHI</span><span class="uchip">DRI</span><span class="uchip">DVN</span><span class="uchip">EBAY</span><span class="uchip">ECHO</span><span class="uchip">EME</span><span class="uchip">ETR</span><span class="uchip">EWT</span><span class="uchip">EXPE</span><span class="uchip">FIS</span><span class="uchip">FITB</span><span class="uchip">FLEX</span><span class="uchip">GE</span><span class="uchip">GLW</span><span class="uchip">GM</span><span class="uchip">GOOGL</span><span class="uchip">HUBB</span><span class="uchip">HWM</span><span class="uchip flag">IBKR</span><span class="uchip">IVZ</span><span class="uchip">JCI</span><span class="uchip">KLAC</span><span class="uchip">KMI</span><span class="uchip">LITE</span><span class="uchip">LNG</span><span class="uchip">LRCX</span><span class="uchip">LYV</span><span class="uchip">META</span><span class="uchip">MSCI</span><span class="uchip">MSFT</span><span class="uchip">MU</span><span class="uchip">NOW</span><span class="uchip">NRG</span><span class="uchip">NVDA</span><span class="uchip">NXPI</span><span class="uchip">PANW</span><span class="uchip">PDD</span><span class="uchip">PHM</span><span class="uchip">PWR</span><span class="uchip">SYF</span><span class="uchip">TER</span><span class="uchip">TMUS</span><span class="uchip">TPR</span><span class="uchip">TRGP</span><span class="uchip">TROW</span><span class="uchip">TSM</span><span class="uchip">TTWO</span><span class="uchip">ULTA</span><span class="uchip">URI</span><span class="uchip">VRT</span><span class="uchip">WDC</span></div>
   <p class="small" style="margin:6px 0 0"><b>FFIV was cut 08/17/2026</b> on a negative pooled stock-leg average in both windows (n=6); the basket is now 89 names. <span style="color:#E69F00;font-weight:600">IBKR</span> carries the same defect on a larger sample (n=14) and also fails the chain gate under either threshold set, but is <b>deliberately retained</b> by owner decision - it stays flagged rather than cut.</p>
-  <div class="uhead">Structurally silent under the RS gate (11) - kept at zero cost</div>
-  <div class="uwrap"><span class="uchip silent">SPY</span><span class="uchip silent">QQQ</span><span class="uchip silent">XLK</span><span class="uchip silent">SOXX</span><span class="uchip silent">CHD</span><span class="uchip silent">EXPD</span><span class="uchip silent">HLT</span><span class="uchip silent">J</span><span class="uchip silent">ROP</span><span class="uchip silent">SPGI</span><span class="uchip silent">V</span></div>
-  <p class="small">Index ETFs cannot be +40% vs SPY by definition; the seven dashed stocks have never produced a gated signal in either window. Full list: <a href="robert_universe.txt" style="color:#56B4E9">robert_universe.txt</a></p>
+  <div class="uhead">Structurally silent under the RS gate (10) - kept at zero cost</div>
+  <div class="uwrap"><span class="uchip silent">SPY</span><span class="uchip silent">QQQ</span><span class="uchip silent">XLK</span><span class="uchip silent">CHD</span><span class="uchip silent">EXPD</span><span class="uchip silent">HLT</span><span class="uchip silent">J</span><span class="uchip silent">ROP</span><span class="uchip silent">SPGI</span><span class="uchip silent">V</span></div>
+  <p class="small">The seven dashed stocks have never produced a gated signal in either window. <b>SOXX was
+  removed from this list 08/19</b> - "index ETFs cannot be +40% vs SPY by definition" was wrong: SOXX's RS252
+  as of 2026-08-18 measures <b>+79.4%</b> (114.0% raw return vs SPY's 19.3%), clearing the gate with room to
+  spare, and it contributed $50,881 of the $802,720 IS total (6.34%, 4th of 42 tickers) in the backtest above.
+  SPY/QQQ/XLK are broad-market trackers with no leverage tilt and stay silent on the merits. Because SOXX will
+  fire as a live entry, it needs the same mandatory pre-trade chain check as any other name - it is not
+  currently in the nightly chain-gate sweep above (that list is built from the 13 new adds, and SOXX is not
+  one of them). Add it manually before its first live signal. Full list: <a href="robert_universe.txt" style="color:#56B4E9">robert_universe.txt</a></p>
 </div>
 
-<p class="small" style="margin:0 0 14px">Plan-around line: PF 2.0-2.4, +7-9% per trade, drawdowns &minus;22 to &minus;30%, bear years roughly flat. In-sample is regime-flattered; the OOS row is the number that earns trust.</p>
+<p class="small" style="margin:0 0 14px">Plan-around line: PF 2.0-2.4, +7-9% per trade, drawdowns &minus;22 to &minus;30%, bear years roughly flat.
+<b>Correction 08/19:</b> the OOS row does not earn special trust - see the warnbox above. The honest edge
+estimate is the pre-admission (2010-2020) figure, +0.43pp/trade, not significant at this sample size.</p>
 
 <h3 style="font-size:14px;margin:16px 0 6px">Options vs shares - ROBERT vs the Agentic leveraged-ETF config, each as-specced</h3>
 <p class="small" style="margin:0 0 8px">Both columns are simulations. The leveraged-ETF config was <b>retired 07/06/2026 having never placed a trade</b> - verified 08/16 against account 680183373, whose fill history contains no SOXL, UPRO, TQQQ or TECL, with the engine left in dry-run and its scheduler removed. Read this as backtest versus backtest, not challenger versus incumbent.</p>
