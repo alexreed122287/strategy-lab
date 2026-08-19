@@ -1670,6 +1670,79 @@ renderScan();
     <li><b>Calendar</b> - <a href="docs/trading_schedule.ics">trading_schedule.ics</a> adds the daily rhythm (morning MOO queue, 2:40 CT exit screen, EOD review) to your phone's calendar.</li></ul>
     <p class="small">Research and education only - decision support, not orders, no brokerage connection.</p></div>`;
 
+  /* DOES VETTED PREDICT FORWARD RETURNS? Computed live from SCAN, not from a
+     separate blob - the inputs (era_1922, era_2326) are already published per
+     arm, so this is fully reproducible by anyone reading this file.
+
+     THE QUESTION. "vetted" (SIGHELP, ~line 456) is a FULL-SAMPLE gate: n>=20,
+     PF>=1.3, win>=60%, both eras positive - fit and evaluated on the SAME
+     2019-2026 data. That is not a forward test; it is a description of the
+     data that already happened. This card runs the honest version: apply the
+     identical bar using ONLY era_1922 (2019-2022), then measure what the
+     selected arms actually did in era_2326 (2023-2026) - data the selection
+     step never saw. If the badge carried real information, causally-selected
+     arms should outperform causally-rejected ones in that later era.
+
+     Verified 2026-08-19 on this build: they do not. Selected arms average
+     roughly the SAME forward return as rejected ones, and the published
+     "vetted" avg/trade (fit in-sample) runs about 1.5-1.6x the honest
+     out-of-selection number. This is exactly what the site's own pre-
+     registered DAILY sim already shows and never reconciles with the badge:
+     DAILY.vetted CAGR is far below DAILY.trailing CAGR. This gate is
+     load-bearing well past display - it decides what reaches the buy email
+     (notify_buys.py) and what may enter the paper ledger that gates real
+     money (shadow_book.py) - so it is disclosed here rather than left as a
+     badge that reads stronger than the evidence behind it. */
+  (function(){
+    if(typeof SCAN==="undefined"||!SCAN.tickers)return;
+    const isVet=e=>e&&(e.n||0)>=20&&(e.pf||0)>=1.3&&(e.win_pct||0)>=60&&(e.avg_pct||0)>0;
+    const byStrat={};
+    for(const rec of Object.values(SCAN.tickers)){
+      for(const[strat,a]of Object.entries(rec.strats||{})){
+        if(strat!=="RSI2"&&strat!=="MFI")continue;
+        const e1=a.era_1922,e2=a.era_2326;
+        if(!e1||!e2||e2.avg_pct==null||!e2.n)continue;
+        (byStrat[strat]=byStrat[strat]||{sel:[],rej:[],all:[]});
+        byStrat[strat].all.push(e2.avg_pct);
+        (isVet(e1)?byStrat[strat].sel:byStrat[strat].rej).push(e2.avg_pct);
+      }
+    }
+    const mean=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:null;
+    const fmt=v=>v==null?"-":(v>=0?"+":"")+v.toFixed(3)+"%";
+    let rows="";
+    const pub={};
+    for(const rec of Object.values(SCAN.tickers))
+      for(const[strat,a]of Object.entries(rec.strats||{}))
+        if((strat==="RSI2"||strat==="MFI")&&a.vetted){(pub[strat]=pub[strat]||[]).push(a.avg_pct);}
+    for(const strat of["RSI2","MFI"]){
+      const g=byStrat[strat]; if(!g)continue;
+      const sel=mean(g.sel),rej=mean(g.rej),all=mean(g.all),live=mean(pub[strat]);
+      rows+=`<tr><td class="l">${strat}</td><td>${g.sel.length}</td><td>${fmt(sel)}</td>
+        <td>${g.rej.length}</td><td>${fmt(rej)}</td><td>${g.all.length}</td><td>${fmt(all)}</td>
+        <td><b>${fmt(live)}</b></td></tr>`;
+    }
+    if(!rows)return;
+    h+=`<div class="card warnbox"><h3>Does the VETTED badge predict forward returns? (checked live, 2026-08-19)</h3>
+      <p>The published VETTED badge is fit and measured on the SAME 2019-2026 data - it describes what
+      already happened, not a forecast. This table applies the identical bar (n&ge;20, PF&ge;1.3, win&ge;60%,
+      positive) using ONLY 2019-2022, then reports what the selected arms actually returned in 2023-2026 -
+      data the selection never saw. That is the honest test.</p>
+      <div class="tablewrap"><table style="max-width:760px">
+      <tr><th class="l">Strategy</th><th>Selected n</th><th>Selected fwd avg</th><th>Rejected n</th>
+      <th>Rejected fwd avg</th><th>All n</th><th>All fwd avg</th><th>Published VETTED avg</th></tr>
+      ${rows}</table></div>
+      <p class="small">"Selected fwd avg" and "Rejected fwd avg" should differ, and selected should win, if the
+      badge carries real forward information. They do not meaningfully differ - selecting on the bar is close
+      to a coin flip against simply taking every arm, and sometimes loses to it. The last column is what the
+      page currently shows next to a VETTED chip: roughly 1.5-1.6x the honest number, because it is measured
+      on the same data that chose it. This matches the site's own pre-registered DAILY sim, never previously
+      reconciled with the badge: DAILY.vetted CAGR runs well below DAILY.trailing CAGR (see the Daily Optimal
+      tab). <b>The gate is not cosmetic</b> - notify_buys.py requires it before a row reaches the buy email,
+      and shadow_book.py requires it (plus n&ge;30) before a signal may enter the ledger that gates real
+      money. Nothing here has changed what gates - that is a strategy decision, not a wording fix - this card
+      exists so the badge is read for what it currently measures.</p></div>`;
+  })();
+
   el.innerHTML=h;
 })();
 

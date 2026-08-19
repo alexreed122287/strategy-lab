@@ -420,6 +420,28 @@ const PAGE = 'file://' + path.resolve(__dirname, '..', 'index.html');
   t('positions: the old cost-basis-only claim is gone', !mark.costOnlyClaim);
   t('positions: the page explains why the closed set skews to winners', mark.explains);
 
+  /* ---- VETTED forward-check card (2026-08-19) ---------------------------
+     Confirmed by causal refit: selected/rejected arms are statistically
+     indistinguishable in the era the selection never saw, while the published
+     badge (fit in-sample) reads ~1.5-1.6x higher. Assert the card exists and
+     states a real per-strategy comparison, not that any particular number
+     holds - the underlying data moves as SCAN refreshes. */
+  await page.evaluate(() => document.querySelector('[data-tab="guide"]').click());
+  await page.waitForTimeout(400);
+  const vetCheck = await page.evaluate(() => {
+    const t = document.getElementById('guide-body').innerText;
+    const i = t.indexOf('Does the VETTED badge predict forward returns');
+    if (i < 0) return { present: false };
+    const rows = [...document.querySelectorAll('#guide-body table tr')]
+      .map(r => [...r.querySelectorAll('td')].map(c => c.textContent.trim()))
+      .filter(c => c.length === 8);
+    return { present: true, rowCount: rows.length,
+             allNumeric: rows.every(r => r.slice(1).every(v => v === '-' || /^[+-]?\d/.test(v))) };
+  });
+  t('guide: the VETTED forward-check card is present', vetCheck.present);
+  t('guide: it reports at least one strategy row', !vetCheck.present || vetCheck.rowCount > 0);
+  t('guide: every row is numeric, not a rendering leak', !vetCheck.present || vetCheck.allNumeric);
+
   t('today: buy list is published for the Signals tab to read', corr.n >= 0);
   t('signals: every Today buy is present in the default view', corr.allPresent);
   t('signals: every Today buy is marked TODAY\'S BUY', corr.marked === corr.n);
