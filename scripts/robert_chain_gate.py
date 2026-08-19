@@ -14,7 +14,8 @@ feasibility (OI 7 cannot fill 11 contracts) and to kill dead books; scale it to
 about 10x the intended contract count. Contract volume is reported as the real
 fillability signal - resting OI is a stock of old positions, prints are flow.
 """
-import json, os, sys, re, datetime as dt
+import json
+import sys, os, sys, re, datetime as dt
 from zoneinfo import ZoneInfo
 import requests
 
@@ -36,6 +37,43 @@ def get(path, **params):
     r = requests.get(BASE + path, headers=H, params=params, timeout=20)
     r.raise_for_status()
     return r.json()
+
+# THE GATE, IN ONE PLACE, RECORDED WITH ITS OWN OUTPUT.
+#
+# These were inline literals and the JSON stored only the resulting STATUS
+# STRING, never the thresholds it was computed under. So when the gate was
+# amended on 08/17/2026 (250/5% -> 10/25%, because the old floor "excluded
+# roughly 90% of the basket for no measured reason"), every already-published
+# verdict silently became a claim under a retired rule - and nothing could
+# detect that, because the gate it used was not written down. robert.html has
+# been serving "0/13 pass - cull before first trade" ever since, while 8 of
+# those 13 pass the live rule on the SAME stored measurements.
+#
+# The sibling robert_chain_check.py was defended against exactly this with a
+# `gate` field. This one was not. Now it is, and status is re-derivable from
+# the raw measurements at any time - see --rerender.
+OI_MIN = 10
+SPREAD_MAX_PCT = 25
+MARGINAL_SPREAD_MAX_PCT = 40
+GATE = {"oi_min": OI_MIN, "spread_max_pct": SPREAD_MAX_PCT,
+        "marginal_spread_max_pct": MARGINAL_SPREAD_MAX_PCT,
+        "amended": "2026-08-17"}
+
+
+def verdict(oi, spread_pct, mid_ok=True):
+    """The single status rule. Takes measurements, returns a verdict - so a
+    stored result can always be re-scored under the current gate instead of
+    carrying a frozen string."""
+    if not mid_ok:
+        return "no_live_quote"
+    if oi is None or spread_pct is None:
+        return "no_live_quote"
+    if oi >= OI_MIN and spread_pct <= SPREAD_MAX_PCT:
+        return "PASS"
+    if oi >= OI_MIN and spread_pct <= MARGINAL_SPREAD_MAX_PCT:
+        return "MARGINAL"
+    return "FAIL"
+
 
 def check(sym, today):
     out = {"ticker": sym}
@@ -84,14 +122,7 @@ def check(sym, today):
         out["ask"] = ask
         out["volume"] = int(pick.get("volume") or 0)
         out["spread_pct"] = round(100.0 * (ask - bid) / mid, 1) if mid > 0 else None
-        if mid <= 0:
-            out["status"] = "no_live_quote"
-        elif oi >= 10 and out["spread_pct"] <= 25:
-            out["status"] = "PASS"
-        elif oi >= 10 and out["spread_pct"] <= 40:
-            out["status"] = "MARGINAL"
-        else:
-            out["status"] = "FAIL"
+        out["status"] = verdict(oi, out["spread_pct"], mid_ok=(mid > 0))
         return out
     except Exception as e:
         out["status"] = "error:" + type(e).__name__
@@ -138,12 +169,35 @@ def main():
     today = now.date()
     res = [check(t, today) for t in ticks]
     label = "live sweep" if in_window else "OFF-HOURS TEST - quotes may be stale or empty"
-    doc = {"as_of": now.strftime("%Y-%m-%d %H:%M ET"), "mode": label, "results": res}
+    doc = {"as_of": now.strftime("%Y-%m-%d %H:%M ET"), "mode": label,
+           "gate": dict(GATE), "results": res}
     os.makedirs("data", exist_ok=True)
     json.dump(doc, open("data/chain_gate_results.json", "w"), indent=1)
+    render_and_splice(doc)
+    print(json.dumps(doc, indent=1))
+
+
+def render_and_splice(doc):
+    """Build the ROBGATE block from RAW MEASUREMENTS under the CURRENT gate.
+
+    Re-scoring here (rather than printing the stored status string) is what
+    stops a published verdict outliving the rule it was computed under. The
+    stored `status` is left untouched in the JSON as the historical record;
+    what the page shows is always today's rule applied to the same numbers.
+    """
+    res = doc.get("results") or []
+    label = doc.get("mode", "")
+    stored_gate = doc.get("gate")
+    restated = 0
+    for r in res:
+        live = verdict(r.get("oi"), r.get("spread_pct"),
+                       mid_ok=(r.get("spread_pct") is not None))
+        if live != r.get("status"):
+            restated += 1
+        r["_live_status"] = live
     rows = []
     for r in res:
-        st = r.get("status", "?")
+        st = r.get("_live_status", r.get("status", "?"))
         cls = "ok" if st == "PASS" else ("warn" if st == "MARGINAL" else "bad")
         ba = "-"
         if r.get("bid") is not None and r.get("ask") is not None and (r["bid"] or r["ask"]):
@@ -153,11 +207,18 @@ def main():
                     "</td><td>" + str(r.get("strike", "-")) + "</td><td>" + str(r.get("delta", "-")) +
                     "</td><td>" + str(r.get("oi", "-")) + "</td><td>" + ba + "</td><td>" + sp +
                     "</td><td>" + st + "</td></tr>")
-    npass = sum(1 for r in res if r.get("status") == "PASS")
+    npass = sum(1 for r in res if r.get("_live_status") == "PASS")
     block = ("<!-- ROBGATE:START -->\n<h3>Chain gate - pending adds</h3>\n" +
              "<p class=\"small\">" + doc["as_of"] + " (" + label + ") - first monthly &ge;30 DTE, ~0.80&Delta; call. " +
-             "PASS = OI &ge; 10 and quoted spread &le; 25% of mid (measured thresholds, 08/16/2026); volume column is the fillability read. " + str(npass) + "/" + str(len(res)) + " pass. " +
-             "A FAIL here means the name generates signals it cannot fill at viable cost - cull before first trade.</p>\n" +
+             "PASS = OI &ge; " + str(OI_MIN) + " and quoted spread &le; " + str(SPREAD_MAX_PCT) +
+             "% of mid (gate amended " + GATE["amended"] + "); volume column is the fillability read. " +
+             str(npass) + "/" + str(len(res)) + " pass. " +
+             "A FAIL here means the name generates signals it cannot fill at viable cost - cull before first trade." +
+             (" <b>Verdicts re-scored:</b> " + str(restated) + " of " + str(len(res)) +
+              " stored verdicts were computed under an earlier gate" +
+              (" (" + str(stored_gate.get("oi_min")) + "/" + str(stored_gate.get("spread_max_pct")) + "%)" if stored_gate else "") +
+              " and are restated above under the current one - the measurements are unchanged."
+              if restated else "") + "</p>\n" +
              "<table class=\"small\"><tr><th>Ticker</th><th>Expiry</th><th>Strike</th><th>Delta</th><th>OI</th><th>Bid / Ask</th><th>Spread</th><th>Verdict</th></tr>\n" +
              "\n".join(rows) + "\n</table>\n<!-- ROBGATE:END -->")
     try:
@@ -172,7 +233,25 @@ def main():
         print("page spliced")
     except Exception as e:
         print("page splice skipped:", type(e).__name__)
-    print(json.dumps(doc, indent=1))
+
+
+def rerender():
+    """Re-splice robert.html from data/chain_gate_results.json, no network.
+
+    The live sweep is Monday-only, so without this a gate amendment cannot
+    reach the page for up to a week - which is exactly how the 08/17 amendment
+    left "0/13 pass - cull before first trade" published against measurements
+    that pass 8/13 under the rule the same page declares current.
+    """
+    doc = json.load(open("data/chain_gate_results.json"))
+    render_and_splice(doc)
+    live = [r.get("_live_status") for r in doc.get("results") or []]
+    print("rerendered from stored measurements: %d PASS / %d MARGINAL / %d FAIL of %d"
+          % (live.count("PASS"), live.count("MARGINAL"), live.count("FAIL"), len(live)))
+
 
 if __name__ == "__main__":
-    main()
+    if "--rerender" in sys.argv:
+        rerender()
+    else:
+        main()

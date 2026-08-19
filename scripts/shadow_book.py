@@ -199,7 +199,38 @@ def portfolio(led, books, capital=None, slots=None, divisor=None):
         if kind != "out":
             return 1
         return 2 if p.get("entry_date") == p.get("exit_date") else 0
-    ev.sort(key=lambda e: (e[0], _phase(e[1], e[2])))          # stable: keeps rank order
+    # THE SORT KEY IS AN EVIDENCE BOUNDARY, NOT A FORMATTING CHOICE.
+    #
+    # This read `(date, _phase)` and relied on Python's stable sort with the
+    # comment "keeps rank order" - asserting a property of the input that the
+    # input does not have. `ev` is built from `closed + positions`, so inside
+    # any one (book, date, entries) contention group EVERY eventually-closed
+    # row precedes EVERY still-open row. The book's single slot was therefore
+    # awarded on the basis of which trade LATER TURNED OUT TO CLOSE SOONER.
+    # That is look-ahead, and it lands on the one number that decides whether
+    # real money gets deployed:
+    #
+    #   shipped (closed + positions)   gate_closed = 21   -> "21 of 20 LEG MET"
+    #   reversed input                              7     -> not met
+    #   (entry_date, sym)                          12     -> not met
+    #   (signal_date, sym)                         12     -> not met
+    #   four seeded shuffles                 10,12,16,10  -> not met
+    #
+    # 31 contended groups exist; ('GAPW_RSI14','2026-08-05') is the clean
+    # demonstration - HBM, ATI, VZLA, HD, KRMN, UNM (all closed) ahead of CLS,
+    # NMRK, INTR, OTIS (all open).
+    #
+    # slot_rank is the fix: the book's own rank for that signal, recorded by
+    # queue() on the morning it fired, so contention is settled on information
+    # that existed then. Rows written before 2026-08-18 have no slot_rank; they
+    # fall to a symbol tie-break, which is arbitrary but EXIT-INDEPENDENT, which
+    # is the property that matters. Backfilling is not possible from the ledger
+    # alone (the published rank was never stored), so the honest gate count
+    # stays a lower bound until enough post-fix trades close.
+    def _slot(p):
+        r = p.get("slot_rank")
+        return (0, r) if isinstance(r, int) else (1, 0)
+    ev.sort(key=lambda e: (e[0], _phase(e[1], e[2]), _slot(e[2]), e[2]["sym"]))
     closed = []                                # account-basis closed trades
     for date, kind, p in ev:
         b, sym = p["book"], p["sym"]
@@ -558,13 +589,20 @@ def main():
     # same-bar entry can never carry outcome information (exits only run on the
     # first pass of a NEWER bar).
     have = {(p["book"], p["sym"]) for p in led["positions"]}
-    def queue(book, sym, sig_close):
+    def queue(book, sym, sig_close, slot_rank=None):
         if (book, sym) in have:
             return
         have.add((book, sym))
         basis = BASIS[book]
         p = {"book": book, "sym": sym, "signal_date": as_of,
              "basis": basis, "bars_held": 0, "signal_close": sig_close,
+             # The book's OWN rank for this signal on the day it fired - by
+             # rs252/rsi3 for the book scanners, by shrunk expectancy for the
+             # generator arms. Persisted because the account replay has to
+             # decide which of several same-day signals gets the book's one
+             # slot, and it MUST decide that on information available that
+             # morning. See the ordering comment in portfolio().
+             "slot_rank": slot_rank,
              "entry_date": None, "entry_px": None,
              "exit_date": None, "exit_px": None, "exit_reason": None, "net": None,
              "state": "pending_open"}
@@ -581,7 +619,12 @@ def main():
     if (booksig.get("as_of") == as_of):
         for r in booksig.get("rows", []):
             if r.get("state") == "TAKE" and r.get("strat") in BASIS:
-                queue(r["strat"], r["sym"], r.get("close"))
+                queue(r["strat"], r["sym"], r.get("close"), r.get("book_rank"))
+    # Rank the generator's qualifying signals the way the Signals tab ranks
+    # them - shrunk expectancy, avg x n/(n+10), highest first - BEFORE queueing,
+    # so a same-day slot fight is settled on the morning's evidence and not on
+    # iteration order. Per book, since slots are per book.
+    gen = []
     for x in signals.get("signals", []):
         if (x.get("state") == "TAKE" and x.get("new_today")
                 and x.get("as_of") == as_of
@@ -591,7 +634,17 @@ def main():
             st = (scan["tickers"].get(x["sym"], {}).get("strats", {})
                   .get(x["strat"]))
             if st and st.get("vetted") and (st.get("n") or 0) >= 30:
-                queue(x["strat"], x["sym"], x.get("close"))
+                n, avg = st.get("n") or 0, st.get("avg_pct")
+                score = (avg * (n / (n + 10.0))) if avg is not None else None
+                gen.append((x["strat"], x["sym"], x.get("close"), score))
+    by_book = {}
+    for strat, sym, close, score in gen:
+        by_book.setdefault(strat, []).append((score, sym, close))
+    for strat, rows in by_book.items():
+        # -score for descending; sym as the exit-independent tie-break
+        rows.sort(key=lambda r: (-(r[0] if r[0] is not None else -1e9), r[1]))
+        for i, (score, sym, close) in enumerate(rows, 1):
+            queue(strat, sym, close, i)
     # Advance the run stamp ONLY when every open position was actually
     # evaluated. Stamping unconditionally is what turned a one-day data gap
     # into a permanent skip: first_pass goes false on the next run and the exit

@@ -104,6 +104,15 @@ def rank_block(row):
     if row.get("strat") == "ZSCORE":
         return ("z-score is killed for real-money wiring (x40/x41/x42) - "
                 "paper only, never ranked")
+    # Mirrors index.html's rankBlock, which blocks on !vetted. This function
+    # did not, and notify_test.py's cross-implementation comparison caught the
+    # divergence the first time it ran (2026-08-18). It is unreachable in
+    # practice - collect() filters generator rows on vetted before they get
+    # here, and book rows carry no vetted key at all - but "unreachable today"
+    # is exactly how the two copies drift apart. `is False` rather than falsy,
+    # so an absent key keeps its current meaning for book rows.
+    if row.get("vetted") is False:
+        return "arm is below the vetted bar"
     n = row.get("n") or 0
     if not n:
         return "no per-name record"

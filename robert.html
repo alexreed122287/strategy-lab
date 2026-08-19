@@ -123,21 +123,21 @@ code { background: var(--surface-1); border: 1px solid var(--border);
 <!-- ROBSHADOW:END -->
 <!-- ROBGATE:START -->
 <h3>Chain gate - pending adds</h3>
-<p class="small">2026-08-15 23:22 ET (OFF-HOURS TEST - quotes may be stale or empty) - first monthly &ge;30 DTE, ~0.80&Delta; call. PASS = OI &ge; 250 and quoted spread &le; 5% of mid. 0/13 pass. A FAIL here means the name generates signals it cannot fill at viable cost - cull before first trade.</p>
+<p class="small">2026-08-15 23:22 ET (OFF-HOURS TEST - quotes may be stale or empty) - first monthly &ge;30 DTE, ~0.80&Delta; call. PASS = OI &ge; 10 and quoted spread &le; 25% of mid (gate amended 2026-08-17); volume column is the fillability read. 8/13 pass. A FAIL here means the name generates signals it cannot fill at viable cost - cull before first trade. <b>Verdicts re-scored:</b> 8 of 13 stored verdicts were computed under an earlier gate and are restated above under the current one - the measurements are unchanged.</p>
 <table class="small"><tr><th>Ticker</th><th>Expiry</th><th>Strike</th><th>Delta</th><th>OI</th><th>Bid / Ask</th><th>Spread</th><th>Verdict</th></tr>
-<tr><td>SPOT</td><td>2026-09-18</td><td>470.0</td><td>0.81</td><td>79</td><td>49.20 / 54.45</td><td>10.1%</td><td>FAIL</td></tr>
-<tr><td>XPO</td><td>2026-09-18</td><td>195.0</td><td>0.8</td><td>56</td><td>17.70 / 21.20</td><td>18.0%</td><td>FAIL</td></tr>
+<tr><td>SPOT</td><td>2026-09-18</td><td>470.0</td><td>0.81</td><td>79</td><td>49.20 / 54.45</td><td>10.1%</td><td>PASS</td></tr>
+<tr><td>XPO</td><td>2026-09-18</td><td>195.0</td><td>0.8</td><td>56</td><td>17.70 / 21.20</td><td>18.0%</td><td>PASS</td></tr>
 <tr><td>RRX</td><td>2026-09-18</td><td>155.0</td><td>0.81</td><td>2</td><td>22.40 / 26.00</td><td>14.9%</td><td>FAIL</td></tr>
 <tr><td>MKSI</td><td>2026-09-18</td><td>270.0</td><td>0.8</td><td>0</td><td>47.50 / 50.80</td><td>6.7%</td><td>FAIL</td></tr>
-<tr><td>BURL</td><td>2026-09-18</td><td>320.0</td><td>0.77</td><td>82</td><td>34.20 / 37.50</td><td>9.2%</td><td>FAIL</td></tr>
-<tr><td>SNX</td><td>2026-09-18</td><td>230.0</td><td>0.83</td><td>147</td><td>30.30 / 33.30</td><td>9.4%</td><td>FAIL</td></tr>
-<tr><td>MOD</td><td>2026-09-18</td><td>180.0</td><td>0.8</td><td>27</td><td>33.50 / 36.80</td><td>9.4%</td><td>FAIL</td></tr>
+<tr><td>BURL</td><td>2026-09-18</td><td>320.0</td><td>0.77</td><td>82</td><td>34.20 / 37.50</td><td>9.2%</td><td>PASS</td></tr>
+<tr><td>SNX</td><td>2026-09-18</td><td>230.0</td><td>0.83</td><td>147</td><td>30.30 / 33.30</td><td>9.4%</td><td>PASS</td></tr>
+<tr><td>MOD</td><td>2026-09-18</td><td>180.0</td><td>0.8</td><td>27</td><td>33.50 / 36.80</td><td>9.4%</td><td>PASS</td></tr>
 <tr><td>EVR</td><td>2026-09-18</td><td>280.0</td><td>0.8</td><td>6</td><td>30.60 / 32.80</td><td>6.9%</td><td>FAIL</td></tr>
 <tr><td>PAAS</td><td>2026-09-18</td><td>42.0</td><td>0.82</td><td>5</td><td>5.80 / 6.80</td><td>15.9%</td><td>FAIL</td></tr>
 <tr><td>SGI</td><td>2026-09-18</td><td>60.0</td><td>0.81</td><td>9</td><td>6.70 / 7.70</td><td>13.9%</td><td>FAIL</td></tr>
-<tr><td>AMKR</td><td>2026-09-18</td><td>50.0</td><td>0.81</td><td>747</td><td>9.80 / 11.30</td><td>14.2%</td><td>FAIL</td></tr>
-<tr><td>ATI</td><td>2026-09-18</td><td>200.0</td><td>0.84</td><td>1699</td><td>30.50 / 32.80</td><td>7.3%</td><td>MARGINAL</td></tr>
-<tr><td>FORM</td><td>2026-09-18</td><td>110.0</td><td>0.81</td><td>261</td><td>24.30 / 27.30</td><td>11.6%</td><td>FAIL</td></tr>
+<tr><td>AMKR</td><td>2026-09-18</td><td>50.0</td><td>0.81</td><td>747</td><td>9.80 / 11.30</td><td>14.2%</td><td>PASS</td></tr>
+<tr><td>ATI</td><td>2026-09-18</td><td>200.0</td><td>0.84</td><td>1699</td><td>30.50 / 32.80</td><td>7.3%</td><td>PASS</td></tr>
+<tr><td>FORM</td><td>2026-09-18</td><td>110.0</td><td>0.81</td><td>261</td><td>24.30 / 27.30</td><td>11.6%</td><td>PASS</td></tr>
 </table>
 <!-- ROBGATE:END -->
 </div>

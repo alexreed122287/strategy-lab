@@ -147,11 +147,24 @@ def main():
     if st.get("last_as_of") == as_of:
         print(f"robert_shadow: bar {as_of} already processed", file=sys.stderr)
     busy = {p["t"] for p in st["open"]} | {q["t"] for q in st["queued"]}
+    # Names whose fill/exit could not be evaluated this run. See the stamp at
+    # the bottom: a skip that is not recorded is a skip that becomes permanent.
+    unchecked = []
 
     still_q = []
     for q in st["queued"]:
         t = q["t"]
-        if t not in bars: still_q.append(q); continue
+        if t not in bars:
+            # NOT a silent continue. shadow_book.py learned this the hard way:
+            # a name absent from the fetch gets no fill check, and because
+            # last_as_of is stamped unconditionally below, the bar is recorded
+            # as processed and never revisited. The position then holds its
+            # slot and its cash forever.
+            print("WARNING: fill UNCHECKED %s - no bars this run; stays queued"
+                  % t, file=sys.stderr)
+            q["unchecked"] = as_of
+            unchecked.append("queued/" + t)
+            still_q.append(q); continue
         seq = bars[t]; idx = None
         for i, r in enumerate(seq):
             if r[0] > q["signal_date"]: idx = i; break
@@ -170,11 +183,22 @@ def main():
     still_o = []
     for p in st["open"]:
         t = p["t"]
-        if t not in bars: still_o.append(p); continue
+        if t not in bars:
+            print("WARNING: exit UNCHECKED %s - no bars this run; position held"
+                  % t, file=sys.stderr)
+            p["exit_unchecked"] = as_of
+            unchecked.append("open/" + t)
+            still_o.append(p); continue
         seq = bars[t]
         di = {r[0]: i for i, r in enumerate(seq)}
         ei = di.get(p["entry_date"])
-        if ei is None: still_o.append(p); continue
+        if ei is None:
+            print("WARNING: exit UNCHECKED %s - entry bar %s missing from its "
+                  "series; position held" % (t, p["entry_date"]), file=sys.stderr)
+            p["exit_unchecked"] = as_of
+            unchecked.append("open/" + t)
+            still_o.append(p); continue
+        p.pop("exit_unchecked", None)
         closed = False
         for j in range(ei + 1, len(seq)):
             cl = [r[4] for r in seq[:j+1]]
@@ -198,6 +222,23 @@ def main():
         if t in busy or t not in bars: continue
         seq = bars[t]; c = [r[4] for r in seq]
         if len(c) < 253: continue
+        # PER-SYMBOL STALENESS. robert_scan.py refuses any name whose last bar
+        # != the corpus as_of, with the reason written out: a frozen feed's
+        # RS252 window measured against SPY's CURRENT 252-day return "can
+        # manufacture a phantom TAKE on a name that has not traded in months".
+        # That guard was never copied here, though the earnings guard next to
+        # it was (with the comment "duplicated because both scripts are
+        # deliberately standalone"). Consequence, reproduced end to end: the
+        # scan splices "Dropped as stale: GM@2026-06-23" into ROBSIG while this
+        # file splices "Queued for the next open: GM" into ROBSHADOW, one card
+        # below, same file, same run. Worse, signal_date is stamped with SPY's
+        # date, so no bar in the name's own series is ever > signal_date: the
+        # fill loop can never advance it, it stays in `busy` so the name can
+        # never re-signal, and the line reprints forever.
+        if seq[-1][0] != as_of:
+            print("robert_shadow: dropped as stale %s@%s (corpus %s)"
+                  % (t, seq[-1][0], as_of), file=sys.stderr)
+            continue
         r2 = wilder_rsi2(c[-120:]); s200 = sma(c, 200)
         if s200 is None or c[-1] <= s200 or r2 >= 10: continue
         rs = c[-1]/c[-253] - 1 - spy_r
@@ -214,7 +255,21 @@ def main():
         st["queued"].append({"t": t, "signal_date": as_of, "rsi2": round(r2, 2)})
         new_q.append(t); busy.add(t)
 
-    st["last_as_of"] = as_of
+    # Advance the run stamp ONLY when everything held was actually evaluated.
+    # Same reasoning as shadow_book.py: holding it back costs one repeated pass
+    # (queueing dedupes on `busy`, fills only touch queued rows), while burying
+    # an unchecked exit costs a slot forever.
+    if unchecked:
+        print("WARNING: %d position(s) unevaluated this run (%s). Holding "
+              "last_as_of at %s so the next run retries."
+              % (len(unchecked), ", ".join(sorted(unchecked)), st.get("last_as_of")),
+              file=sys.stderr)
+        st["unchecked_as_of"] = as_of
+        st["unchecked"] = sorted(unchecked)
+    else:
+        st.pop("unchecked_as_of", None)
+        st.pop("unchecked", None)
+        st["last_as_of"] = as_of
     os.makedirs(os.path.dirname(led_p) or ".", exist_ok=True)
     json.dump(st, open(led_p, "w"), indent=1)
 

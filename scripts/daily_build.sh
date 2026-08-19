@@ -155,6 +155,37 @@ assert "ROBSIG:START" in h and "ROBSIG:END" in h, "robert.html ROBSIG markers mi
 assert "ROBSHADOW:START" in h and "ROBSHADOW:END" in h, "robert.html ROBSHADOW markers missing"
 PYCHK
 
+# 5b) RENDER GATE. smoke_test.js has been a hand-run script since it was
+#     written: no workflow, no plist, no build step invoked it, so the 100+
+#     assertions it carries have never blocked anything (audit 2026-08-18).
+#     Its own header says exit codes were added "so anything wired to it could
+#     block" - this is the wiring. The mail was already gated on
+#     notify_test.py; the PAGE that mail links to was not gated on anything
+#     beyond "the JSON parses".
+#
+#     Fail-closed, like every other validation above: a page whose render
+#     assertions fail does not get published. If playwright is unavailable the
+#     suite exits 2, which is NOT a pass - say so and refuse, rather than
+#     letting a missing dependency read as a green run.
+if command -v node >/dev/null 2>&1; then
+  if node "$REPO/scripts/smoke_test.js"; then
+    echo "render gate: smoke suite passed"
+  else
+    rc=$?
+    if [ "$rc" = "2" ]; then
+      echo "RENDER GATE UNAVAILABLE - playwright not installed (npm i -g playwright-core)."
+      echo "Refusing to publish unverified. Install it or run with SKIP_RENDER_GATE=1."
+    else
+      echo "RENDER GATE FAILED (rc=$rc) - page assertions did not pass, refusing to publish."
+    fi
+    [ "${SKIP_RENDER_GATE:-0}" = "1" ] || exit 1
+    echo "SKIP_RENDER_GATE=1 set - publishing anyway, on the operator's head."
+  fi
+else
+  echo "RENDER GATE SKIPPED - node not on PATH."
+  [ "${SKIP_RENDER_GATE:-0}" = "1" ] || exit 1
+fi
+
 # 6) Publish (GitHub Pages serves main, so push = deploy). The shadow ledger
 #    is committed too - the forward record must survive machines.
 cd "$REPO"

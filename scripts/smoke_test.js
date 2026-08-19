@@ -295,7 +295,14 @@ const PAGE = 'file://' + path.resolve(__dirname, '..', 'index.html');
         if (!m) continue;
         // The x41 and x43 rows quote BOTH bases by name on purpose - they are
         // records of what was measured, not claims about the current basis.
-        if (/x41|x43|vs x0\.71/.test(line)) continue;
+        // Exempt ONLY lines that quote BOTH bases - the x41/x43 research rows
+        // are records of what was measured. The old test was /x41|x43|vs x0.71/,
+        // which exempted any line MENTIONING x43 - and since ZFACTOR's
+        // provenance IS x43, every paragraph about the execution basis names
+        // it, so the check was disabled exactly where it mattered. Proven
+        // 2026-08-18: hardcoding "~x0.71" into the Guide's keep-rate sentence
+        // still returned PASS.
+        if (/0\.71/.test(line) && /0\.87/.test(line)) continue;
         for (const hit of m) {
           const v = (hit.match(/0\.\d{2}/) || [])[0];
           if (v && v !== f) bad.push(tab + ': ' + line.trim().slice(0, 100));
@@ -307,6 +314,41 @@ const PAGE = 'file://' + path.resolve(__dirname, '..', 'index.html');
   t(`no stale execution-factor literal anywhere (ZFACTOR=${zf.f})`,
     zf.bad.length === 0);
   if (zf.bad.length) zf.bad.forEach(b => console.log('    ' + b));
+
+  /* F3. The Today card's wall-clock suppression had ZERO coverage: flipping
+     pageStale in either direction left the suite at 112 PASS / exit 0. Both
+     directions are asserted here, driven by a shifted clock rather than by
+     editing the page, so what is tested is the real code path. The sizing
+     assertion above is written `!/Buy ~\$/.test(...) || ...`, which passes
+     VACUOUSLY once the list is suppressed - so without this, suppression
+     silently disarms that check too. */
+  const staleProbe = async (offsetDays) => {
+    const p2 = await browser.newPage();
+    if (offsetDays) {
+      await p2.addInitScript(off => {
+        const R = Date, shift = off * 86400000;
+        Date = class extends R {
+          constructor(...a) { if (a.length) super(...a); else super(R.now() + shift); }
+          static now() { return R.now() + shift; }
+        };
+      }, offsetDays);
+    }
+    await p2.goto(PAGE);
+    await p2.waitForTimeout(700);
+    await p2.evaluate(() => document.querySelector('[data-tab="today"]').click());
+    await p2.waitForTimeout(250);
+    const txt = await p2.evaluate(() => document.getElementById('today-body').innerText);
+    await p2.close();
+    return { banner: /buy list suppressed/i.test(txt),
+             sized: /Buy ~\$/.test(txt),
+             sells: /Sell/.test(txt) };
+  };
+  const fresh = await staleProbe(0);
+  const aged = await staleProbe(9);
+  t('today: fresh page shows no staleness banner', !fresh.banner);
+  t('today: a 9-day-old page suppresses the buy list', aged.banner && !aged.sized);
+  t('today: suppression still shows sells (an open position must be actionable)',
+    !fresh.sells || aged.sells);
 
   // F8. The stale-feed killbox fired on a FULLY FRESH feed once demote_stale
   // stamped individual symbols PASS-STALE. A gate that fires daily is a gate
