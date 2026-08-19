@@ -58,6 +58,26 @@ FRICTION_RT = {"GAPW_RSI2": 0.001, "GAPW_RSI14": 0.001, "ZSCORE": 0.0002,
 # This is reversible: if the intraday 3:45 send is built and actually used,
 # close fills become achievable and RSI2/MFI move back to "close" - which must
 # itself be pre-registered before the trades it would affect.
+#
+# 2026-08-18: the owner set the Z-SCORE TARGET basis to a 2:45pm CST (3:45pm
+# ET) threshold filled MOC - the x43 basis, retention 0.87, co-signed by the
+# x57 panel - and index.html now discounts every displayed z-score stat to it.
+# ZSCORE IS DELIBERATELY LEFT AT "moo" HERE ANYWAY, for the reason the
+# paragraph above exists:
+#
+#   * The send does not exist. daily_build.sh fires at 15:30 CT (see
+#     com.alex.strategylab.daily.plist), forty-five minutes AFTER the decision
+#     point. Nothing in this repo can tell anyone at 2:45 what to buy, so a
+#     "moc" fill here would record a price the owner could not have obtained -
+#     which is precisely the inflation this basis map was introduced to stop.
+#   * The paragraph above requires a basis change to be PRE-REGISTERED before
+#     the trades it affects. Flipping it silently, mid-record, on a live
+#     forward test that gates real money, would be the opposite.
+#
+# So the displayed expectancy is currently the TARGET basis while the forward
+# record is the ACHIEVED one, and both surfaces say so out loud. To close the
+# gap, build the intraday send first, then pre-register, then flip this to
+# "moc" and set ZEXEC.mechanism_built = true in index.html.
 BASIS = {"GAPW_RSI2": "moo", "GAPW_RSI14": "moo", "ZSCORE": "moo",
          "RSI2": "moo", "MFI": "moo"}
 BASIS_PRIOR = {"RSI2": "close", "MFI": "close"}
@@ -450,6 +470,8 @@ def main():
         print("shadow: corp-action rebase %s %s entry %s -> %s"
               % (p["book"], p["sym"], old_e, p["entry_px"]), file=sys.stderr)
 
+    # Names whose exit could not be evaluated this run (see the loop below).
+    unchecked = []
     first_pass = led.get("as_of") != as_of
     if first_pass:
         # 1) fill queued MOO entries at the first bar AFTER the signal date
@@ -472,7 +494,40 @@ def main():
                 continue
             ds = dates.get(p["sym"]) or []
             if as_of not in ds or p["entry_date"] not in ds:
+                # NOT a silent continue. This skip sits before bars_held, before
+                # the rule test and before the 10-bar time stop, and the whole
+                # loop runs only when first_pass is true - led["as_of"] is
+                # stamped unconditionally below, so a bar skipped for want of
+                # data is skipped PERMANENTLY and never re-evaluated. The
+                # position then holds its book's only slot and its cash
+                # forever: freeSlots() stays 0 and every later buy in that book
+                # is deferred to the "no capital, no decision" list with no
+                # explanation. portfolio() names this exact class already - "a
+                # phantom open position holding the book's only slot forever".
+                #
+                # Not hypothetical: track_snapshot_reference.py records that EA
+                # sat at its 08-04 take-private close, volume 0, for ten days,
+                # and 20 of the currently-open ledger names are absent from
+                # SCAN entirely - they depend on the static BOOKS list, so
+                # dropping a name from either list drops its bars. The
+                # corp-action guard forty lines up refuses to be quiet in the
+                # same situation ("a silent skip would re-create the exact bug
+                # class this guard exists for. Say so loudly"). So: say so,
+                # flag the row for the page, and do not let the as_of stamp
+                # bury it - unchecked rows are recorded and retried.
+                why = ("no bar for %s" % as_of if as_of not in ds
+                       else "entry bar %s missing" % p["entry_date"])
+                print("WARNING: exit UNCHECKED %s %s - %s (%d bars on file). "
+                      "Position holds its slot; will retry next run."
+                      % (p["book"], p["sym"], why, len(ds)))
+                p["exit_unchecked"] = as_of
+                p["exit_unchecked_why"] = why
+                unchecked.append("%s/%s" % (p["book"], p["sym"]))
                 continue
+            # Cleared on any bar the check actually runs, so a transient gap
+            # does not leave a permanent mark on the row.
+            p.pop("exit_unchecked", None)
+            p.pop("exit_unchecked_why", None)
             held = ds.index(as_of) - ds.index(p["entry_date"])
             p["bars_held"] = held
             cs = series_upto(p["sym"], as_of)
@@ -537,7 +592,23 @@ def main():
                   .get(x["strat"]))
             if st and st.get("vetted") and (st.get("n") or 0) >= 30:
                 queue(x["strat"], x["sym"], x.get("close"))
-    led["as_of"] = as_of
+    # Advance the run stamp ONLY when every open position was actually
+    # evaluated. Stamping unconditionally is what turned a one-day data gap
+    # into a permanent skip: first_pass goes false on the next run and the exit
+    # loop never looks at that row again. Holding the stamp back costs one
+    # repeated pass (the fill and queue steps are idempotent - queue() dedupes
+    # on (book, sym) and fills only touch state=="pending_open"); burying an
+    # unchecked exit costs a slot forever.
+    if unchecked:
+        print("WARNING: %d position(s) had no exit check this run (%s). "
+              "Holding the ledger as_of at %s so the next run re-evaluates them."
+              % (len(unchecked), ", ".join(sorted(unchecked)), led.get("as_of")))
+        led["unchecked_as_of"] = as_of
+        led["unchecked"] = sorted(unchecked)
+    else:
+        led.pop("unchecked_as_of", None)
+        led.pop("unchecked", None)
+        led["as_of"] = as_of
 
     # stats + blob
     books = ["RSI2", "MFI", "GAPW_RSI2", "GAPW_RSI14", "ZSCORE"]

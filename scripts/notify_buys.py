@@ -85,6 +85,39 @@ def score(avg, n):
     return round(avg * (n / (n + 10.0)), 3)
 
 
+def rank_block(row):
+    """Why this row cannot carry a rank, or None if it can.
+
+    Mirrors rankBlock() in index.html. Ordered weakest-evidence-first so the
+    reason a reader gets is the most fundamental one: a row with no per-name
+    record is not "below the floor", it has nothing to be below.
+
+    Note that Strength already discounts small samples by n/(n+10) - but only
+    weakly. At n=16 that keeps 62% of the raw average, which is why a 16-trade
+    3.19% arm outranks a 47-trade 1.09% one. The shrink is a tiebreak among
+    rows that have already cleared the floor; it is not the floor itself.
+    """
+    # Never ranked at any sample size - the page's rankBlock() reaches this via
+    # vetted=false (no z-score arm is vetted, x40/x42). Spelled out here because
+    # the mailer's paper rows carry their own stats and would otherwise sail
+    # through the numeric floors the day a z-name accumulates 30 trades.
+    if row.get("strat") == "ZSCORE":
+        return ("z-score is killed for real-money wiring (x40/x41/x42) - "
+                "paper only, never ranked")
+    n = row.get("n") or 0
+    if not n:
+        return "no per-name record"
+    if (row.get("avg") or 0) <= 0:
+        return "negative expectancy"
+    if n < GW_MIN_N:
+        return "n < %d" % GW_MIN_N
+    if row.get("score") is None:
+        return "no strength score"
+    if n < RANK_MIN_N:
+        return "%d trades, below the %d-trade ranking floor" % (n, RANK_MIN_N)
+    return None
+
+
 # Evidence floors for anything presented as a ranked buy.
 #
 # GEN_MIN_N matches index.html's own gate exactly (`!st.vetted || st.n < 30`).
@@ -99,6 +132,23 @@ def score(avg, n):
 # trades - that is an artifact, not evidence, and must not lead an email.
 GEN_MIN_N = 30
 GW_MIN_N = 10
+
+# RANK_MIN_N is the floor for carrying a RANK, and it is not the same question
+# as whether a row may be SHOWN. The two were conflated until 2026-08-18, and
+# the gap between them is where the worst kind of error lives: CELH fired
+# GAPW_RSI14 on 16 trades at avg 3.19%, which is Strength 1.963 - the largest
+# number on the whole board that day, larger than the actual #1 (SHOP, 1.253).
+# It cleared GW_MIN_N so it was visible, and it failed the 30-trade ranked-pool
+# filter so it was absent from RANKED - printed clean, with no marker saying
+# why, next to the best-looking figure in the email. The --simple digest then
+# did the opposite and worse: it ranked every visible row by raw Strength, so
+# the same 16-trade row went out to the subscriber list as Rank #1 under a
+# heading claiming the order was "exactly as the dashboard's Signals tab",
+# where it is unranked. Three surfaces, three answers, one row.
+#
+# So: rank_block() below is the single answer to "may this row carry a rank",
+# every surface asks it, and a row it blocks must say so wherever it appears.
+RANK_MIN_N = 30
 
 
 def last_completed_session(now=None):
@@ -141,6 +191,14 @@ def collect(page_path):
     S = {s.get("id"): s for s in books.get("strategies", [])}
     zuni = (S.get("zscore_000") or {}).get("universe", {})
     zstats = {e["signal"]: e for e in zuni.get("per_name", [])}
+    # Per-name PF for the Gap Widen books, built exactly as index.html builds
+    # GWPF so the digest cannot show a different PF from the page.
+    gwpf = {}
+    for _sid, _k in (("gap_widen_rsi2", "GAPW_RSI2"),
+                     ("gap_widen_rsi14", "GAPW_RSI14")):
+        _u = (S.get(_sid) or {}).get("universe") or {}
+        gwpf[_k] = {e["signal"]: e["pf"] for e in _u.get("qualified", [])
+                    if e.get("pf") is not None}
     zfactor = (S.get("zscore_000") or {}).get("exec_basis_factor") or 1.0
 
     pool, gw_book, paper = [], [], []
@@ -191,8 +249,18 @@ def collect(page_path):
         if strat == "BB" or r.get("state") != "TAKE":
             continue
         if strat.startswith("GAPW"):
+            # PF was hardcoded None with r.get("pf") available two characters
+            # away and every neighbouring field read from r. Result: the digest
+            # printed a dash in the one column that separates WMB's coin flip
+            # (PF 1.03 - gross wins barely exceeding gross losses) from CELH's
+            # 5.56, under a heading that says "Buy at the market open". The
+            # dashboard has shown per-name PF since it started building GWPF
+            # from BOOKS.gap_widen_*.universe.qualified; the mailer never
+            # caught up. Same fallback chain the page uses.
             row = {"sym": r["sym"], "strat": strat, "close": r.get("close"),
-                   "n": r.get("n"), "win": r.get("win"), "pf": None,
+                   "n": r.get("n"), "win": r.get("win"),
+                   "pf": r.get("pf") if r.get("pf") is not None
+                         else gwpf.get(strat, {}).get(r["sym"]),
                    "avg": r.get("avg"), "score": score(r.get("avg"), r.get("n")),
                    "rank": r.get("book_rank"), "rs252": r.get("rs252"),
                    "pf1922": None, "pf2326": None, "depth": r.get("rs252"),
@@ -230,14 +298,28 @@ def collect(page_path):
                 "exit": EXITS.get(strat, ""), "vehicle": "1x",
                 "trig": ("RSI3 %s" % r.get("rsi3")) if r.get("rsi3") is not None else "",
                 "earnings": r.get("state") == "PASS-EARNINGS",
-                "entry": "MOO next open - PAPER only (book killed for wiring)"})
+                # TARGET basis is the 2:45pm CST (3:45pm ET) threshold filled
+                # MOC - owner's decision 08/18, x43-measured, x57-co-signed,
+                # and what exec_basis_factor now discounts to. It is NOT what
+                # happens: this mail is composed after the 15:30 CT build, i.e.
+                # 45 minutes past that decision point, so the only order anyone
+                # can actually place off it is the next open. Say both rather
+                # than print an instruction the schedule cannot support.
+                "entry": "MOO next open - PAPER only (book killed for wiring; "
+                         "target basis is 2:45pm CST -> MOC, not yet automated)"})
+
+    # Stamp every row - ranked, book and paper alike - with the one answer to
+    # "may this carry a rank". Done here, once, so no downstream surface can
+    # re-derive it differently the way compose_simple() used to.
+    for row in pool + gw_book + paper:
+        row["rank_block"] = rank_block(row)
 
     # RANKED = the page's exact pool: vetted, 30+ trades, one best arm per
     # ticker, strength order (avg x n/(n+10)).
     pool.sort(key=lambda x: -(x["score"] if x["score"] is not None else -1e9))
     ranked, seen = [], set()
     for b in pool:
-        if (b["n"] or 0) < 30 or b["score"] is None or b["sym"] in seen:
+        if b["rank_block"] or b["sym"] in seen:
             continue
         seen.add(b["sym"])
         ranked.append(b)
@@ -270,14 +352,17 @@ def compose(as_of, ranked, gw_book, paper, exits, url):
         lines.append("GAP WIDEN BOOK (book-level validated at MOO; per-name samples are small "
                      "by design - in-book order is rs252):")
         for b in gw_book:
-            why = ("no per-name record" if not b.get("n")
-                   else "negative expectancy" if (b.get("avg") or 0) <= 0
-                   else "n < %d" % GW_MIN_N)
+            # Mark on rank_block, NOT on rankable. A row can be rankable (shown
+            # in this section, carried into the digest) and still be barred
+            # from a rank by the 30-trade floor - that combination is exactly
+            # what printed CELH's chart-topping 1.963 with no marker at all.
             lines.append(
                 f"  #{fmt(b['rank'])} {b['sym']:<6} {b['strat']:<11}"
                 f" | close {fmt(b['close'])} | rs252 {fmt(b['rs252'],'%')}"
                 f" | win {fmt(b['win'],'%')} | avg {fmt(b['avg'],'%')} | n {fmt(b['n'])}"
-                + ("" if b.get("rankable", True) else "   [NOT RANKED - %s]" % why))
+                + ("   [NOT RANKED - %s]" % b["rank_block"] if b.get("rank_block") else ""))
+        lines.append("  In-book '#' is the book's own scan order (by rs252), not Strength -"
+                     " a row can lead this section on Strength and still not rank.")
     if paper:
         lines.append("")
         lines.append("PAPER / RESEARCH (z-score - killed for real-money wiring; forward test only):")
@@ -331,8 +416,20 @@ def compose_simple(as_of, ranked, gw_book, paper, url):
         seen.add(key)
         rows.append(r)
     rows.sort(key=lambda x: -(x["score"] if x.get("score") is not None else -1e9))
-    for i, r in enumerate(rows, 1):
-        r["_rank"] = i
+    # Sorting by Strength and NUMBERING by position are different claims. This
+    # numbered every visible row, so a 16-trade book row with the day's biggest
+    # Strength went out as "Rank 1" to the subscriber list while the dashboard
+    # this claims to mirror showed it unranked. Rows keep their Strength order -
+    # that IS the dashboard's order - but only rows that clear the ranking floor
+    # get a number, and the rest say why not.
+    nxt = 0
+    for r in rows:
+        if r.get("rank_block"):
+            r["_rank"] = None
+        else:
+            nxt += 1
+            r["_rank"] = nxt
+    unranked = [r for r in rows if r.get("rank_block")]
 
     NAME = {"GAPW_RSI2": "Gap Widen RSI2", "GAPW_RSI14": "Gap Widen RSI14",
             "ZSCORE": "Z-Score", "RSI2": "RSI2", "MFI": "MFI"}
@@ -375,15 +472,25 @@ def compose_simple(as_of, ranked, gw_book, paper, url):
                       'text-align:%s;white-space:nowrap;font-size:12px">%s</td>'
                       % (ALIGN[a], esc(val(r, k))) for _, k, a in COLS)
         trs.append('<tr style="background:%s">%s</tr>' % (bg, tds))
+    # Say it beside the number, not in a footnote nobody reads: the row with
+    # the day's top Strength is often the one with the thinnest record, and
+    # the whole point of the floor is that Strength alone does not earn a rank.
+    unranked_html = ("" if not unranked else
+        '<p style="margin:4px 0 4px 0;font-size:12px;color:#555"><b>Not ranked</b> '
+        '(shown because the signal fired, but the record is too thin to rank &mdash; '
+        'Strength discounts a small sample only weakly, so a short record can top '
+        'the sort): ' + "; ".join(
+            "%s %s &mdash; %s" % (esc(r["sym"]), esc(NAME.get(r["strat"], r["strat"])),
+                                  esc(r["rank_block"])) for r in unranked) + ".</p>")
     html = """<div style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;color:#111">
 <h2 style="margin:0 0 2px 0;font-size:17px">Strategy Lab &mdash; new buys</h2>
-<p style="margin:0 0 14px 0;color:#555;font-size:13px">Signals confirmed at the close of %s &middot; ranked by Strength, exactly as the dashboard's Signals tab</p>
+<p style="margin:0 0 14px 0;color:#555;font-size:13px">Signals confirmed at the close of %s &middot; sorted by Strength, exactly as the dashboard's Signals tab. A dash in Rank means the row is shown but not ranked &mdash; see below the table.</p>
 <div style="overflow-x:auto"><table cellspacing="0" cellpadding="0" style="border-collapse:collapse;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">
 <thead><tr>%s</tr></thead><tbody>%s</tbody></table></div>
 <p style="margin:14px 0 4px 0;font-size:12px;color:#555">
 <b>Strength</b> = avg/trade weighted by sample size &mdash; the sort key.
 <b>PF 19-22 / PF 23-26</b> = profit factor by era; both healthy is the era-robustness read, and a dash means the book has no per-era record.</p>
-<h3 style="margin:16px 0 4px 0;font-size:14px">How to act</h3>
+%s<h3 style="margin:16px 0 4px 0;font-size:14px">How to act</h3>
 <p style="margin:0;font-size:13px">Buy at the market open, next session. These are end-of-day signals &mdash; buying intraday is not what was tested.</p>
 <h3 style="margin:16px 0 4px 0;font-size:14px">What this is</h3>
 <p style="margin:0;font-size:13px;color:#333">Paper research. No real money is in any of these strategies and none is authorised for it.
@@ -391,7 +498,7 @@ Every strategy here has failed at least one historical era test: both Gap Widen 
 earns nothing over simply owning the same stocks in that period. The recent results describe one favourable regime, not a forecast, and the
 per-name figures above are idealised fills that read better than reality.</p>
 <p style="margin:10px 0 0 0;font-size:13px">Full evidence, including what failed: <a href="%s">%s</a></p>
-</div>""" % (esc(as_of or "the last session"), th, "".join(trs),
+</div>""" % (esc(as_of or "the last session"), th, "".join(trs), unranked_html,
              esc(url or "#"), esc(url or "(dashboard)"))
 
     # ---------- plain-text fallback ----------
@@ -402,7 +509,8 @@ per-name figures above are idealised fills that read better than reality.</p>
             for i, c in enumerate(cells))
     T = ["STRATEGY LAB - new buys",
          "Signals confirmed at the close of %s" % (as_of or "the last session"),
-         "Ranked by Strength, exactly as the dashboard's Signals tab.",
+         "Sorted by Strength, exactly as the dashboard's Signals tab.",
+         "A dash in Rank means shown but not ranked - reasons below the table.",
          "(View in HTML for the aligned table.)", "",
          line([h for h, _, _ in COLS]),
          "  " + "-" * (sum(w) + 2 * (len(w) - 1))]
@@ -411,7 +519,15 @@ per-name figures above are idealised fills that read better than reality.</p>
           "  Strength = avg/trade weighted by sample size - the sort key.",
           "  PF 19-22 / PF 23-26 = profit factor by era; both healthy is the",
           "  era-robustness read, a dash means no per-era record.",
-          "",
+          ""]
+    if unranked:
+        T += ["NOT RANKED (the signal fired, but the record is too thin to rank;",
+              "Strength discounts a small sample only weakly, so a short record",
+              "can top the sort):"]
+        T += ["  - %s %s: %s" % (r["sym"], NAME.get(r["strat"], r["strat"]),
+                                 r["rank_block"]) for r in unranked]
+        T += [""]
+    T += [
           "HOW TO ACT",
           "  Buy at the market open, next session. These are end-of-day",
           "  signals - buying intraday is not what was tested.",

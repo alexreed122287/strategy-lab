@@ -58,6 +58,14 @@ if ! grep -q "=== daily build done $TODAY" "$LOG" 2>/dev/null; then
   exit 0
 fi
 
+# Gate 2b: rank consistency. Same gate the build applies before it mails - a
+# backstop that can send what the primary path refused is not a backstop.
+if ! python3 "$REPO/scripts/notify_test.py" >/dev/null 2>&1; then
+  say "declining: rank consistency check failed - the digest's ranks would"
+  say "declining: disagree with the dashboard. Run scripts/notify_test.py."
+  exit 0
+fi
+
 say "both gates passed (session $EXPECTED, build completed today) - running digest."
 # Gate 3 lives inside notify_buys: it re-derives the expected session itself and
 # suppresses on the content hash, so a digest the build already chained will be

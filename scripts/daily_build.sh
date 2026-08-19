@@ -163,22 +163,48 @@ if git diff --cached --quiet; then
   echo "no changes to publish"
 else
   git commit -m "daily build $(date +%F)"
+  # `git push && break` is NOT the last command of its AND-list, so `set -e`
+  # cannot see it fail. All five attempts could fail, the loop would end
+  # normally, and both mails went out below - about a page that was never
+  # published. notify_buys then writes its dedupe hash, so the corrected mail
+  # would be suppressed as a duplicate and never sent at all. Verified
+  # 2026-08-18: `set -euo pipefail; for d in 0 2; do false && break; done;
+  # echo REACHED` prints REACHED and exits 0. This file's own header promises
+  # "fail-closed: if any step or validation fails, nothing is pushed" - and the
+  # cloud path already gets this right by gating on published == 'true'.
+  pushed=0
   for delay in 0 2 4 8 16; do
     sleep "$delay"
-    git push origin main && break
+    if git push origin main; then pushed=1; break; fi
   done
+  if [ "$pushed" -ne 1 ]; then
+    echo "PUSH FAILED after 5 attempts - page NOT published, holding all mail."
+    echo "Nothing was sent. Fix the push, then re-run; the dedupe state is untouched."
+    exit 1
+  fi
   # 7) Notify (email + ntfy push + optional SMS) - configured via
   #    ~/.strategy_lab_notify.json, see docs/notifications.md. First harvest
   #    any self-service signups from the page's card. Never fails the build.
   python3 "$REPO/scripts/notify_signups.py" || echo "signup harvest failed (non-fatal)"
-  python3 "$REPO/scripts/notify_buys.py" --page "$REPO/index.html" \
-    || echo "notify step failed (non-fatal)"
-  # Simplified ranked digest to the wider list ("to_digest"). Chained here
-  # rather than left to a clock so it can never read a half-written page: the
-  # build is finished and pushed by the time this runs. The 16:00 launchd job
-  # (com.alex.strategylab.digest) is a backstop for the days this step fails -
-  # its own dedupe state makes a double-send impossible.
-  python3 "$REPO/scripts/notify_buys.py" --page "$REPO/index.html" --simple \
-    || echo "digest step failed (non-fatal)"
+  # 7a) Gate the mail on rank consistency. The three surfaces that print a rank
+  #     disagreed on 2026-08-18 - the digest sent a 16-trade row to the
+  #     subscriber list as the day's #1 buy while the dashboard showed it
+  #     unranked. A mail carrying a "buy at the open" imperative on numbers the
+  #     page contradicts is worse than no mail, so this one gates rather than
+  #     warning: same reasoning as the session-date gate inside notify_buys.
+  if python3 "$REPO/scripts/notify_test.py"; then
+    python3 "$REPO/scripts/notify_buys.py" --page "$REPO/index.html" \
+      || echo "notify step failed (non-fatal)"
+    # Simplified ranked digest to the wider list ("to_digest"). Chained here
+    # rather than left to a clock so it can never read a half-written page: the
+    # build is finished and pushed by the time this runs. The 16:00 launchd job
+    # (com.alex.strategylab.digest) is a backstop for the days this step fails -
+    # its own dedupe state makes a double-send impossible.
+    python3 "$REPO/scripts/notify_buys.py" --page "$REPO/index.html" --simple \
+      || echo "digest step failed (non-fatal)"
+  else
+    echo "RANK CONSISTENCY CHECK FAILED - no mail sent. The page is published;"
+    echo "the buy mail is held because its ranks disagree with the dashboard's."
+  fi
 fi
 echo "=== daily build done $(date '+%F %T') ==="

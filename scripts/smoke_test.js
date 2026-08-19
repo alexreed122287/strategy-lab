@@ -196,6 +196,150 @@ const PAGE = 'file://' + path.resolve(__dirname, '..', 'index.html');
     return { n: act.length, marked,
       allPresent: act.every(b => html.includes(b.sym)) };
   });
+  /* ---- Unranked rows must say why (2026-08-18) --------------------------
+     Book rows are exempt from the min-trades filter, so they render on far
+     less evidence than the ranking floor - and then took a bare "-" in the
+     Rank cell. On 08/18 CELH GAPW_RSI14 sat at the TOP of the Strength sort
+     with 1.963 on 16 trades (bigger than the actual #1, SHOP at 1.253),
+     unranked and unexplained, and the owner reasonably asked why a weaker
+     row was beating it. A blank Rank beside the biggest number on the page
+     is only honest if the row can say what is missing. Assert the behavior,
+     not today's tickers: EVERY unranked row carries a reason, and no ranked
+     row carries one. */
+  const rankCells = await page.evaluate(() => {
+    return [...document.querySelectorAll('#signals-table tr')]
+      .filter(r => r.querySelector('td'))
+      .map(r => {
+        const c = [...r.querySelectorAll('td')];
+        const td = c[1];
+        const why = td.querySelector('.small');
+        const bare = td.cloneNode(true);
+        bare.querySelectorAll('.small').forEach(n => n.remove());
+        return { sym: c[0].textContent.trim().split(/\s/)[0],
+                 rank: bare.textContent.trim(),
+                 why: why ? why.textContent.trim() : '',
+                 strength: c[7].textContent.trim(),
+                 n: c[11].textContent.trim() };
+      });
+  });
+  const unranked = rankCells.filter(x => x.rank === '-');
+  const numbered = rankCells.filter(x => /^\d+$/.test(x.rank));
+  t('signals: table renders both ranked and unranked rows',
+    rankCells.length > 0 && numbered.length > 0);
+  t('signals: every unranked row states why it is unranked',
+    unranked.every(x => x.why.length > 0));
+  t('signals: no ranked row carries an unranked reason',
+    numbered.every(x => x.why === ''));
+  /* The specific trap: the row at the top of the Strength sort is frequently
+     the thinnest one, because n/(n+10) discounts a small sample only weakly.
+     If the strongest row is unranked, its reason must name the sample. */
+  const topByStrength = rankCells
+    .filter(x => x.strength && !isNaN(parseFloat(x.strength)))
+    .sort((a, b) => parseFloat(b.strength) - parseFloat(a.strength))[0];
+  t(`signals: top-Strength row is ranked or explains itself (${topByStrength ?
+      topByStrength.sym + ' ' + topByStrength.strength + ' on n=' + topByStrength.n : 'none'})`,
+    !topByStrength || topByStrength.rank !== '-' || topByStrength.why.length > 0);
+  /* Changing the floor re-ranks the table but NOT the pinned Top-4 card, so
+     the page must say the two lists have stopped agreeing. */
+  await page.evaluate(() => { document.getElementById('s-minn').value = '10';
+    document.getElementById('s-apply').click(); });
+  await page.waitForTimeout(300);
+  const offFloor = await page.evaluate(() => document.getElementById('s-count').innerText);
+  t('signals: a non-standard min-trades floor is disclosed against the Top-4 card',
+    /Top-4 buys card/.test(offFloor));
+  await page.evaluate(() => { document.getElementById('s-minn').value = '30';
+    document.getElementById('s-apply').click(); });
+  await page.waitForTimeout(300);
+  const onFloor = await page.evaluate(() => document.getElementById('s-count').innerText);
+  t('signals: no disclaimer at the standard floor', !/Top-4 buys card/.test(onFloor));
+
+  /* ---- AUDIT 2026-08-18 regressions ------------------------------------
+     Each of these is a bug that was live on the 08/18 build. Assert the
+     BEHAVIOR, not today's tickers, so ordinary data movement cannot make them
+     red and get them deleted. */
+
+  // F1. The Today card had NO evidence gate on book rows: its only
+  // recommendation that day was ST/ZSCORE at $6,667 on a six-trade record,
+  // while the Signals tab printed Rank "-" for the same row and the mailer
+  // dropped it. Nothing sized may sit below the evidence floor.
+  const todayGate = await page.evaluate(() => {
+    const T = (typeof TODAY_BUYS !== 'undefined' && TODAY_BUYS) || { act: [] };
+    const bad = (T.act || []).filter(b =>
+      b.n == null || b.avg == null || b.avg <= 0 || b.n < BOOK_MIN_N);
+    const txt = document.getElementById('today-body').innerText;
+    return { bad: bad.map(b => `${b.sym}/${b.book} n=${b.n} avg=${b.avg}`),
+             sized: /Buy ~\$/.test(txt),
+             demotedLabelled: [...document.querySelectorAll('#today-body .trow')]
+               .filter(r => /NOT A BUY/.test(r.innerText))
+               .every(r => r.innerText.split('NOT A BUY')[1].trim().length > 3) };
+  });
+  t(`today: no sized buy below the evidence floor (${todayGate.bad.join('; ') || 'none'})`,
+    todayGate.bad.length === 0);
+  t('today: every demoted row states why it is not a buy', todayGate.demotedLabelled);
+
+  // F2. ZFACTOR is read from the blob specifically so it is not hardcoded, and
+  // nine strings hardcoded it anyway - two rendering "x0.71" in the same paint
+  // as an interpolated "x0.87". No visible string may assert a factor that is
+  // not the live one, except the research rows that quote both by name.
+  const zf = await page.evaluate(() => {
+    const f = String(ZFACTOR);
+    const bad = [];
+    for (const tab of TABS.map(t2 => t2[0])) {
+      const el2 = document.getElementById(tab + '-body');
+      if (!el2) continue;
+      for (const line of el2.innerText.split('\n')) {
+        // Only EXECUTION-BASIS claims, not every decimal on the page: the
+        // phrase has to be about keeping/executing a fraction per trade.
+        if (!/executable|keep-rate|keeps ~?x?0?\.|per trade/i.test(line)) continue;
+        const m = line.match(/x\s?0\.\d{2}/gi);
+        if (!m) continue;
+        // The x41 and x43 rows quote BOTH bases by name on purpose - they are
+        // records of what was measured, not claims about the current basis.
+        if (/x41|x43|vs x0\.71/.test(line)) continue;
+        for (const hit of m) {
+          const v = (hit.match(/0\.\d{2}/) || [])[0];
+          if (v && v !== f) bad.push(tab + ': ' + line.trim().slice(0, 100));
+        }
+      }
+    }
+    return { f, bad: [...new Set(bad)] };
+  });
+  t(`no stale execution-factor literal anywhere (ZFACTOR=${zf.f})`,
+    zf.bad.length === 0);
+  if (zf.bad.length) zf.bad.forEach(b => console.log('    ' + b));
+
+  // F8. The stale-feed killbox fired on a FULLY FRESH feed once demote_stale
+  // stamped individual symbols PASS-STALE. A gate that fires daily is a gate
+  // nobody reads, and this one exists to catch a TROW-class failure.
+  const staleGate = await page.evaluate(() => {
+    const live = (typeof TRACK !== 'undefined' && TRACK && TRACK.as_of) || '';
+    const sigbar = ((typeof SIGNALS !== 'undefined' && SIGNALS.signals) || [])
+      .reduce((m, x) => (x.as_of || '') > m ? (x.as_of || '') : m, '');
+    return { feedBehind: !!(live && sigbar && sigbar < live),
+             banner: /Signal feed is stale/.test(document.body.innerText) };
+  });
+  t(`signals: stale killbox fires iff the FEED is behind (behind=${staleGate.feedBehind})`,
+    staleGate.banner === staleGate.feedBehind);
+
+  // F10. Two harnesses emit two different "zero losses" sentinels (99, 999).
+  // Neither is a profit factor; the largest genuine PF in this data is 69.98.
+  const pfRaw = await page.evaluate(() => {
+    const hits = [];
+    for (const tab of TABS.map(t2 => t2[0])) {
+      const el2 = document.getElementById(tab + '-body');
+      if (!el2) continue;
+      el2.querySelectorAll('details').forEach(d => d.open = true);
+      // a sentinel that reached a CELL renders as its own td text
+      el2.querySelectorAll('td').forEach(td => {
+        const v = td.textContent.trim();
+        if (v === '999' || v === '999.0' || v === '99.0' || v === '99') hits.push(tab + ':' + v);
+      });
+    }
+    return [...new Set(hits)];
+  });
+  t(`no raw PF sentinel renders as a number (${pfRaw.join(', ') || 'none'})`,
+    pfRaw.length === 0);
+
   t('today: buy list is published for the Signals tab to read', corr.n >= 0);
   t('signals: every Today buy is present in the default view', corr.allPresent);
   t('signals: every Today buy is marked TODAY\'S BUY', corr.marked === corr.n);

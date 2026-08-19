@@ -455,23 +455,71 @@ const SCANHELP={sym:"Signal symbol - the name the entry rule is computed on.",
  vehicle:"1x-vs-levered pointer: green = validated mapping, yellow = liquid twin candidate (unvalidated), 1x otherwise.",
  vetted:"Passed the quality bar: 20+ trades, PF>=1.3, win>=60%, profitable in both eras. GW rows: on the lab priority-25. Z-BOOK/BB-KILLED rows are research records and are never vetted.",
  score:"Rank score 0-100: percentile blend of PF + win % + avg/trade WITHIN your current filter and window. Relative standing - re-ranks as you change filters; not an absolute measure.",
- pf:"Profit factor = gross wins / gross losses. 2 = wins twice losses. GW rows: computed from the lab's own per-name trade log (events_*.csv - reproduces every published per_ticker row exactly). Z-Score/BB book rows: research-run PF. Any 99 = zero losing trades in a small sample (artifact cap).",
+ pf:"Profit factor = gross wins / gross losses. 2 = wins twice losses. GW rows: computed from the lab's own per-name trade log (events_*.csv - reproduces every published per_ticker row exactly). Z-Score/BB book rows: research-run PF. 99 OR 999 both mean zero losing trades in a small sample - two harnesses, two sentinels, same condition; both are artifacts, not measurements (largest genuine PF here is 69.98), and both render as no losers.",
  win:"Share of historical trades that made money.",
- avg:"Average net return per trade over the selected window. Z-Score/BB book rows are IDEALIZED same-close research numbers (hover the Strategy cell for the basis; z executable estimate is x0.71).",
+ avg:"Average net return per trade over the selected window. Z-Score/BB book rows are IDEALIZED same-close research numbers (hover the Strategy cell for the basis; the z executable estimate is applied on the Signals tab, not here).",
  n:"Sample size. Default filter 30 = the program reliability floor; 20 = hard vetted minimum.",
  cagr:"Compounding ONLY this arm's trades including cash time. NOT the stock's return and NOT portfolio CAGR.",
  bh:"The stock's buy-and-hold CAGR over the same window - compare with Arm CAGR to see if the strategy beat just owning it.",
  expo:"Share of days the arm is in the market. Low = mostly cash.",
  pf1922:"Profit factor in the 2019-22 era.",
  pf2326:"Profit factor in the 2023-26 era. Both eras healthy = era-robust, not one lucky regime."};
+const ZFACTOR=(typeof BOOKS!=="undefined"&&BOOKS.strategies&&
+  (BOOKS.strategies.find(s=>s.id==="zscore_000")||{}).exec_basis_factor)||1;
+/* Z-SCORE EXECUTION BASIS - one declaration, interpolated everywhere.
+
+   ZFACTOR is read from the blob SPECIFICALLY so it is not hardcoded, and then
+   nine strings hardcoded it anyway. Two of them rendered "x0.71" on the same
+   tab, in the same paint, as an interpolated "x0.87" (audit 2026-08-18). A
+   reader who trusted the 0.71 label and reconstructed the idealized figure got
+   5.45%/trade where the truth was 4.44%. Every current-state string below now
+   interpolates. The two RESEARCH rows that quote both numbers (x41 at the
+   Strategy Books table, x43's reopening-gate card) are records of what was
+   measured and correctly name both bases - leave them literal.
+
+   TARGET vs IN USE. Owner's decision 2026-08-18: z-score trades at 2:45pm CST
+   (3:45pm ET) filled market-on-close - the x43 basis, retention x0.87. That is
+   the INTENT. The mechanism does not exist: the daily build fires at 15:30 CT
+   (scripts/com.alex.strategylab.daily.plist), forty-five minutes AFTER that
+   decision point, so nothing can tell you at 2:45 what to buy. Until an
+   intraday send is built, shadow_book.py keeps filling MOO (its BASIS map, and
+   the comment there requiring pre-registration before any basis change), so
+   the forward record accrues on MOO while the displayed factor describes MOC.
+   ZEXEC states both so no surface can quietly assert one and mean the other. */
+const ZEXEC={
+  factor: ZFACTOR,
+  target_order: "2:45pm CST (3:45pm ET) threshold, filled market-on-close",
+  in_use_order: "MOO next open",
+  mechanism_built: false,
+};
+const zexecNote=()=>ZEXEC.mechanism_built?""
+  :` <span class="small">(displayed at x${ZFACTOR}, the ${ZEXEC.target_order}
+     basis; the forward paper ledger still fills ${ZEXEC.in_use_order} because
+     no intraday send exists yet - see Method)</span>`;
+
+/* PROFIT-FACTOR SENTINELS. Two different "no losing trades" markers exist in
+   this corpus: bb_per_name_screen.py emits 999 when gross losses are zero, the
+   audited harness emits 99 for the same condition. Neither is a measurement -
+   the largest genuine PF anywhere in the data is 69.98. The glossary
+   documented only 99, so a 999 rendered as a literal profit factor: on the
+   08/18 build the live z-score TAKE (ST) showed "PF 999" beside a six-trade
+   record, and 65 of 593 z per-name records carry it. Normalise both to one cap
+   and render the cap as what it is rather than as a number. */
+const PF_CAP=99;
+const pfNorm=v=>(v==null?null:(v>=PF_CAP?PF_CAP:v));
+const pfIsCap=v=>v!=null&&v>=PF_CAP;
+const pfTxt=v=>v==null?"":(pfIsCap(v)
+  ?'<span class="chip gray" title="Gross losses were zero over this sample - an artifact of a short record, not a measurable profit factor. Read the trade count next to it.">no losers</span>'
+  :String(v));
+
 const ENTRYBASIS={RSI2:"at the close (strict: 1-day lag destroys it, x31 - the autopilot's job)",
  RSI2_LEV:"at the close (autopilot)",
  MFI:"validated at the close; PROVEN lag-tolerant - next-morning entry OK (x31)",
- ZSCORE:"MOO next open (paper). x41 measured the same-close sim basis: executable ~x0.71 per trade - displayed stats are already adjusted. Book killed for real-money wiring (x40)",
+ ZSCORE:"TARGET BASIS 2:45pm CST (3:45pm ET) threshold -> market-on-close fill; x43 measured retention x"+ZFACTOR+" per trade and displayed stats are adjusted to it. NOT YET AUTOMATED - the build runs 15:30 CT, after that decision point, so the forward paper ledger still fills MOO. Book killed for real-money wiring (x40)",
  GAPW_RSI2:"MOO next 9:30 open - the validated basis (51.9% IS the MOO number)",
  GAPW_RSI14:"MOO next 9:30 open (validated; NEVER 3:45 entries)",
  BB:"KILLED 2026-08-01 (x41 fill-mode: no edge at executable basis) - scanner off; the Scan-tab record is reference only"};
-const SIGHELP={rank:"Order among today's TAKEs, strongest first (by Strength). '-' = book-level row, unranked.",
+const SIGHELP={rank:"Order among today's TAKEs that clear the trade floor (Min trades box), strongest first. '-' = shown but not ranked, and the cell says why. Said '- = book-level row' until 08/18, which was wrong twice: a book row DOES rank once it clears the floor, and a generator arm below the floor reads '-' too.",
  state:"TAKE = entry rule true on newest bar (actionable). PASS-EARNINGS = fired but skipped by the earnings rule. WATCH setups are not shown on this list.",
  trig:"The single-stock indicator that fires this book's entry, with its value on the newest bar: RSI2 (RSI2/Gap Widen RSI2 rows), RSI14 (Gap Widen RSI14), MFI, RSI3 (z-score). Informational context for how stretched the name is.",
  new_today:"Entry first fired on the latest bar.",
@@ -479,7 +527,7 @@ const SIGHELP={rank:"Order among today's TAKEs, strongest first (by Strength). '
  strat:"Which book fired. HOVER GIVES ENTRY BASIS per book; book rows show their in-book order underneath.",
  exit:"That book's exact sell rule.",
  vehicle:"1x-vs-levered pointer (see Scan glossary).",
- score:"Strength = avg/trade x n/(n+10). The validated pick metric - sort by this to choose buys (17.8%/yr vs 2.2% for depth-sorting).",
+ score:"Strength = avg/trade x n/(n+10). The validated pick metric among rows that already clear the trade floor (17.8%/yr vs 2.2% for depth-sorting). NOT a buy signal on its own: n/(n+10) discounts a small sample only weakly - 16 trades still keeps 62% of the raw average - so the biggest Strength on the page is often the thinnest record. Read it next to Trades and Rank.",
  hwin:"Historical win % for this arm.", hpf:"Historical profit factor.",
  havg:"Historical avg net %/trade.", hn:"Trade sample size.",
  pf1922:"Era profit factor 2019-22.", pf2326:"Era profit factor 2023-26.",
@@ -487,6 +535,75 @@ const SIGHELP={rank:"Order among today's TAKEs, strongest first (by Strength). '
  close:"Last scan close - also the Positions auto-fill entry price.",
  buy_date:"When the entry first fired.", age:"Bars the signal has been active.",
  as_of:"The bar this row is computed from.", earnings_soon:"Report soon - z-score skips these by rule; caution elsewhere."};
+
+/* ---------- EVIDENCE GATE (one answer, every action-emitting surface) -------
+
+   THE CONTRACT. rankBlock(row) returns "" if a row's own record is strong
+   enough to stand behind an ACTION, or a sentence saying what is missing. It
+   is the single answer to that question. Mirrors rank_block() in
+   scripts/notify_buys.py; if you change one, change both, and notify_test.py
+   will fail if they drift.
+
+   WHY IT LIVES AT MODULE SCOPE. It was born inside the Signals IIFE on
+   2026-08-18 with the comment "every surface that prints a rank asks it" - and
+   that scoping was itself the bug. The Today card does not print a rank, it
+   prints a BUY, so it fell outside the definition and never got the gate. On
+   the 08/18 build the card's only recommendation was ST/ZSCORE at $6,667 on a
+   SIX-TRADE, 100%-win record, while the Signals tab printed Rank "-" for that
+   identical row and the mailer dropped it entirely. Three surfaces, three
+   verdicts, and the one naming a dollar figure was the most permissive.
+
+   So the contract is deliberately about the DECISION, not the rendering. Any
+   surface that tells a human to do something asks this function. Today the
+   list is: the Signals table Rank column, the Top-4 buys card, the strongest-
+   per-strategy tiles, the TODAY card buy list, and both mail paths in
+   notify_buys.py. Adding a sixth action-emitting surface without calling this
+   is how the next instance of this bug ships.
+
+   FLOORS. RANK_MIN_N (30) is the bar for standing unqualified. BOOK_MIN_N (10)
+   is the weaker bar below which a per-name record is not evidence at all - one
+   trade moves a 10-trade average by more than ten percent, and a 100% win rate
+   on five trades is an artifact. Between the two, a row may be SHOWN, demoted,
+   with its reason attached; below BOOK_MIN_N it must not carry an action.
+   Strength's n/(n+10) shrink does NOT substitute for either floor: at n=16 it
+   still keeps 62% of the raw average, which is why CELH's 16-trade row topped
+   the Strength sort on 08/18 with 1.963 against the real #1's 1.253.          */
+const RANK_MIN_N=30, BOOK_MIN_N=10;
+function rankBlock(x,floor){
+  const f=floor==null?RANK_MIN_N:floor;
+  if(x.strat==="ZSCORE"&&!x.vetted)
+    return "z-score is killed for real-money wiring (x40/x41/x42) - paper only, never ranked";
+  if(!x.vetted) return "arm is below the vetted bar";
+  if(x.score==null) return "no strength score";
+  if((x.havg??0)<=0) return "negative expectancy";
+  if((x.hn??0)<f) return "only "+(x.hn??0)+" trades - below the "+f+"-trade ranking floor";
+  return "";
+}
+/* The Today card's admission test.
+
+   THE FLOOR HERE IS BOOK_MIN_N, NOT RANK_MIN_N, AND THAT IS DELIBERATE. This
+   card is the paper program's instruction sheet, and Gap Widen and Z-Score are
+   validated at BOOK level with small per-name samples BY DESIGN - a 30-trade
+   per-name bar erases both books from it entirely (measured 2026-08-17 in
+   notify_buys.py: 0 of 9 rows survive). So it applies exactly the bar the
+   mailer's `rankable` applies: a real per-name record, positive expectancy,
+   and at least BOOK_MIN_N trades. Below that a record is not evidence - one
+   trade moves a 10-trade average by more than ten percent, and a 100% win rate
+   on five trades is an artifact.
+
+   Note this does NOT blanket-block Z-Score. The book being paper-only is a
+   REAL-MONEY question, and the card already says so loudly in its footer and
+   in the per-row PAPER ONLY caveat; the paper forward test is what decides
+   whether the book ever gets wired, so blocking it from its own instruction
+   sheet would stop the record that is supposed to settle the question. What
+   killed ST on 2026-08-18 was not that it was z-score, it was six trades. */
+function actionBlock(n,avg,strat,vetted){
+  if(vetted===false) return "arm is below the vetted bar";
+  if(n==null||avg==null) return "no per-name record - nothing to stand on";
+  if(avg<=0) return "negative expectancy on its own record ("+avg+"%/trade)";
+  if(n<BOOK_MIN_N) return "only "+n+" trades - one trade moves that average by more than 10%";
+  return "";
+}
 // ---------- VEHICLE GUIDANCE (1x vs levered pointer) ----------
 function vehGuide(sym, st){
   const rec=SCAN.tickers[sym]||{strats:{}};
@@ -520,8 +637,6 @@ function vehChip(sym, st){
 // so each ticker shows one z-score line, from the authoritative source.
 const ZBOOK=new Map(), BBBOOK=new Map();
 const GWPF={GAPW_RSI2:new Map(),GAPW_RSI14:new Map()};
-const ZFACTOR=(typeof BOOKS!=="undefined"&&BOOKS.strategies&&
-  (BOOKS.strategies.find(s=>s.id==="zscore_000")||{}).exec_basis_factor)||1;
 if(typeof BOOKS!=="undefined"&&BOOKS.strategies)for(const s of BOOKS.strategies){
   const pn=s.universe&&s.universe.per_name;
   if(pn)for(const e of pn){
@@ -530,7 +645,7 @@ if(typeof BOOKS!=="undefined"&&BOOKS.strategies)for(const s of BOOKS.strategies)
   }
   const gk=s.id==="gap_widen_rsi2"?"GAPW_RSI2":s.id==="gap_widen_rsi14"?"GAPW_RSI14":null;
   if(gk)for(const e of (s.universe&&s.universe.qualified)||[])
-    if(e.pf!=null)GWPF[gk].set(e.signal,e.pf);
+    if(e.pf!=null)GWPF[gk].set(e.signal,pfNorm(e.pf));
 }
 let rows = [];
 for (const [sym, rec] of Object.entries(SCAN.tickers)) {
@@ -552,7 +667,7 @@ if(typeof BOOKS!=="undefined"&&BOOKS.strategies)for(const s of BOOKS.strategies)
   const prio=new Set((s.universe.priority_25||[]).map(e=>e.signal));
   for(const e of (s.universe.qualified||[])){
     rows.push({sym:e.signal, grade:"GW", strat:key,
-      st:{n:e.n, pf:e.pf??null, win_pct:+(e.win*100).toFixed(1),
+      st:{n:e.n, pf:pfNorm(e.pf??null), win_pct:+(e.win*100).toFixed(1),
           avg_pct:+(e.avg_net*100).toFixed(2), vetted:prio.has(e.signal),
           gwv:e.trade!==e.signal?e.trade:"1x"},
       inactive:(SCAN.tickers[e.signal]||{}).inactive||null,
@@ -566,7 +681,7 @@ if(typeof BOOKS!=="undefined"&&BOOKS.strategies)for(const s of BOOKS.strategies)
   if(!strat||!pn)continue;
   for(const e of pn){
     rows.push({sym:e.signal, grade:strat==="ZSCORE"?"Z-BOOK":"BB-KILLED", strat,
-      st:{n:e.n, pf:e.pf??null, win_pct:+(e.win*100).toFixed(1),
+      st:{n:e.n, pf:pfNorm(e.pf??null), win_pct:+(e.win*100).toFixed(1),
           avg_pct:+(e.avg_net*100).toFixed(2), vetted:false},
       inactive:(SCAN.tickers[e.signal]||{}).inactive||null,
       bh:null, cagr:null, expo:null, vehicle:"", vetted:false,
@@ -665,7 +780,7 @@ renderScan();
     for(const m of (b.members||[])){
       const st=(SCAN.tickers[m]||{strats:{}}).strats[stratOf];
       const lv=(SCAN.tickers[m]||{strats:{}}).strats["RSI2_LEV"];
-      if(st) mrows+=`<tr><td>${m}</td><td>${st.pf}</td><td>${st.win_pct}</td>
+      if(st) mrows+=`<tr><td>${m}</td><td>${pfTxt(pfNorm(st.pf))}</td><td>${st.win_pct}</td>
         <td>${st.avg_pct}</td><td>${st.arm_cagr_pct??""}</td><td>${st.n}</td>
         <td>${st.era_1922?st.era_1922.pf:""}</td><td>${st.era_2326?st.era_2326.pf:""}</td>
         <td>${k!=="live16_rsi2"?"":lv?lv.vehicle+" PF "+lv.pf:"1x shares"}</td></tr>`;
@@ -748,7 +863,7 @@ renderScan();
     ["3", zs.name+" (Ext 31)", statusChip(zs.status),
      p1(mz.ext31_sim.cagr), p1(mz.ext31_sim.maxdd), mz.ext31_sim.pf, p1(mz.ext31_sim.win), "",
      mz.ext31_sim.trades,
-     "IDEALIZED same-close sim on Tradier data. Fill-mode measured (x41): the executable hybrid (MOO entry + 3:45 MOC exit) keeps ~63% of idealized CAGR on the F22 instrument - per-trade executable estimate = idealized x "+(zs.exec_basis_factor||0.71)+". KILLED for real-money wiring (x40 selection + causal folds under SPY); paper forward test only. Core 15: "
+     "IDEALIZED same-close sim on Tradier data. Two fill modes measured: x41's hybrid (MOO entry + 3:45 MOC exit) keeps ~63% of idealized CAGR on the F22 instrument at x0.71/trade; x43's 3:45 threshold entry -> MOC fill keeps x0.87 and is the TARGET basis the displayed stats now use (per-trade executable estimate = idealized x "+(zs.exec_basis_factor||0.87)+"). That send is not built yet, so forward fills are still MOO. KILLED for real-money wiring (x40 selection + causal folds under SPY); paper forward test only. Core 15: "
      +p1(mz.core15_sim.cagr)+"% / "+p1(mz.core15_sim.maxdd)+"% DD / PF "+mz.core15_sim.pf],
     ["-", bb.name, statusChip(bb.status),
      p1(mb.first_honest_baseline.cagr), p1(mb.first_honest_baseline.maxdd),
@@ -861,7 +976,7 @@ renderScan();
   const tierTable=list=>`<div class="tablewrap"><table style="max-width:680px">
     <tr><th class="l">Name</th><th>Trades</th><th>Win %</th><th>Avg net %/trade</th><th>PF</th></tr>`+
     list.map(e=>`<tr><td class="l">${vehCell(e)}</td><td>${e.n}</td>
-      <td>${(e.win*100).toFixed(0)}</td><td>${(e.avg_net*100).toFixed(2)}</td><td>${e.pf??"-"}</td></tr>`).join("")+
+      <td>${(e.win*100).toFixed(0)}</td><td>${(e.avg_net*100).toFixed(2)}</td><td>${pfTxt(pfNorm(e.pf))||"-"}</td></tr>`).join("")+
     `</table></div>`;
   const namesLine=list=>list.map(e=>typeof e==="string"?esc(e)
     :esc(e.signal)+(e.trade!==e.signal?" (via "+esc(e.trade)+")":"")).join(", ");
@@ -960,7 +1075,7 @@ renderScan();
     return `<details><summary class="small">${cap} - ${list.length} names, sorted by avg/trade (idealized basis)</summary>
     <div class="tablewrap"><table style="max-width:760px">
     <tr><th class="l">Name</th><th>Trades</th><th>Win %</th><th>Avg %/trade (ideal)</th><th>PF</th><th>Worst %</th></tr>`+
-    rws.map(e=>`<tr><td class="l">${esc(e.signal)}${e.src==="rh-session"?' <span class="chip watch" title="Robinhood basis - never re-computed on audited Tradier data">RH</span>':""}</td><td>${e.n}</td><td>${(e.win*100).toFixed(0)}</td><td>${(e.avg_net*100).toFixed(2)}</td><td>${e.pf??"-"}</td><td>${e.worst_pct??"-"}</td></tr>`).join("")+
+    rws.map(e=>`<tr><td class="l">${esc(e.signal)}${e.src==="rh-session"?' <span class="chip watch" title="Robinhood basis - never re-computed on audited Tradier data">RH</span>':""}</td><td>${e.n}</td><td>${(e.win*100).toFixed(0)}</td><td>${(e.avg_net*100).toFixed(2)}</td><td>${pfTxt(pfNorm(e.pf))||"-"}</td><td>${e.worst_pct??"-"}</td></tr>`).join("")+
     `</table></div></details>`;};
   if(BOOKS.x50_deep){
     const D=BOOKS.x50_deep;
@@ -1221,7 +1336,7 @@ renderScan();
       +mz.x44_session.ladder.next_open_020+"% (vs 13.8% neutral-wide). Fold: curation HURTS (19.8% vs 45.6% forward) - the full list is the book. UN-KILLED to active paper; real money still gated"):"")+
     (mz.x43_session?tile("x43 MOC-entry (session)", mz.x43_session.ext31_ladder.moc_full_mean+"%",
       "PASS on all 3 pre-registered reopening gates: 3:45 threshold entry -> MOC fill keeps x0.87 of idealized per trade (vs x0.71 MOO), +5.76pp over hybrid, 10/10 seeds, era-clean; false fires still profitable (+"
-      +mz.x43_session.false_fire_econ.false_avg+"% avg). PROVISIONAL - displayed stats keep the MOO basis until the lab panel co-signs"):"")+
+      +mz.x43_session.false_fire_econ.false_avg+"% avg). CO-SIGNED by the x57 panel and adopted as the target basis 08/18 - displayed stats now use x"+ZFACTOR+". The 2:45pm CST send that would make it achievable is NOT built; forward fills remain MOO until it is"):"")+
     `</div>
     ${bandBlock(zs.forward_bands)}
     ${zs.universe.mio_universe_live?`<p><b>MIO universe - LIVE ${zs.universe.mio_universe_live.length} names (the paper scan since x45):</b>
@@ -1360,9 +1475,9 @@ renderScan();
   dgroup("Performance columns",
     drow("Strength","avg/trade &times; n/(n+10) - historical expectancy shrunk toward zero for small samples. THE number the buy ranking sorts by (validated: 17.8%/yr vs 2.2%/yr ranking by Depth). Higher = stronger arm.")+
     drow("Rank score (Scan tab)","0-100 percentile blend of PF + win % + avg/trade measured ONLY against the rows matching your current filters. A browsing aid that re-ranks as you filter - NOT a buy signal.")+
-    drow("PF (profit factor)","Gross wins &divide; gross losses. 2 = wins totaled twice the losses. The vetted floor is 1.3; below 1.0 loses money. A 99 means zero losing trades in a small sample - an artifact cap, not a superpower.")+
+    drow("PF (profit factor)","Gross wins &divide; gross losses. 2 = wins totaled twice the losses. The vetted floor is 1.3; below 1.0 loses money. No losers (raw 99 or 999 - two harnesses, two sentinels, same meaning) is zero losing trades in a small sample: an artifact cap, not a superpower. The largest genuine PF in this data is 69.98.")+
     drow("Win %","Share of the arm's historical trades that made money.")+
-    drow("Avg/trade %","Average net return per trade. On Z-Score/BB rows this is the IDEALIZED same-close research basis - z-score rows are already discounted to the x0.71 executable estimate.")+
+    drow("Avg/trade %","Average net return per trade. On Z-Score/BB rows this is the IDEALIZED same-close research basis - z-score rows are already discounted to the x"+ZFACTOR+" executable estimate.")+
     drow("Trades (n)","Sample size. 30 is the program's reliability floor for ranking; treat anything under ~20 as noise, whatever the other numbers say.")+
     drow("Arm CAGR %","What compounding ONLY this ticker's signals would earn, sitting in cash between trades. NOT the stock's return and NOT portfolio return.")+
     drow("Stock B&H %","The stock's own buy-and-hold return over the same window - compare with Arm CAGR to see if the strategy beat just owning it.")+
@@ -1377,7 +1492,7 @@ renderScan();
     drow("MOO / MOC","Market-on-open / market-on-close order types - they fill at the official opening or closing auction price. The validated way to trade the open-basis books and all exits.")+
     drow("3:45 screen","Exits get confirmed against live prints at 3:45 ET, then submitted as MOC orders by 3:48. Entries are NEVER evaluated intraday (banned, x39/x42).")+
     drow("10-bar time stop","If the exit rule has not fired within 10 trading days, sell anyway at that close. Every book has it.")+
-    drow("Idealized vs executable","Idealized = the backtest filled at the exact signal close, which no real order achieves. Executable = what MOO/MOC order types actually get. Every number on this site says which it is; z-score keeps ~0.71x of idealized per trade, Gap Widen ~98%.")+
+    drow("Idealized vs executable","Idealized = the backtest filled at the exact signal close, which no real order achieves. Executable = what MOO/MOC order types actually get. Every number on this site says which it is; z-score keeps ~"+ZFACTOR+"x of idealized per trade at its target 2:45pm CST/MOC basis, Gap Widen ~98%.")+
     drow("Signal day / Buy date","How many bars the setup has been live, and the day it first fired. Day 1 + NEW = fresh tonight.")+
     drow("Earnings: yes","A report lands soon. Z-score skips these entries by rule and force-exits before reports; treat as caution elsewhere."))+
   dgroup("Indicators",
@@ -1472,11 +1587,14 @@ renderScan();
     "Deep mean-reversion dip-buyer: a strong-trend name stretched 1.5+ standard deviations below its 50-day average. PAPER ONLY - killed for real money, forward test running.",
     sec("buy","Buy when (all at the same close)",li(zs.entry))+
     sec("buy","Order & fill",`<p><b>Paper entries queue market-on-open for the next 9:30 open.</b> The sim's
-      pretty numbers used same-close fills; measured reality keeps ~0.71&times; of them per trade,
+      pretty numbers used same-close fills; measured reality keeps ~${ZFACTOR}&times; of them per trade,
       and every stat this site shows for z-score is already adjusted to that executable estimate.
       Candidates rank by lowest RSI(3) - most stretched first. (x43 session, 08/02: evaluating
       the entry at 3:45 and filling market-on-close passed all reopening gates and would lift
-      the keep-rate to ~0.87&times; - provisional until the lab panel co-signs.)</p>`)+
+      the keep-rate to ~${ZFACTOR}&times;. The x57 panel co-signed x43, and the owner adopted this
+      as the target entry basis on 08/18 - so every z-score stat here is now shown at
+      x${ZFACTOR}. The 2:45pm CST screen it requires is NOT built: the daily build runs at
+      15:30 CT, after that decision point, so the forward paper ledger still fills MOO.)</p>`)+
     sec("sell","Sell when",`<p>Close &gt; 5-day EMA, forced exit the day before any earnings report,
       or the 10-bar time stop. 3:45 ET screen &rarr; MOC by 3:48 (MOC exits are validated).</p>`)+
     sec("uni","Universe & eligibility",`<p>Nightly paper scan (since x45, 08/02): the ACTUAL MIO universe's
@@ -1543,8 +1661,20 @@ function armStats(sym, strat){
   const LIVEBAR=(typeof TRACK!=="undefined"&&TRACK&&TRACK.as_of)||
     (typeof BOOKSIG!=="undefined"&&BOOKSIG&&BOOKSIG.as_of)||"";
   const SIGBAR=(SIGNALS.signals||[]).reduce((m,x)=>(x.as_of||"")>m?(x.as_of||""):m,"");
-  const SIGDROP=LIVEBAR?(SIGNALS.signals||[]).filter(
-    x=>x.state!=="WATCH"&&x.as_of!==LIVEBAR).length:0;
+  /* Count only rows this gate could actually suppress, and only when the FEED
+     is behind. Counting every non-WATCH row off the live bar made this fire on
+     a perfectly fresh feed: since demote_stale() landed 08-14, individual
+     frozen symbols keep their own older as_of and are stamped PASS-STALE, so a
+     handful of lagging names tripped a page-wide alarm. On the 08/18 build it
+     rendered "last produced signals on the 2026-08-18 bar; the live snapshot
+     is 2026-08-18" - two identical dates offered as proof of a mismatch -
+     above 144 genuinely fresh TAKEs, having suppressed exactly zero of them (a
+     PASS-STALE row can never be a TAKE, so none could have ranked anyway).
+     A gate that fires every day is a gate you stop reading, and this one exists
+     to catch a TROW-class failure. Per-symbol lag is handled upstream and gets
+     a per-row label; it does not need a killbox. */
+  const SIGDROP=(LIVEBAR&&SIGBAR&&SIGBAR<LIVEBAR)?(SIGNALS.signals||[]).filter(
+    x=>x.state==="TAKE"&&x.as_of!==LIVEBAR).length:0;
   const staleCard=SIGDROP?`<div class="card killbox"><h3>Signal feed is stale -
     ranked buys suppressed</h3><p>The generator's per-arm feed (RSI2 / MFI) last
     produced signals on the <b>${SIGBAR}</b> bar; the live indicator snapshot is
@@ -1568,14 +1698,49 @@ function armStats(sym, strat){
       score: st&&st.vetted?+(st.avg_pct*(st.n/(st.n+10))).toFixed(3):null});
   }).filter(x=>x.state!=="WATCH")   // WATCH = not a buy -> not shown (user rule)
     .filter(x=>!LIVEBAR||x.as_of===LIVEBAR); // and neither is a stale bar
+  /* REAL first-fired dates for book rows, from the shadow ledger.
+
+     These were the literals `age:1, buy_date:BOOKSIG.as_of, new_today:true` -
+     an assertion about data nobody measured. scan_book_signals.py emits no age
+     field at all, and gapw_entry() searches a three-bar window, so the SAME
+     ignition is re-reported for up to three sessions. On the 08/18 build WMB
+     and DX rendered the blue NEW chip and "Signal day 1" while
+     data/shadow_book.json - in this repo, on this page as SHADOW - recorded
+     both with signal_date 2026-08-14, filled 08-17 and already open. The
+     Signals tab said the entry first fired today; the Positions tab held a
+     paper position opened from it the day before. Gap Widen is a
+     momentum-ignition book entered the morning after the cross, so entering
+     three sessions late is a materially different trade from the validated one
+     - which is exactly what a NEW chip hides. shadow_book.py dedupes queue()
+     on (book, sym) precisely because these repeat; the ledger already knew. */
+  const BOOKFIRED=(()=>{
+    const m=new Map();
+    /* SHADOW.open is the page blob's name for the live set (open +
+       pending_open); data/shadow_book.json calls the same list "positions".
+       Read the blob's name - this is the page. */
+    for(const q of ((typeof SHADOW!=="undefined"&&SHADOW&&SHADOW.open)||[])){
+      if(q.state==="closed"||!q.signal_date)continue;
+      const k=q.book+"|"+q.sym, cur=m.get(k);
+      if(!cur||q.signal_date<cur)m.set(k,q.signal_date);
+    }
+    return m;
+  })();
+  const bookFired=(strat,sym)=>BOOKFIRED.get(strat+"|"+sym)||null;
+  const bookAge=(strat,sym)=>{
+    const f=bookFired(strat,sym);
+    if(!f||!BOOKSIG.as_of)return null;      // unknown, not 1
+    let n=1, d=new Date(f+"T00:00:00"), end=new Date(BOOKSIG.as_of+"T00:00:00");
+    while(d<end){ d.setDate(d.getDate()+1); if(d.getDay()!==0&&d.getDay()!==6)n++; }
+    return n;
+  };
   if(typeof BOOKSIG!=="undefined"&&BOOKSIG&&BOOKSIG.rows)for(const r of BOOKSIG.rows){
     if(r.strat==="BB")continue; // KILLED 2026-08-01 (x41 fill-mode gate) - scanner off
-    let n=r.n??null, win=r.win??null, avg=r.avg??null, pf=r.pf??null, note="";
+    let n=r.n??null, win=r.win??null, avg=r.avg??null, pf=pfNorm(r.pf??null), note="";
     if(pf==null&&r.strat.indexOf("GAPW")===0&&GWPF[r.strat])
       pf=GWPF[r.strat].get(r.sym)??null;
     if(r.strat==="ZSCORE"){
       const e=ZBOOK.get(r.sym);
-      if(e){n=e.n; win=+(e.win*100).toFixed(1); pf=e.pf??null;
+      if(e){n=e.n; win=+(e.win*100).toFixed(1); pf=pfNorm(e.pf??null);
         avg=+(e.avg_net*100*ZFACTOR).toFixed(2);
         note=" - research stats, exec est x"+ZFACTOR+"; ACTIVE PAPER (x44/x45), real money gated";}
       else note=" - no per-name record; ACTIVE PAPER (x44/x45), real money gated";
@@ -1587,7 +1752,14 @@ function armStats(sym, strat){
       depth:r.rs252??r.z50??"", close:r.close, as_of:BOOKSIG.as_of,
       trig:(TRIGL[r.strat]?TRIGL[r.strat]+" ":"")+
         ((r.strat.indexOf("GAPW")===0?r.rsi:r.strat==="ZSCORE"?r.rsi3:"")??""),
-      age:1, buy_date:BOOKSIG.as_of, new_today:true, earnings_soon:esoon,
+      age:bookAge(r.strat,r.sym), buy_date:bookFired(r.strat,r.sym)||BOOKSIG.as_of,
+      /* Three states, not two. A row the ledger has never seen (shadow_book
+         skips names it will not take) has an UNKNOWN first-fire date - and
+         "unknown" must not render as "new", which is the assertion that made
+         WMB and DX read as today's ignitions while the ledger held them open
+         since 08-14. */
+      new_today:bookFired(r.strat,r.sym)===BOOKSIG.as_of,
+      firedUnknown:!bookFired(r.strat,r.sym), earnings_soon:esoon,
       vehicle:r.vehicle||"", vetted:(r.strat.indexOf("GAPW")===0&&n!=null&&avg!=null),
       exit:EXITS[r.strat]||"", hn:n, hpf:pf, hwin:win, havg:avg,
       pf1922:null, pf2326:null,
@@ -1600,7 +1772,7 @@ function armStats(sym, strat){
   // Global strength rank across every qualifying TAKE in the universe today
   const takesAll=s.filter(x=>x.state==="TAKE")
     .sort((a,b)=>(b.score??-1e9)-(a.score??-1e9));
-  const takes=takesAll.filter(x=>x.vetted&&(x.hn??0)>=30&&x.score!=null);
+  const takes=takesAll.filter(x=>rankBlock(x)==="");
   const chip=st=>{
     if(st==="TAKE")return '<span class="chip take">TAKE</span>';
     if(st==="WATCH")return '<span class="chip watch">WATCH</span>';
@@ -1614,7 +1786,7 @@ function armStats(sym, strat){
   const dailyFlowCard=`<div class="card"><h3>Daily flow</h3><p class="small">
     <b>Evening</b> (after the 4:00 ET close): review the ranked TAKEs below.
     <b>Open-basis books</b> (Gap Widen - validated at MOO; Z-Score - paper only,
-    stats already shown at the x0.71 executable estimate): queue MOO orders - fills
+    stats already shown at the x${ZFACTOR} executable estimate): queue MOO orders - fills
     at tomorrow's 9:30 open. BB is killed and no longer fires. <b>Close-basis books</b>:
     RSI2 fills at the close and is the autopilot's job (one day late destroys it,
     x31); MFI is close-validated but proven lag-tolerant, so next-morning entry
@@ -1688,7 +1860,7 @@ function armStats(sym, strat){
     Gap Widen (both variants) and Z-Score rows. Gap Widen rows rank with real
     per-name lab stats (Strength computable). Z-Score rows carry per-name
     research stats from the audited 438-name wide screen - displayed avg and
-    Strength use the x0.71 executable estimate - but stay unranked ("-"): the
+    Strength use the x${ZFACTOR} executable estimate - but stay unranked ("-"): the
     book is killed for real-money wiring (x40/x41/x42) and runs as a paper
     forward test; picking ZSCORE in the filter drops Min trades to 0 so every
     fired signal stays visible (median per-name sample is ~9 - read the n
@@ -1700,8 +1872,19 @@ function armStats(sym, strat){
     the whole universe. <b>Strength</b> = avg/trade x n/(n+10), the
     trailing-expectancy rule the Daily Optimal backtest validated; ranking by
     signal depth alone tested far worse (2.2% vs 17.8% CAGR), so Depth is shown
-    as context, not used for rank. TAKE = entry rule true on the newest cached
-    bar. WATCH setups (one notch from triggering) are not shown - only
+    as context, not used for rank. <b>Sorting by Strength and carrying a Rank
+    are two different things.</b> The table sorts every shown row by Strength,
+    but only rows clearing the trade floor (the Min trades box, default 30) get
+    a number - the rest read "-" and state their reason in the Rank cell. This
+    matters more than it sounds: the n/(n+10) shrink discounts a small sample
+    only weakly (at 16 trades it still keeps 62% of the raw average), so the
+    thinnest record on the page is frequently the one at the top of the sort.
+    On 2026-08-18 CELH's Gap Widen RSI14 row showed Strength 1.963 on 16
+    trades - the largest number in the table, above the actual #1 at 1.253 -
+    and it is not a buy. Book rows are exempt from the Min trades filter (their
+    per-name samples are small by design and the book is validated at BOOK
+    level), so they are shown, not ranked. TAKE = entry rule true on the newest
+    cached bar. WATCH setups (one notch from triggering) are not shown - only
     actionable rows render. Nothing on this page places orders and there is
     no brokerage connection - decision support only.</p></div>`;
   // Controls + ranked table
@@ -1727,7 +1910,7 @@ function armStats(sym, strat){
     gl("New","The entry first fired on the latest bar. An older Signal day means the setup has been live for that many bars without exiting.")+
     gl("Ticker","The SIGNAL symbol - log this one in Positions; exit rules evaluate the 1x base even when you trade a levered vehicle.")+
     gl("Strategy / Exit","Which book fired, and that book's exact sell rule. Hover the Strategy cell for that book's ENTRY basis.")+
-    gl("Entry timing","Two validated bases - do not mix them. CLOSE-basis: RSI2 (strict - one day late destroys it, x31; the autopilot owns it) and MFI (close-validated but PROVEN fine entered next morning, x31). OPEN-basis: Gap Widen (51.9%/51.5% ARE next-open MOO numbers) and Z-Score paper entries (MOO standard; x41 measured leaving the same-close sim basis at ~x0.71 per trade - already reflected in the displayed stats). BB is killed and no longer fires.")+
+    gl("Entry timing","Two validated bases - do not mix them. CLOSE-basis: RSI2 (strict - one day late destroys it, x31; the autopilot owns it) and MFI (close-validated but PROVEN fine entered next morning, x31). OPEN-basis: Gap Widen (51.9%/51.5% ARE next-open MOO numbers). CLOSE-basis TARGET: Z-Score paper entries are meant to fire on a 2:45pm CST (3:45pm ET) threshold filled MOC - x43 measured retention x"+ZFACTOR+", already reflected in the displayed stats - but that send is NOT built, so the forward ledger still fills MOO. BB is killed and no longer fires.")+
     gl("Vehicle","1x-vs-levered pointer: green = program-validated leveraged mapping; yellow = liquid twin, a candidate NOT yet validated; plain 1x = no twin, illiquid twin, or thin edge.")+
     gl("Win %","Share of this arm's historical trades that made money.")+
     gl("PF","Profit factor = gross wins / gross losses. 2 means wins totaled twice the losses. The vetted floor is 1.3.")+
@@ -1838,12 +2021,19 @@ function armStats(sym, strat){
     const fstate=document.getElementById("s-state").value;
     const mn=+document.getElementById("s-minn").value||0;
     const q=document.getElementById("s-sym").value.trim().toUpperCase();
-    takesAll.forEach(x=>{x.rank=null;});
+    // Stamp the reason alongside the rank, always - a blank Rank cell is only
+    // honest if the row can say what is missing when asked.
+    takesAll.forEach(x=>{x.rank=null; x.rankWhy=rankBlock(x,mn);});
     const seenR=new Set(); const ranked=[];
     for(const x of takesAll){
-      if(x.vetted&&(x.hn??0)>=mn&&x.score!=null&&!seenR.has(x.sym)){
+      if(x.rankWhy===""&&!seenR.has(x.sym)){
         seenR.add(x.sym); ranked.push(x); } }
     ranked.forEach((x,i)=>{x.rank=i+1;});
+    // A ticker whose best arm already ranked is not "blocked" - it is a
+    // duplicate, and saying "below the floor" there would be a lie.
+    takesAll.forEach(x=>{
+      if(x.rank==null&&x.rankWhy===""&&seenR.has(x.sym))
+        x.rankWhy="this ticker already ranks on a stronger arm";});
     let r=s.filter(x=>(fs==="ALL"||x.strat===fs)&&
       (fstate==="ALL"||x.state===fstate)&&
       // Book rows are exempt: the sample floor grades ARM records, and a book
@@ -1865,15 +2055,26 @@ function armStats(sym, strat){
     for(const x of r){
       if(gseen.has(x.sym)) gseen.get(x.sym).push(x);
       else { const g=[x]; gseen.set(x.sym,g); grouped.push(g); } }
-    const rowHtml=(x,sub,subCount)=>`<tr${sub?` class="subrow" data-psym="${x.sym}" style="display:none"`:""}><td>${x.sym}${!sub&&subCount?` <button class="exp" data-sym="${x.sym}" title="${subCount} more strateg${subCount===1?"y":"ies"} fired on ${x.sym} - tap to expand">&#9656;${subCount}</button>`:""}</td><td>${
-      sub?"&middot;":(x.rank??"-")}</td><td>${chip(x.state)}</td>
-      <td>${x.new_today&&x.as_of===newestAsof?'<span class="chip info">NEW</span>':
+    /* An unranked row states its reason inline. This cell used to render a
+       bare "-" beside the biggest Strength on the page (CELH 08/18) and the
+       reader had no way to reach the answer from the row they were reading. */
+    const rankCell=x=>{
+      if(x.rank!=null) return String(x.rank);
+      const why=x.rankWhy!=null?x.rankWhy
+        :(x.state==="TAKE"?"":"only TAKE signals rank");
+      return why?`<span title="${escA(why)}">-</span><br><span class="small">${
+        escA(why)}</span>`:"-";
+    };
+    const rowHtml=(x,sub,subCount)=>`<tr${sub?` class="subrow" data-psym="${x.sym}" style="display:none"`:""}><td>${x.sym}${!sub&&subCount?` <button class="exp" data-sym="${x.sym}" title="${subCount} more strateg${subCount===1?"y":"ies"} fired on ${x.sym} - tap to expand">&#9656;${subCount}</button>`:""}</td><td class="l" style="white-space:normal">${
+      sub?"&middot;":rankCell(x)}</td><td>${chip(x.state)}</td>
+      <td>${x.firedUnknown?'<span class="chip gray" title="this book row is not in the shadow ledger, so the date its entry rule first fired was never recorded - it is not being claimed as new">first fired: unknown</span>':
+        x.new_today&&x.as_of===newestAsof?'<span class="chip info">NEW</span>':
         x.new_today?'<span class="chip gray" title="new when this row was generated on '+x.as_of+', which is not the newest data on this page">was new '+x.as_of+'</span>':""}${
         todayBuy(x)?' <span class="chip take" title="the Today tab is recommending this one">TODAY\u0027S BUY</span>':""}</td>
       <td title="Entry: ${ENTRYBASIS[x.strat]||""}">${x.strat}${x.bookNote?'<br><span class="small">'+x.bookNote+'</span>':""}</td>
       <td class="l small" style="white-space:normal">${x.exit}</td>
       <td style="white-space:normal">${vehChip(x.sym, armStats(x.sym,x.strat))}</td>
-      <td><b>${x.score??""}</b></td><td>${x.hwin??""}</td><td>${x.hpf??""}</td>
+      <td><b>${x.score??""}</b></td><td>${x.hwin??""}</td><td>${pfTxt(x.hpf)}</td>
       <td>${x.havg??""}</td><td>${x.hn??""}</td><td>${x.pf1922??""}</td>
       <td>${x.pf2326??""}</td><td class="l">${x.trig??""}</td><td>${x.depth}</td><td>${x.close}</td>
       <td>${x.buy_date||""}</td><td>${x.age??""}</td><td>${x.as_of}</td>
@@ -1896,6 +2097,13 @@ function armStats(sym, strat){
     document.getElementById("s-count").textContent=
       grouped.length+" tickers ("+r.length+" rows) | "+ranked.length+" tickers ranked at min "+mn+" trades | "+
       "duplicates collapsed under the \u25b8 expander"+
+      /* Lowering this box re-ranks the TABLE but not the Top-4 card, which is
+         pinned at 30. Both are labelled with their own floor, but side by side
+         that reads as a contradiction unless the page says which is which. */
+      (mn!==RANK_MIN_N?" | NOTE: Rank is being computed at your min of "+mn+
+        " trades, not the standard "+RANK_MIN_N+" - the Top-4 buys card above"+
+        " stays pinned at "+RANK_MIN_N+", so the two lists will disagree until"+
+        " you set this box back":"")+
       // Book rows used to be hidden by the default min-30 floor, which is why
       // none of Today's recommendations appeared here. Say where they are now.
       (bookShown?" | "+bookShown+" book row"+(bookShown===1?"":"s")+
@@ -2122,10 +2330,25 @@ function armStats(sym, strat){
     else out.push(chipf("info","bar "+b+" of 10"));
     if(rule.earnings&&t&&t.next_earnings&&t.next_earnings>=asof&&bars(asof,t.next_earnings)<=1)
       out.push(chipf("dead","EARNINGS "+esc(t.next_earnings)+" - FORCE EXIT"));
+    /* PER-SYMBOL staleness. track_snapshot_reference.py attaches last_bar to
+       any ticker trailing the corpus, with a comment naming this exact
+       consumer: it "must not ship a stale close that sell-flag logic and P&L
+       cells then treat as live ... carry last_bar so consumers can see the
+       lag." Nothing read it until 08/18. The >7-day case was handled ("not in
+       snapshot") and the 1-7 day band was never wired, so on the 08/18 build
+       AVB - TRACK last_bar 08-14 inside a snapshot stamped 08-18 - rendered a
+       red SELL computed off Thursday's close, with the page-level `stale` flag
+       false and nothing marking the row. Selling at Tuesday's close on
+       Friday's indicator is the failure this field exists to prevent. A verdict
+       computed on a bar the market has moved past is not a verdict. */
+    const lagBars=(t&&t.last_bar&&t.last_bar<snapAsof)?bars(t.last_bar,snapAsof):0;
     if(!rule.test)out.push(chipf("gray","manual rule"));
     else if(!hasTrack)out.push(chipf("gray","awaiting TRACK snapshot"));
     else if(!t)out.push(chipf("gray","not in snapshot"));
     else if(stale)out.push(chipf("watch","snapshot STALE ("+esc(snapAsof)+")"));
+    else if(lagBars>0)out.push(chipf("watch","NO VERDICT - this name's last bar is "
+      +esc(t.last_bar)+", "+lagBars+" session"+(lagBars===1?"":"s")+" behind the "
+      +esc(snapAsof)+" snapshot"));
     else if(rule.test(t))out.push(chipf("dead","SELL - "+esc(rule.action)));
     else out.push(chipf("take","HOLD"));
     return {html:out.join(" "), t, b};
@@ -2261,6 +2484,7 @@ function armStats(sym, strat){
       <label>Shares <input type="number" id="p-sh" style="width:80px"></label>
       <label>Note <input type="text" id="p-note" style="width:150px"></label>
       <button id="p-add">Add position</button></div>
+      <p class="small" id="p-autonote" style="color:#b45309"></p>
       <p class="small">Positions live in THIS browser only (localStorage) - use
       Export below to back up or move devices. Entry price auto-fills with the
       ticker's last scan close - the correct paper basis for CLOSE-basis books
@@ -2384,9 +2608,19 @@ function armStats(sym, strat){
       const date=document.getElementById("p-date").value;
       if(!sym||!date){alert("Ticker and entry date are required.");return;}
       const P2=load();
-      const basis=(hasTrack&&TRACK.tickers[sym]&&TRACK.tickers[sym].close!=null)
+      /* Never seed a price off a frozen row. TRACK drops a name after 7 days,
+         so the fallback reaches SIGNALS - where the same name sits stamped
+         PASS-STALE with a stale_days count that nothing read until 08/18.
+         Typing EA autofilled 209.70, its take-private close from 08-04,
+         fourteen sessions dead, as though it were a live quote. A blank field
+         is recoverable; a wrong cost basis silently poisons every P&L and
+         R-multiple computed from it afterwards. */
+      const basis=(hasTrack&&TRACK.tickers[sym]&&TRACK.tickers[sym].close!=null
+                   &&!(TRACK.tickers[sym].last_bar&&TRACK.tickers[sym].last_bar<snapAsof))
         ?TRACK.tickers[sym].close
-        :((SIGNALS.signals.find(x=>x.sym===sym)||{}).close??null);
+        :(()=>{const sg=SIGNALS.signals.find(x=>x.sym===sym)||{};
+               return (String(sg.state||"").startsWith("PASS-STALE")||sg.stale_days>0)
+                 ?null:(sg.close??null);})();
       P2.push({id:String(Date.now())+Math.floor(Math.random()*1e4),
         sym, strat:document.getElementById("p-strat").value, entry_date:date,
         entry_px:+document.getElementById("p-px").value||null,
@@ -2400,8 +2634,17 @@ function armStats(sym, strat){
       if(px.value)return;
       const t=hasTrack?TRACK.tickers[s]:null;
       const sig=SIGNALS.signals.find(x=>x.sym===s);
-      if(t&&t.close!=null)px.value=t.close;
-      else if(sig&&sig.close!=null)px.value=sig.close;
+      const note=document.getElementById("p-autonote");
+      const tFresh=t&&t.close!=null&&!(t.last_bar&&t.last_bar<snapAsof);
+      const sigFresh=sig&&sig.close!=null
+        &&!String(sig.state||"").startsWith("PASS-STALE")&&!(sig.stale_days>0);
+      if(note)note.textContent="";
+      if(tFresh)px.value=t.close;
+      else if(sigFresh)px.value=sig.close;
+      else if(note&&(t||sig))
+        note.textContent="No live close for "+s+" - its last bar is "
+          +((t&&t.last_bar)||(sig&&sig.as_of)||"unknown")
+          +", so nothing was auto-filled. Enter your actual fill price.";
     });
     el.querySelectorAll("button[data-act]").forEach(b=>b.onclick=()=>{
       const P2=load(); const p=P2.find(x=>x.id===b.dataset.id); if(!p)return;
@@ -2469,7 +2712,7 @@ function armStats(sym, strat){
   for(const [k,label] of arms){
     const a=DAILY[k]; if(!a)continue;
     h+=`<tr><td class="l">${label}</td><td>${a.cagr_pct}</td><td>${a.max_dd_pct}</td>
-      <td>${a.pf}</td><td>${a.win_pct}</td><td>${a.avg_pct}</td><td>${a.n}</td></tr>`;
+      <td>${pfTxt(pfNorm(a.pf))}</td><td>${a.win_pct}</td><td>${a.avg_pct}</td><td>${a.n}</td></tr>`;
   }
   h+="</table></div>";
   const t=DAILY.vetted||DAILY.trailing;
@@ -2577,10 +2820,35 @@ var TODAY_BUYS={asof:"",act:[],rest:[]};
     GAPW_RSI14: {tier:3,label:"REGIME-DEP",  why:"PAPER ONLY, and the weakest of the three on evidence. Strong 2019-26 on MIO's universe (49.2%, which explains the published 51.5%) but the deep test on the SAME list FAILS: ~2%/yr in 2011-18 against 9.8% for holding those names, at 39% drawdown. Worse, x55 found roughly HALF that recent number needs names with no deep history at all - restricted to names present in both eras it falls 49.2% to 23.9%. Blended expectation 12.4%/yr, floor 2.3%"}
   };
   const ORDER={RSI2:"buy at the close",MFI:"buy at the close",
-    ZSCORE:"market-on-open tomorrow",GAPW_RSI2:"market-on-open tomorrow",
+    ZSCORE:"2:45pm CST threshold - MOC today (TARGET basis; not yet automated, see Method)",GAPW_RSI2:"market-on-open tomorrow",
     GAPW_RSI14:"market-on-open tomorrow"};
 
   const asof=BS.as_of||SG.generated||"";
+  /* WALL-CLOCK freshness. Every other date check on this page is RELATIVE -
+     blob vs blob - so on a frozen page they all agree and none of them fires.
+     A grep for Date.now()/new Date( across this file found exactly one use,
+     inside the Positions closure. Meanwhile notify_buys.py refuses to send in
+     precisely this state ("this mail carries a 'buy at the market open'
+     imperative, so sending it is worse than sending nothing") and
+     digest_backstop.sh says the same. This card carries the identical
+     imperative - it names a ticker, a dollar size and an order type - and had
+     no equivalent refusal. Refusal was implemented per-CHANNEL when it should
+     have been per-IMPERATIVE.
+
+     Failure it covers: the build stops publishing (a Tradier 401 cost 8/12-8/14;
+     issue #81 killed the 08-17 cloud run) and three sessions later the card
+     still says "Today - 2026-08-15" and lists live buys, with every internal
+     cross-check passing because all blobs are equally old.
+
+     Threshold is >4 calendar days, matching the Positions tab's existing
+     staleDays guard, so ordinary weekends and holidays do not false-positive -
+     the F8 lesson: an alarm that fires routinely is an alarm nobody reads. */
+  const ageDays=(()=>{
+    if(!asof)return 0;
+    const d=new Date(asof+"T00:00:00"), n=new Date();
+    return Math.floor((new Date(n.getFullYear(),n.getMonth(),n.getDate())-d)/86400000);
+  })();
+  const pageStale=ageDays>4;
   /* Slot counts come from the ACCOUNT replay, never from the skip-free ledger.
      The ledger takes every qualifying signal and ignores slots, so its open
      count (24) exceeds any book's slot limit permanently - reading it here
@@ -2598,13 +2866,25 @@ var TODAY_BUYS={asof:"",act:[],rest:[]};
   const perPos=b=>Math.round(sleeve/(DIV[b]||3));
   const freeSlots=b=>Math.max((SLOTS[b]||1)-(openBy[b]||0),0);
 
-  /* BUY candidates: book signals (GW + z) and fresh vetted RSI2/MFI takes. */
-  let buys=[];
+  /* BUY candidates: book signals (GW + z) and fresh vetted RSI2/MFI takes.
+
+     BOTH loops gate on evidence. Only the second one did until 2026-08-18: this
+     one admitted any TAKE from a known book, so the card's sole recommendation
+     that day was ST/ZSCORE at $6,667 on a six-trade record, with 56 vetted
+     30+-trade signals sitting in the deferred list beneath it. A card that
+     names a dollar amount and an order type is the most action-shaped surface
+     on this site and it had the weakest gate on it. See rankBlock()/
+     actionBlock() at the top of this file for the contract. */
+  let buys=[], demoted=[];
   for(const r of (BS.rows||[])){
     if(r.state!=="TAKE"||!EV[r.strat])continue;
-    buys.push({sym:r.sym,book:r.strat,close:r.close,
+    const row={sym:r.sym,book:r.strat,close:r.close,
       trig:(r.rsi3!=null?"RSI3 "+r.rsi3:(r.rsi!=null?"RSI "+r.rsi:"")),
-      n:r.n,win:r.win,avg:r.avg});
+      n:r.n,win:r.win,avg:r.avg};
+    /* Demoted, not deleted. A book that fired and cannot be acted on is
+       information - silently dropping it would read as "no signal today". */
+    row.block=actionBlock(r.n,r.avg,r.strat,null);
+    if(row.block) demoted.push(row); else buys.push(row);
   }
   for(const x of (SG.signals||[])){
     if(x.state!=="TAKE"||!x.new_today||x.as_of!==asof)continue;
@@ -2638,6 +2918,23 @@ var TODAY_BUYS={asof:"",act:[],rest:[]};
 
   const chip=b=>`<span class="chip t${EV[b].tier}">${EV[b].label}</span>`;
   let h=`<div class="card"><h3>Today &mdash; ${esc(asof)||"awaiting first build"}</h3>`;
+  /* An aged page does not get to issue buy instructions. Same refusal the two
+     mail paths already make; the buy list is replaced, not merely captioned,
+     because a warning above a still-rendered "Buy ~$6,667 - market-on-open
+     tomorrow" is not a refusal. Sells and exits still render: an open position
+     whose rule fired needs acting on regardless of how old the scan is, and
+     suppressing that would be the more dangerous silence. */
+  if(pageStale)
+    h+=`<div class="card killbox"><h3>This scan is ${ageDays} days old &mdash;
+      buy list suppressed</h3><p>The newest build on this page is
+      <b>${esc(asof)}</b>. Nothing has published since, so these are
+      <b>NOT today's triggers</b> and the entry rules behind them may have
+      stopped being true days ago (verified case: TROW read RSI2 8.19 on 07/31
+      and 33.27 on 08/10). The buy list is withheld rather than shown stale -
+      the same refusal <code>notify_buys.py</code> and
+      <code>digest_backstop.sh</code> make before they will send a buy mail.
+      Sells below still stand: an open position that hit its exit needs acting
+      on whatever the scan date. Run the daily build, then reload.</p></div>`;
 
   if(!asof){
     h+=`<p>No build has run yet. The nightly build populates this page.</p></div>`;
@@ -2657,7 +2954,7 @@ var TODAY_BUYS={asof:"",act:[],rest:[]};
       h+=`</div>`;
     }
 
-    if(nb){
+    if(nb&&!pageStale){
       h+=`<h4 class="tsec">${ns?"2. Then buy":"1. Buy"}, best evidence first${
         rest.length?` &mdash; showing only books with a free slot (${act.length} of ${
         act.length+rest.length}; ${rest.length} deferred for want of a slot)`:""}</h4><div class="tlist">`;
@@ -2674,6 +2971,27 @@ var TODAY_BUYS={asof:"",act:[],rest:[]};
       }
       h+=`</div>`;
     }
+    /* Fired, but the name's own record is too thin to act on. Shown demoted so
+       the card cannot read as "no signal today", never sized, never given an
+       order type - a dollar figure beside a six-trade record is the thing this
+       block exists to prevent. */
+    if(demoted.length)
+      h+=`<details class="trest"><summary class="small">${demoted.length} signal${
+        demoted.length>1?"s":""} fired on a record too thin to act on &mdash; not
+        sized, not recommended</summary>
+        <div class="tlist">${demoted.map(b=>`<div class="trow">
+          <div class="tk">${esc(b.sym)}${chip(b.book)}</div>
+          <div class="tm">${esc(b.book)}${b.close?" @ ~$"+b.close:""}${
+            b.trig?" &middot; "+esc(b.trig):""}${
+            b.n?` &middot; record: ${b.n} trades, ${b.win}% win, ${b.avg}%/trade`:""}</div>
+          <div class="tw"><b>NOT A BUY</b> &mdash; ${esc(b.block)}</div></div>`).join("")}</div>
+        <p class="small">These are real triggers and they are listed so you can see the book
+        fired. What they are missing is a per-name record strong enough to stand behind a
+        sized order: the bar is ${BOOK_MIN_N} trades to count as evidence at all and ${
+        RANK_MIN_N} to be recommended unqualified. Strength does not substitute for it -
+        its n/(n+10) discount still keeps 62% of the raw average at 16 trades, so the
+        thinnest record on a given day is frequently the one with the biggest number.</p>
+      </details>`;
     if(rest.length)
       h+=`<details class="trest"><summary class="small">${rest.length} more signal${
         rest.length>1?"s":""} fired but every slot in their book is already full &mdash;
@@ -2694,6 +3012,10 @@ var TODAY_BUYS={asof:"",act:[],rest:[]};
       h+=`<p class="tnone"><b>Nothing to do today.</b> ${rest.length
         ?`${rest.length} signal${rest.length>1?"s":""} fired, but every slot is already
           full - so there is no decision to make.`
+        :demoted.length
+        ?`${demoted.length} signal${demoted.length>1?"s":""} fired, but on ${
+          demoted.length>1?"records":"a record"} too thin to act on (listed below).
+          A trigger is not a buy without a record behind it.`
         :`No book's entry conditions were met and no open position hit its exit. That is the
           normal state - these books trade rarely by design.`} Close the tab.</p>`;
 
