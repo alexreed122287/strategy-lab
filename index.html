@@ -834,11 +834,24 @@ renderScan();
     h+="</div>";
   }
   h+=`<div class="card warnbox"><h3>Why no other baskets are offered</h3>
-    <p>Fresh optimizer baskets were built and tested honestly (selected on 2019-2022
-    only, then run on untouched 2023-2026): they scored 78-84 percent in their
-    selection window and collapsed to 0.2-20.6 percent out-of-window, losing to the
-    fixed live-16 (28.3 percent, PF 2.34, DD -11.6 at 1x shares). Per the vetted-only
-    rule they are removed as choices - the evidence lives in out/basket_results.json.
+    <p><b>Corrected 2026-08-18.</b> This card previously said the walk-forward baskets
+    "collapsed to 0.2-20.6 percent out-of-window, losing to the fixed live-16 (28.3
+    percent)". That is not what out/basket_results.json - the file this page embeds -
+    actually reports. The real out-of-window numbers are
+    <b>wf_mfi 37.6 percent (PF 2.12)</b>, wf_rsi2 27.1 percent (PF 1.84) and wf_zscore
+    1.1 percent (PF 1.11), against live-16's 28.3 percent (PF 2.34). One walk-forward
+    basket did not collapse: <b>wf_mfi beat the armed incumbent by 9.3pp on a genuinely
+    held-out window</b>, which is the opposite of what the reader was told, and that
+    claim was the stated justification for keeping the incumbent.</p>
+    <p>The honest statement of the case for live-16 is narrower. Its 28.3 percent is
+    <b>not</b> an out-of-sample result: its membership was fixed in advance
+    (select_window reads "fixed (armed incumbent)"), so the 2023-26 window it is scored
+    on is in-sample for it in the way that matters - the names were chosen knowing it.
+    Drawing 500 random 16-name baskets from the same pool over the same window puts
+    live-16 at roughly the 95th percentile, which is what selecting on the outcome
+    looks like. wf_mfi's 37.6 percent, by contrast, IS out-of-window. Keep live-16 if
+    you want the incumbent; do not keep it on the grounds that the alternatives lost,
+    because one of them did not.</p>
     Seven independent rounds now agree: the live-16 is the basket. The armed live
     config multiplies it via leveraged vehicles (roughly double CAGR and drawdown,
     reference ~60 percent/yr at -24 DD). CAGR differences under ~2pp are simulator
