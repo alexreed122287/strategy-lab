@@ -260,10 +260,33 @@ def portfolio(led, books, capital=None, slots=None, divisor=None):
             skipped.append({"date": date, "book": b, "sym": sym, "why": "no cash"})
             continue
         cash[b] -= size
-        open_pos[b][sym] = {"cost": size}
+        # Carry the ledger row's mark and age so the account can be valued at
+        # market and its aging exposure counted. Without these the replay could
+        # only ever report cost basis, which is what made open drawdown
+        # invisible on every surface.
+        open_pos[b][sym] = {"cost": size,
+                            "mark_net": p.get("mark_net"),
+                            "bars_held": p.get("bars_held")}
         taken += 1
     invested = {b: sum(h["cost"] for h in open_pos[b].values()) for b in books}
     equity = sum(cash.values()) + sum(invested.values())
+    # MARK THE OPEN BOOK. equity_at_cost was the ONLY equity figure published,
+    # so every open position sat on the page at its purchase price and the
+    # account's drawdown was invisible everywhere on the site. On 2026-08-18
+    # that hid an open book marking -5.73% in the largest strategy while its
+    # tile advertised +3.44%/trade. Carrying open risk at cost is how a paper
+    # record flatters itself; the marked figure is the one an account holder
+    # would actually see in a brokerage window.
+    marks = {}
+    for b in books:
+        for sym, h in open_pos[b].items():
+            m = h.get("mark_net")
+            marks[(b, sym)] = m
+    unreal = sum(h["cost"] * (h.get("mark_net") or 0.0)
+                 for b in books for h in open_pos[b].values())
+    priced = sum(1 for b in books for h in open_pos[b].values()
+                 if h.get("mark_net") is not None)
+    equity_mkt = equity + unreal
     nets = [c["net"] for c in closed]
     gross = sum(n for n in nets if n > 0)
     loss = -sum(n for n in nets if n <= 0)
@@ -286,6 +309,20 @@ def portfolio(led, books, capital=None, slots=None, divisor=None):
         "closed_recent": closed[-12:],
         "equity_at_cost": round(equity, 2),
         "realized_pct": round(100.0 * (equity / capital - 1.0), 2),
+        # --- marked to market: what the account is actually worth today ---
+        "equity_at_market": round(equity_mkt, 2),
+        "total_pct": round(100.0 * (equity_mkt / capital - 1.0), 2),
+        "unrealized": round(unreal, 2),
+        "unrealized_priced": priced,
+        # The closed population is winner-biased BY CONSTRUCTION: rule exits
+        # fire on strength and close fast, while a loser's only exit is the
+        # 10-bar time stop. The gate counts closed trades, so it counts that
+        # biased population - these two fields let the page say so rather than
+        # publishing a win rate that reads as an edge.
+        "closed_rule_n": sum(1 for c in closed if c.get("why") != "time-stop"),
+        "closed_stop_n": sum(1 for c in closed if c.get("why") == "time-stop"),
+        "open_aging": sum(1 for b in books for h in open_pos[b].values()
+                          if (h.get("bars_held") or 0) >= 5),
         "cash": round(sum(cash.values()), 2),
         "invested_at_cost": round(sum(invested.values()), 2),
         "utilization_pct": round(100.0 * sum(invested.values()) / max(equity, 1e-9), 1),
@@ -347,6 +384,11 @@ def solo_accounts(led, books):
             "capture_pct": round(100.0 * p["taken"] / sig, 1) if sig else None,
             "cash": p["cash"], "invested": p["invested_at_cost"],
             "equity_at_cost": p["equity_at_cost"], "realized_pct": p["realized_pct"],
+            # Solo accounts carry the same marked figures as the shared one -
+            # a per-book gate judged on cost basis has the same blind spot.
+            "equity_at_market": p.get("equity_at_market"),
+            "total_pct": p.get("total_pct"), "unrealized": p.get("unrealized"),
+            "closed_rule_n": p.get("closed_rule_n"), "closed_stop_n": p.get("closed_stop_n"),
         }
     tot_t = sum(v["taken"] for v in out.values())
     tot_s = sum(v["skipped"] for v in out.values())
@@ -664,15 +706,74 @@ def main():
         led["as_of"] = as_of
 
     # stats + blob
+    #
+    # MATURITY BIAS - WHY EVERY BLOCK BELOW SHIPS A MARKED NUMBER TOO.
+    #
+    # Every book's exit rule fires on STRENGTH (rsi14>60, rsi2>80, close>sma5,
+    # close>ema7, close>ema5). A winner therefore satisfies its rule almost
+    # immediately - median hold across the closed set is ~1-2 bars. A LOSER has
+    # exactly one way out: the 10-bar time stop. So for the first ten sessions
+    # of any position's life, winners leave the open book and losers stay in it.
+    #
+    # Measured on this ledger 2026-08-18, 12 sessions in:
+    #     rule exits (fire on strength)   n=103   win 82%   avg +1.99%
+    #     time-stop exits (only loser exit) n=6   win  0%   avg -4.05%
+    #     closed-only, program            +1.66%/trade over 109
+    #     marked to market, program       -0.31%/trade over 178
+    #     GAPW_RSI14 closed +3.44%/trade, 94.3% win - while 30 of its 31 OPEN
+    #     positions were underwater, the open book marking -5.73%
+    #
+    # Nothing is wrong with the arithmetic; every stored net reproduces from its
+    # own prices exactly. What was wrong was publishing the realized half of a
+    # deliberately asymmetric distribution as "the forward record", with the
+    # unrealized half carried at COST so its drawdown appeared nowhere on the
+    # site. That is not a small distortion at this sample age, and the same
+    # closed-only population feeds the real-money gate.
+    #
+    # So: realized stays exactly as it was (it is the true realized record and
+    # must not be restated), and a MARKED block ships beside it. The page shows
+    # both and says which is which.
     books = ["RSI2", "MFI", "GAPW_RSI2", "GAPW_RSI14", "ZSCORE"]
+
+    def _mark(p):
+        """Unrealized net for an open position at the newest close, on the same
+        friction basis as a realized net. None when the name has no bar."""
+        cs = series_upto(p["sym"], as_of)
+        if not cs or not p.get("entry_px"):
+            return None
+        f = FRICTION_RT.get(p["book"], 0.0)
+        return cs[-1] * (1 - f / 2) / (p["entry_px"] * (1 + f / 2)) - 1.0
+
+    for p in led["positions"]:
+        if p["state"] == "open":
+            m = _mark(p)
+            if m is not None:
+                p["mark_net"] = round(m, 5)
+                p["mark_date"] = as_of
+
     stats = {}
     for b in books:
         tr = [p for p in led["closed"] if p["book"] == b and p.get("net") is not None]
+        op = [p for p in led["positions"] if p["book"] == b and p["state"] == "open"]
+        mk = [p["mark_net"] for p in op if p.get("mark_net") is not None]
+        allr = [t["net"] for t in tr] + mk
         stats[b] = {"n": len(tr),
                     "win": round(100.0 * sum(1 for t in tr if t["net"] > 0) / len(tr), 1) if tr else None,
                     "avg": round(100.0 * sum(t["net"] for t in tr) / len(tr), 2) if tr else None,
-                    "open": sum(1 for p in led["positions"] if p["book"] == b and p["state"] == "open"),
-                    "pending": sum(1 for p in led["positions"] if p["book"] == b and p["state"] == "pending_open")}
+                    "open": len(op),
+                    "pending": sum(1 for p in led["positions"] if p["book"] == b and p["state"] == "pending_open"),
+                    # marked block - the open half of the same distribution
+                    "mark_n": len(mk),
+                    "mark_avg": round(100.0 * sum(mk) / len(mk), 2) if mk else None,
+                    "mark_under": sum(1 for x in mk if x < 0),
+                    "all_n": len(allr),
+                    "all_avg": round(100.0 * sum(allr) / len(allr), 2) if allr else None,
+                    "all_win": round(100.0 * sum(1 for x in allr if x > 0) / len(allr), 1) if allr else None,
+                    # how the closed set was reached, which is what makes the
+                    # gap above structural rather than incidental
+                    "exit_rule_n": sum(1 for t in tr if t.get("exit_reason") != "time-stop"),
+                    "exit_stop_n": sum(1 for t in tr if t.get("exit_reason") == "time-stop"),
+                    "aging": sum(1 for p in op if (p.get("bars_held") or 0) >= 5)}
     exits_today = [{"sym": p["sym"], "book": p["book"], "why": p["exit_reason"],
                     "net": p.get("net")}
                    for p in led["closed"] if p.get("exit_date") == as_of]

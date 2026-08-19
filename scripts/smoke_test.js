@@ -382,6 +382,44 @@ const PAGE = 'file://' + path.resolve(__dirname, '..', 'index.html');
   t(`no raw PF sentinel renders as a number (${pfRaw.join(', ') || 'none'})`,
     pfRaw.length === 0);
 
+  /* ---- MATURITY BIAS (audit round 3, 2026-08-18) ----------------------
+     The exit rules fire on strength, so a winner closes in 1-2 bars while a
+     loser's only exit is the 10-bar time stop. For the first ten sessions of
+     any position's life the closed set is therefore the winning half BY
+     CONSTRUCTION. Publishing it alone read +1.66%/trade program-wide when
+     marking every position gave -0.31%; GAPW_RSI14 advertised 94.3% win /
+     +3.44%/trade with 30 of its 31 open positions underwater. The open book
+     was carried at COST, so that drawdown appeared nowhere on the site.
+     These assert the SHAPE - a book with open positions must publish its mark
+     - so they survive data movement and go red only if the marking is lost. */
+  await page.evaluate(() => document.querySelector('[data-tab="positions"]').click());
+  await page.waitForTimeout(500);
+  const mark = await page.evaluate(() => {
+    const S = (typeof SHADOW !== 'undefined' && SHADOW) || {};
+    const st = S.stats || {}, P = S.portfolio || {};
+    const missing = Object.entries(st)
+      .filter(([, v]) => (v.open || 0) > 0 && (v.mark_avg === undefined || v.mark_avg === null))
+      .map(([b]) => b);
+    const txt = document.getElementById('positions-body').innerText;
+    return {
+      missing,
+      booksWithOpen: Object.values(st).filter(v => (v.open || 0) > 0).length,
+      hasMarketEquity: P.equity_at_market !== undefined && P.equity_at_market !== null,
+      equityShown: (P.equity_at_market != null)
+        ? txt.includes(Math.round(P.equity_at_market).toLocaleString()) : false,
+      costOnlyClaim: /open positions carried at cost, so this moves only as trades close/.test(txt),
+      explains: /closed set the winning half by construction|winning half by construction/i.test(txt),
+    };
+  });
+  t(`positions: every book with open positions publishes a mark (${mark.missing.join(', ') || 'all marked'})`,
+    mark.missing.length === 0);
+  t('positions: the account carries a marked-to-market equity, not only cost',
+    mark.hasMarketEquity);
+  t('positions: the marked equity is the figure actually rendered',
+    !mark.hasMarketEquity || mark.equityShown);
+  t('positions: the old cost-basis-only claim is gone', !mark.costOnlyClaim);
+  t('positions: the page explains why the closed set skews to winners', mark.explains);
+
   t('today: buy list is published for the Signals tab to read', corr.n >= 0);
   t('signals: every Today buy is present in the default view', corr.allPresent);
   t('signals: every Today buy is marked TODAY\'S BUY', corr.marked === corr.n);
