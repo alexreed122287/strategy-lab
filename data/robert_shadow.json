@@ -1,19 +1,27 @@
 {
- "open": [],
- "queued": [
+ "open": [
   {
    "t": "ATI",
    "signal_date": "2026-08-19",
-   "rsi2": 7.55
+   "entry_date": "2026-08-20",
+   "entry_px": 213.98
   },
   {
    "t": "PANW",
    "signal_date": "2026-08-19",
-   "rsi2": 4.37
+   "entry_date": "2026-08-20",
+   "entry_px": 354.12
+  }
+ ],
+ "queued": [
+  {
+   "t": "GOOGL",
+   "signal_date": "2026-08-20",
+   "rsi2": 8.54
   }
  ],
  "closed": [],
  "skipped": [],
  "closed_total": 0,
- "last_as_of": "2026-08-19"
+ "last_as_of": "2026-08-20"
 }
