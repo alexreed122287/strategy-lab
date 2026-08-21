@@ -11,17 +11,17 @@
    "signal_date": "2026-08-19",
    "entry_date": "2026-08-20",
    "entry_px": 354.12
-  }
- ],
- "queued": [
+  },
   {
    "t": "GOOGL",
    "signal_date": "2026-08-20",
-   "rsi2": 8.54
+   "entry_date": "2026-08-21",
+   "entry_px": 342.575
   }
  ],
+ "queued": [],
  "closed": [],
  "skipped": [],
  "closed_total": 0,
- "last_as_of": "2026-08-20"
+ "last_as_of": "2026-08-21"
 }
