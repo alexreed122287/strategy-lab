@@ -1,35 +1,31 @@
 {
  "open": [
   {
-   "t": "ATI",
-   "signal_date": "2026-08-19",
-   "entry_date": "2026-08-20",
-   "entry_px": 213.98
-  },
-  {
    "t": "PANW",
    "signal_date": "2026-08-19",
    "entry_date": "2026-08-20",
    "entry_px": 354.12
-  }
- ],
- "queued": [
+  },
   {
    "t": "PWR",
    "signal_date": "2026-08-24",
-   "rsi2": 3.23
+   "entry_date": "2026-08-25",
+   "entry_px": 632.95
   },
   {
    "t": "SNX",
    "signal_date": "2026-08-24",
-   "rsi2": 2.72
+   "entry_date": "2026-08-25",
+   "entry_px": 249.26
   },
   {
    "t": "SOXX",
    "signal_date": "2026-08-24",
-   "rsi2": 5.4
+   "entry_date": "2026-08-25",
+   "entry_px": 515.91
   }
  ],
+ "queued": [],
  "closed": [
   {
    "t": "GOOGL",
@@ -40,9 +36,19 @@
    "bars": 1,
    "reason": "SMA5",
    "net": 0.0156
+  },
+  {
+   "t": "ATI",
+   "entry_date": "2026-08-20",
+   "exit_date": "2026-08-25",
+   "entry_px": 213.98,
+   "exit_px": 215.23,
+   "bars": 3,
+   "reason": "SMA5",
+   "net": 0.00544
   }
  ],
  "skipped": [],
- "closed_total": 1,
- "last_as_of": "2026-08-24"
+ "closed_total": 2,
+ "last_as_of": "2026-08-25"
 }
