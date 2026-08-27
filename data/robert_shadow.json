@@ -13,12 +13,6 @@
    "entry_px": 632.95
   },
   {
-   "t": "SNX",
-   "signal_date": "2026-08-24",
-   "entry_date": "2026-08-25",
-   "entry_px": 249.26
-  },
-  {
    "t": "SOXX",
    "signal_date": "2026-08-24",
    "entry_date": "2026-08-25",
@@ -46,9 +40,19 @@
    "bars": 3,
    "reason": "SMA5",
    "net": 0.00544
+  },
+  {
+   "t": "SNX",
+   "entry_date": "2026-08-25",
+   "exit_date": "2026-08-26",
+   "entry_px": 249.26,
+   "exit_px": 255.17,
+   "bars": 1,
+   "reason": "SMA5",
+   "net": 0.0233
   }
  ],
  "skipped": [],
- "closed_total": 2,
- "last_as_of": "2026-08-25"
+ "closed_total": 3,
+ "last_as_of": "2026-08-26"
 }
