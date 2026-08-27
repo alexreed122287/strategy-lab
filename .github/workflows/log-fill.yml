@@ -1,0 +1,60 @@
+name: log-fill
+
+# Add a fill to data/paper_fills.json from anywhere - including a phone, since
+# workflow_dispatch inputs render as a form in the GitHub mobile web UI.
+#
+# This exists because the Paper-Fill Log's whole job is to be filled in AT THE
+# MOMENT an order is worked, and that moment is usually not in front of the Mac.
+# A log you can only write from one machine is a log that gets written later,
+# from memory, which is exactly the measurement error D11 cannot tolerate.
+#
+# Validation is scripts/log_fill.py, the same code the CLI runs. Nothing is
+# committed if it rejects, so a bad paste fails the run instead of poisoning
+# the sample.
+
+on:
+  workflow_dispatch:
+    inputs:
+      json:
+        description: >
+          One fill, or an array of them, as JSON. Keys: date, ticker, side
+          (entry/exit), contract, bid, ask, fill, qty, gated (Y/N), notes.
+          The page's "Copy JSON" button produces exactly this.
+        required: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: log-fill          # never two writers on one JSON file
+  cancel-in-progress: false
+
+jobs:
+  log:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate and append
+        run: python3 scripts/log_fill.py --via action --json "$FILL_JSON"
+        env:
+          # Through the environment, not interpolated into the run script:
+          # this input is free text and would otherwise be a shell injection
+          # straight into a workflow that holds contents:write.
+          FILL_JSON: ${{ inputs.json }}
+
+      - name: Re-verify the whole store
+        run: python3 scripts/log_fill.py --verify
+
+      - name: Publish
+        run: |
+          git config user.name "paperlog-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add data/paper_fills.json
+          if git diff --cached --quiet; then
+            echo "no change - the fill was already logged"
+          else
+            git commit -m "Paper-fill log: $(python3 -c 'import json;print(json.load(open("data/paper_fills.json"))["count"])') fills"
+            git pull --rebase --autostash origin main
+            git push origin main
+          fi

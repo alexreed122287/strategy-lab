@@ -134,10 +134,19 @@ code { background: var(--surface-1); border: 1px solid var(--border);
   <div class="small" id="storeNote" style="margin-top:4px"></div>
 </div>
 
+<div class="card warnbox" id="draftCard" style="display:none">
+  <h3 id="draftHead"></h3>
+  <div id="draftBody"></div>
+  <div class="controls" style="margin-top:8px">
+    <button class="primary" onclick="copyDraftJson()">Copy JSON for the workflow</button>
+    <button onclick="copyDraftCmd()">Copy the Mac command</button>
+  </div>
+</div>
+
 <div class="tablewrap">
 <table id="logTable">
   <thead><tr>
-    <th class="l">Date</th><th class="l">Ticker</th><th class="l">Side</th>
+    <th class="l">State</th><th class="l">Date</th><th class="l">Ticker</th><th class="l">Side</th>
     <th class="l">Contract</th><th>Bid</th><th>Ask</th><th>Mid</th><th>Fill</th>
     <th>Spread %</th><th>Slip vs mid</th><th>Model</th><th>Multiple</th>
     <th class="l">Gated</th><th class="l">Notes</th><th></th>
@@ -150,7 +159,7 @@ code { background: var(--surface-1); border: 1px solid var(--border);
   <button onclick="exportCSV()">Export CSV</button>
   <button onclick="copyCSV()">Copy CSV for analysis</button>
   <label style="align-self:center">Import: <input type="file" id="importFile" accept=".csv" onchange="importCSV(event)" style="border:none;padding:0"></label>
-  <button onclick="clearAll()" style="color:var(--critical)">Clear all</button>
+  <button onclick="clearAll()" style="color:var(--critical)">Discard drafts</button>
 </div>
 
 <details class="gloss">
@@ -158,36 +167,91 @@ code { background: var(--surface-1); border: 1px solid var(--border);
   <p><b>Slip vs mid</b> is the realized cost of one side: for a buy, (fill &minus; mid) / mid; for a sell, (mid &minus; fill) / mid. Positive = you paid; negative = you filled inside the mid. The mid is the reference because the quoted spread overstates realistic cost 2-3x on DITM calls (measured on real closing NBBO, 08/06/2026) - judging fills by the screen width would fail names that execute fine.</p>
   <p><b>Model</b> is what the locked backtest assumed: 1.25% of premium on entries (09:45 limit at mid), 2.5% on exits (close, limit worked from mid). <b>Multiple</b> = your realized slip &divide; the modeled number for that side, floored at 0 when you beat the mid.</p>
   <p><b>The gate:</b> the production edge (+7-9% per trade through the cycle) breaks even when friction reaches roughly <b>4x</b> modeled. Blended multiple &le;1.5x means the backtest numbers are conservative; 1.5-2.5x means live results will run below backtest but positive; above 3.5x, do not go live. Twenty fills (both sides represented) is the sample floor - the same n-discipline as x38.</p>
+  <p><b>Where fills live.</b> The durable store is <code>data/paper_fills.json</code> in the repo,
+  written only by <code>scripts/log_fill.py</code> - so every fill is versioned, attributable to a commit,
+  and readable by the analysis scripts directly. Until 08/26/2026 the log lived in one browser's
+  localStorage, where clearing site data destroyed it silently: a go-live gate a cache eviction can reset
+  is not a gate. Entry still happens in the browser, because bid and ask have to be captured at the moment
+  the order is worked, but a browser-only row is a <b>draft</b> - it does not count toward the twenty, and
+  the panel above it says so until it is committed. The store is public, like the rest of this site;
+  keep account identifiers out of the notes field.</p>
+
   <p><b>Entry discipline while logging:</b> limit at mid or better, ~09:45 ET; skip anything that will not fill inside the spread. A missed trade costs nothing; a bad fill is the one variable this page exists to measure honestly - do not chase to complete the log.</p>
 </details>
 
 <div class="footer">
-  Research and education only. Not financial advice. Fills are stored in this browser's localStorage under <code>sl_paper_fills_v1</code> - export regularly; clearing site data deletes the log.
+  Research and education only. Not financial advice. Saved fills live in <code>data/paper_fills.json</code> in the repo; <code>sl_paper_fills_v1</code> in this browser holds only drafts that have not been committed yet.
 </div>
 
 </main>
 <script>
 "use strict";
+/* STORAGE, AND WHY IT CHANGED ON 2026-08-26.
+   This log was the D11 instrument and it lived in one browser's localStorage.
+   Clearing site data, a private window, or a different machine destroyed it
+   silently, with no copy and no way to notice. A go-live gate a cache eviction
+   can reset is not a gate.
+   The durable store is now data/paper_fills.json in the repo, written only by
+   scripts/log_fill.py - so every fill is versioned, diffable, and readable by
+   the Python side without anyone remembering to export a CSV.
+   localStorage still exists, demoted to a DRAFT buffer. It has to: bid and ask
+   must be captured at the moment the order is worked, and that moment cannot
+   wait on a commit. A draft is explicitly not evidence - it does not count
+   toward the 20-fill floor - and the page says so until it is committed. */
 const KEY = "sl_paper_fills_v1";
+const STORE_URL = "data/paper_fills.json";
+const WF_URL = "https://github.com/alexreed122287/strategy-lab/actions/workflows/log-fill.yml";
 const MODEL = { E: 0.0125, X: 0.025 };
-let mem = [];               // in-memory fallback
+let COMMITTED = [];
+let DRAFTS = [];
+let storeState = "loading";
+let mem = [];
 let persistent = true;
 
-function load() {
+/* Identity of a fill. Must agree byte for byte with log_fill.fingerprint on
+   the Python side - fixed 4dp, because String(30) and str(30.0) do not match
+   and a draft would then never be recognised as landed. */
+function fp(r) {
+  const n = v => { const x = Number(v); return isFinite(x) ? x.toFixed(4) : ""; };
+  return [r.d || "", r.t || "", r.s || "", r.c || "",
+    n(r.b), n(r.a), n(r.f)].join("|");
+}
+function loadDrafts() {
   try { const raw = localStorage.getItem(KEY); return raw ? JSON.parse(raw) : []; }
   catch (e) { persistent = false; return mem; }
 }
-function save(rows) {
+function saveDrafts(rows) {
+  DRAFTS = rows;
   try { localStorage.setItem(KEY, JSON.stringify(rows)); }
   catch (e) { persistent = false; mem = rows; }
 }
-function fmt(n, dp) {                       // trim trailing zeros: 2.00 -> 2
+async function boot() {
+  try {
+    const res = await fetch(STORE_URL + "?t=" + Date.now(), { cache: "no-store" });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const j = await res.json();
+    COMMITTED = Array.isArray(j.fills) ? j.fills : [];
+    storeState = "ok";
+  } catch (e) {
+    /* Opening the file straight off disk blocks fetch, and so does being
+       offline. Say which, rather than rendering an empty log that looks like
+       data loss. */
+    COMMITTED = [];
+    storeState = (location.protocol === "file:") ? "file" : "unreachable";
+  }
+  const landed = new Set(COMMITTED.map(fp));
+  const drafts = loadDrafts();
+  const kept = drafts.filter(r => !landed.has(fp(r)));
+  if (kept.length !== drafts.length) saveDrafts(kept); else DRAFTS = kept;
+  render();
+}
+function fmt(n, dp) {
   if (n === null || n === undefined || isNaN(n)) return "-";
   let s = Number(n).toFixed(dp);
   if (s.indexOf(".") >= 0) s = s.replace(/0+$/, "").replace(/\.$/, "");
   return s;
 }
-function mdY(iso) {                          // 2026-08-07 -> 08/07/2026
+function mdY(iso) {
   const p = (iso || "").split("-");
   return p.length === 3 ? p[1] + "/" + p[2] + "/" + p[0] : iso;
 }
@@ -214,32 +278,99 @@ function esc(x) {
   return String(x == null ? "" : x).replace(/[&<>"]/g,
     c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 }
+function rowHTML(r, committed, i) {
+  const d = derive(r);
+  const warn = (r.f < Math.min(r.b, r.a) || r.f > Math.max(r.b, r.a))
+    ? ' <span class="chip gray" title="fill outside quoted market - quote stale or typo?">?</span>' : "";
+  const state = committed
+    ? '<span class="chip info" title="in data/paper_fills.json">saved</span>'
+    : '<span class="chip watch" title="this browser only - not counted toward the 20-fill floor">draft</span>';
+  return "<tr>" +
+    '<td class="l">' + state + "</td>" +
+    '<td class="l">' + mdY(r.d) + "</td>" +
+    '<td class="l">' + esc(r.t) + "</td>" +
+    '<td class="l">' + (r.s === "E" ? "Entry" : "Exit") + "</td>" +
+    '<td class="l">' + esc(r.c) + "</td>" +
+    "<td>" + fmt(r.b, 2) + "</td><td>" + fmt(r.a, 2) + "</td>" +
+    "<td>" + fmt(d.mid, 2) + "</td><td>" + fmt(r.f, 2) + warn + "</td>" +
+    "<td>" + fmt(d.spread * 100, 2) + "%</td>" +
+    "<td>" + fmt(d.slip * 100, 2) + "%</td>" +
+    "<td>" + fmt(d.model * 100, 2) + "%</td>" +
+    "<td>" + chipFor(d.mult) + "</td>" +
+    '<td class="l">' + (r.g === "Y" ? "Y" : "N") + "</td>" +
+    '<td class="l">' + esc(r.n) + "</td>" +
+    "<td>" + (committed
+      ? '<span class="small" title="committed to git - remove it with a commit, not a click">&mdash;</span>'
+      : '<button class="exp" onclick="delDraft(' + i + ')" title="discard draft">&times;</button>') +
+    "</td></tr>";
+}
 function render() {
-  const rows = load();
-  const body = document.getElementById("logBody");
-  body.innerHTML = rows.map((r, i) => {
-    const d = derive(r);
-    const warn = (r.f < Math.min(r.b, r.a) || r.f > Math.max(r.b, r.a))
-      ? ' <span class="chip gray" title="fill outside quoted market - quote stale or typo?">?</span>' : "";
-    return "<tr>" +
-      '<td class="l">' + mdY(r.d) + "</td>" +
-      '<td class="l">' + esc(r.t) + "</td>" +
-      '<td class="l">' + (r.s === "E" ? "Entry" : "Exit") + "</td>" +
-      '<td class="l">' + esc(r.c) + "</td>" +
-      "<td>" + fmt(r.b, 2) + "</td><td>" + fmt(r.a, 2) + "</td>" +
-      "<td>" + fmt(d.mid, 2) + "</td><td>" + fmt(r.f, 2) + warn + "</td>" +
-      "<td>" + fmt(d.spread * 100, 2) + "%</td>" +
-      "<td>" + fmt(d.slip * 100, 2) + "%</td>" +
-      "<td>" + fmt(d.model * 100, 2) + "%</td>" +
-      "<td>" + chipFor(d.mult) + "</td>" +
-      '<td class="l">' + (r.g === "Y" ? "Y" : "N") + "</td>" +
-      '<td class="l">' + esc(r.n) + "</td>" +
-      '<td><button class="exp" onclick="delFill(' + i + ')" title="delete">&times;</button></td>' +
-      "</tr>";
-  }).join("");
-  renderSummary(rows);
-  document.getElementById("storeNote").textContent = persistent ? "" :
-    "Storage unavailable in this preview - fills will not persist here. They persist on the live site.";
+  document.getElementById("logBody").innerHTML =
+    DRAFTS.map((r, i) => rowHTML(r, false, i)).join("") +
+    COMMITTED.map(r => rowHTML(r, true, -1)).join("");
+  renderDrafts();
+  renderSummary(COMMITTED);
+  const note = document.getElementById("storeNote");
+  if (storeState === "ok") {
+    note.innerHTML = "Fills are saved to <code>data/paper_fills.json</code> in the repo (" +
+      COMMITTED.length + " on file). Adding one here writes a <b>draft</b> in this browser; " +
+      "commit it with the panel below.";
+  } else if (storeState === "file") {
+    note.innerHTML = "Local preview - the browser blocks reading " +
+      "<code>data/paper_fills.json</code> from a file:// page, so saved fills are not shown. " +
+      "They load normally on the site.";
+  } else {
+    note.innerHTML = '<span style="color:var(--serious)">Could not read ' +
+      "<code>data/paper_fills.json</code>.</span> Saved fills are not shown - this is a load " +
+      "failure, not an empty log. Drafts in this browser are unaffected.";
+  }
+}
+function draftPayload() {
+  return DRAFTS.map(r => ({
+    date: r.d, ticker: r.t, side: r.s === "E" ? "entry" : "exit",
+    contract: r.c, bid: r.b, ask: r.a, fill: r.f, qty: r.q,
+    gated: r.g, notes: r.n
+  }));
+}
+function renderDrafts() {
+  const box = document.getElementById("draftCard");
+  if (!DRAFTS.length) { box.style.display = "none"; return; }
+  box.style.display = "";
+  const json = JSON.stringify(draftPayload());
+  const E = DRAFTS.concat(COMMITTED).filter(r => r.s === "E").map(r => derive(r).slip);
+  const X = DRAFTS.concat(COMMITTED).filter(r => r.s === "X").map(r => derive(r).slip);
+  const mE = median(E), mX = median(X);
+  let bl = NaN;
+  if (!isNaN(mE) && !isNaN(mX)) bl = (Math.max(mE, 0) + Math.max(mX, 0)) / (MODEL.E + MODEL.X);
+  else if (!isNaN(mE)) bl = Math.max(mE, 0) / MODEL.E;
+  else if (!isNaN(mX)) bl = Math.max(mX, 0) / MODEL.X;
+  document.getElementById("draftHead").innerHTML =
+    DRAFTS.length + " fill" + (DRAFTS.length > 1 ? "s" : "") + " not saved yet";
+  document.getElementById("draftBody").innerHTML =
+    "<p>These exist only in this browser. They are <b>not</b> counted toward the 20-fill " +
+    "floor and they are gone if you clear site data. Two ways to commit them, both running " +
+    "the same validator:</p><ul>" +
+    '<li><b>From anywhere, including a phone:</b> copy the JSON below, open the ' +
+    '<a href="' + WF_URL + '" style="color:var(--series-1)">log-fill workflow</a>, ' +
+    "press Run workflow and paste it into the box.</li>" +
+    "<li><b>On the Mac:</b> copy the command below and run it in the repo.</li></ul>" +
+    '<textarea id="draftJson" readonly rows="3" style="width:100%;font:11px ui-monospace,' +
+    'Menlo,monospace;background:var(--surface-1);color:var(--text-primary);' +
+    'border:1px solid var(--border);border-radius:6px;padding:6px">' + esc(json) + "</textarea>" +
+    (isNaN(bl) ? "" : '<p class="small">Including these drafts, blended friction would read <b>' +
+      fmt(bl, 1) + "x</b> modeled against a ~4x breakeven. Indicative only until committed.</p>");
+}
+function copyDraftJson() {
+  navigator.clipboard.writeText(JSON.stringify(draftPayload())).then(
+    () => alert("JSON copied - paste it into the log-fill workflow's input box."),
+    () => alert("Copy failed - select the text in the box and copy it manually."));
+}
+function copyDraftCmd() {
+  const cmd = "python3 scripts/log_fill.py --json '" +
+    JSON.stringify(draftPayload()).replace(/'/g, "'\\''") + "'";
+  navigator.clipboard.writeText(cmd).then(
+    () => alert("Command copied - run it from the repo root, then commit and push."),
+    () => alert("Copy failed."));
 }
 function renderSummary(rows) {
   const E = rows.filter(r => r.s === "E").map(r => derive(r).slip);
@@ -251,8 +382,11 @@ function renderSummary(rows) {
   if (!isNaN(mE) && !isNaN(mX)) blended = (Math.max(mE, 0) + Math.max(mX, 0)) / (MODEL.E + MODEL.X);
   else if (!isNaN(mE)) blended = multE; else if (!isNaN(mX)) blended = multX;
   const n = rows.length, pct = Math.min(100, n / 20 * 100);
+  const draftNote = DRAFTS.length
+    ? " &middot; " + DRAFTS.length + " draft not counted" : "";
   document.getElementById("tiles").innerHTML =
-    tile("Fills logged", String(n), n + " of 20 gate &middot; " + E.length + " entry / " + X.length + " exit",
+    tile("Fills saved", String(n), n + " of 20 gate &middot; " + E.length + " entry / " +
+      X.length + " exit" + draftNote,
       '<div class="meter"><div style="width:' + pct + '%"></div></div>') +
     tile("Entry friction (median)", isNaN(mE) ? "-" : fmt(mE * 100, 2) + "%",
       "model 1.25% &middot; " + (isNaN(multE) ? "-" : fmt(multE, 1) + "x model")) +
@@ -307,36 +441,44 @@ function addFill() {
   if (!r.d || !r.t || isNaN(r.b) || isNaN(r.a) || isNaN(r.f)) {
     alert("Date, ticker, bid, ask, and fill are required."); return;
   }
-  const rows = load(); rows.unshift(r); save(rows);
+  if (r.b > r.a) { alert("Bid is above ask - check the quote."); return; }
+  const already = new Set(COMMITTED.concat(DRAFTS).map(fp));
+  if (already.has(fp(r))) { alert("That exact fill is already logged."); return; }
+  saveDrafts([r].concat(DRAFTS));
   ["fTicker", "fContract", "fBid", "fAsk", "fFill", "fNotes"].forEach(x => g(x).value = "");
   render();
 }
-function delFill(i) {
-  const rows = load(); rows.splice(i, 1); save(rows); render();
+function delDraft(i) {
+  const rows = DRAFTS.slice(); rows.splice(i, 1); saveDrafts(rows); render();
 }
 function clearAll() {
-  if (confirm("Delete all logged fills? Export first if you want to keep them.")) {
-    save([]); render();
+  if (!DRAFTS.length) { alert("No drafts to clear. Saved fills live in git - remove one with a commit."); return; }
+  if (confirm("Discard " + DRAFTS.length + " unsaved draft(s)? Saved fills are untouched.")) {
+    saveDrafts([]); render();
   }
 }
 function toCSV(rows) {
-  const head = "date,ticker,side,contract,bid,ask,fill,qty,gated,notes,mid,spread_pct,slip_pct,model_pct,multiple";
+  const head = "date,ticker,side,contract,bid,ask,fill,qty,gated,notes,mid,spread_pct,slip_pct,model_pct,multiple,state";
   const q = s => '"' + String(s == null ? "" : s).replace(/"/g, '""') + '"';
   return [head].concat(rows.map(r => {
     const d = derive(r);
     return [mdY(r.d), r.t, r.s === "E" ? "entry" : "exit", q(r.c), r.b, r.a, r.f, r.q,
       r.g, q(r.n), fmt(d.mid, 4), fmt(d.spread * 100, 3), fmt(d.slip * 100, 3),
-      fmt(d.model * 100, 3), fmt(d.mult, 2)].join(",");
+      fmt(d.model * 100, 3), fmt(d.mult, 2), r._state || "saved"].join(",");
   })).join("\n");
 }
+function allRows() {
+  return DRAFTS.map(r => Object.assign({}, r, { _state: "draft" }))
+    .concat(COMMITTED.map(r => Object.assign({}, r, { _state: "saved" })));
+}
 function exportCSV() {
-  const blob = new Blob([toCSV(load())], { type: "text/csv" });
+  const blob = new Blob([toCSV(allRows())], { type: "text/csv" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = "paper_fills.csv"; a.click(); URL.revokeObjectURL(a.href);
 }
 function copyCSV() {
-  navigator.clipboard.writeText(toCSV(load())).then(
+  navigator.clipboard.writeText(toCSV(allRows())).then(
     () => alert("CSV copied - paste it into the chat for analysis."),
     () => alert("Copy failed - use Export CSV instead."));
 }
@@ -348,13 +490,22 @@ function importCSV(ev) {
     const out = [];
     for (let i = 1; i < lines.length; i++) {
       const c = splitCSV(lines[i]); if (c.length < 9) continue;
-      const dp = c[0].split("/");           // MM/DD/YYYY -> ISO
+      const dp = c[0].split("/");
       const iso = dp.length === 3 ? dp[2] + "-" + dp[0] + "-" + dp[1] : c[0];
       out.push({ d: iso, t: c[1], s: c[2].toLowerCase().startsWith("e") ? "E" : "X",
         c: c[3], b: parseFloat(c[4]), a: parseFloat(c[5]), f: parseFloat(c[6]),
         q: parseInt(c[7] || "1", 10), g: c[8] === "Y" ? "Y" : "N", n: c[9] || "" });
     }
-    if (out.length) { save(out.concat(load())); render(); }
+    /* Imported rows arrive as drafts, and anything already in the store is
+       dropped - re-importing a CSV exported from this page must not duplicate
+       the fills it was exported from. */
+    const known = new Set(COMMITTED.concat(DRAFTS).map(fp));
+    const fresh = out.filter(r => !known.has(fp(r)));
+    if (fresh.length) saveDrafts(fresh.concat(DRAFTS));
+    if (fresh.length < out.length) {
+      alert((out.length - fresh.length) + " row(s) already logged - skipped.");
+    }
+    render();
     ev.target.value = "";
   };
   rd.readAsText(file);
@@ -372,8 +523,16 @@ function splitCSV(line) {
   }
   out.push(cur); return out;
 }
-document.getElementById("fDate").value = new Date().toISOString().slice(0, 10);
-render();
+/* LOCAL date, not UTC. toISOString() is UTC, so from 19:00 Central onward the
+   form defaulted to TOMORROW - and log_fill.py rejects a future-dated fill, so
+   an evening entry would be refused at commit time with a date the user never
+   typed. */
+(function () {
+  const d = new Date();
+  document.getElementById("fDate").value =
+    new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+})();
+boot();
 </script>
 </body>
 </html>
