@@ -225,6 +225,20 @@ details.gloss > p:last-child { margin-bottom: 2px; }
     <tr><td>Former - OI &ge; 250, spread &le; 5%</td><td>8</td><td>-</td><td>81</td></tr>
     <tr><td>Amended - OI &ge; 10, spread &le; 25%</td><td><b>69</b></td><td>8</td><td>12</td></tr>
   </table></div>
+  <p class="small"><b>The cull is suspended, 08/27/2026.</b> The chain-gate block above still says
+  a FAIL means "cull before first trade". There is no first trade - capital is deferred
+  indefinitely - and the OI floor's own stated purpose is size feasibility, scaled to about 10x the
+  intended contract count. With no intended contract count that purpose cannot bind, so culling ten
+  names on it now would discard forward evidence to satisfy a constraint that is not operating.
+  Note what is actually failing: all ten fail on <b>open interest alone</b>, at spreads of 6-19%
+  (EVR 6.3%, MOD 7.7%, BURL 8.7%) - not on the cost measure. They stay in the basket, keep
+  generating signals, and accumulate measured spreads like every other name. Whether they can be
+  filled is then answered per name by the friction band in the shadow book, which measures the
+  thing the OI floor was standing in for, rather than being settled in advance by a proxy. The
+  threshold itself is deliberately unchanged so the measurement stays comparable across the whole
+  history. Trimming a basket to its liquid names on a proxy is how a hand-picked universe gets
+  built by accident.</p>
+
   <p class="small">Twelve names fail under either gate: DD, EME, EVR, HUBB, IBKR, MKSI, MSCI, ROP, RRX, SGI, SPGI, TPR. <b>Counter-evidence kept in view:</b> the friction work measured 0.80-delta half-spreads running 13.0% down to 3.4% across liquidity quintiles, with only the most liquid tier breaking even - which points the other way from a loose gate. That tension is not resolved here. The 09/01 pilot is the first thing that pays real spreads, and it is what decides whether a loose gate survives contact with actual fills.</p>
 </div>
 

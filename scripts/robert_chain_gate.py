@@ -52,6 +52,15 @@ def get(path, **params):
 # The sibling robert_chain_check.py was defended against exactly this with a
 # `gate` field. This one was not. Now it is, and status is re-derivable from
 # the raw measurements at any time - see --rerender.
+# NOT changed on 08/27/2026, deliberately. With capital deferred indefinitely
+# the OI floor's stated purpose - size feasibility, scaled to ~10x the intended
+# contract count - cannot bind, and ten of the thirteen pending adds fail on OI
+# alone at spreads of 6-19%. The response is to suspend the CULL (see the note
+# on robert.html) rather than to move the threshold: the measurement stays
+# comparable across the whole history, and whether those names are actually
+# fillable is now answered by measured spreads in the shadow book's friction
+# band instead of by this proxy. Change the number only with a reason that
+# survives being written down here.
 OI_MIN = 10
 SPREAD_MAX_PCT = 25
 MARGINAL_SPREAD_MAX_PCT = 40

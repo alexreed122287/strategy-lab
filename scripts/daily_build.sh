@@ -55,9 +55,23 @@ fi
 BUILD_CMD="${SL_BLOB_BUILD_CMD:-}"
 [ -z "$BUILD_CMD" ] && [ -f "$HOME/.strategy_lab_build_cmd" ] && \
   BUILD_CMD="$(cat "$HOME/.strategy_lab_build_cmd")"
+#    NON-FATAL, since 08/27. This script runs under `set -e`, so a failing
+#    BUILD_CMD used to abort the entire build: no TRACK refresh, no publish, no
+#    mail - the whole site frozen because one upstream generator broke. That is
+#    the same silent-freeze the render gate caused between 08/19 and 08/26, and
+#    it is inconsistent on its own terms: an UNCONFIGURED build_cmd degrades
+#    gracefully to TRACK-only three lines below, so a BROKEN one should too.
+#    The page already discloses stale SCAN/SIGNALS from the HEALTH stamp, so
+#    falling back is visible rather than quiet.
 if [ -n "$BUILD_CMD" ]; then
   echo "blob rebuild: $BUILD_CMD"
-  bash -c "$BUILD_CMD"
+  if bash -c "$BUILD_CMD"; then
+    echo "blob rebuild OK"
+  else
+    echo "WARNING: blob rebuild FAILED (rc=$?) - continuing in TRACK-only mode."
+    echo "WARNING: SCAN and SIGNALS keep their previous values; the page's"
+    echo "WARNING: freshness stamps will show it. Fix the generator."
+  fi
 else
   echo "blob rebuild not configured - TRACK-only build (see comments above)"
 fi
@@ -189,7 +203,14 @@ fi
 # 6) Publish (GitHub Pages serves main, so push = deploy). The shadow ledger
 #    is committed too - the forward record must survive machines.
 cd "$REPO"
-git add index.html data/shadow_book.json robert.html data/robert_shadow.json
+# robert_chain_snaps.json joined this list on 08/27: the build CAPTURES exit
+# quotes now, and a snapshot written to a runner's disk and not committed
+# dies with the runner - leaving a closed row in robert_shadow.json tagged
+# CHAIN with no measurement behind it. Same defect the chain gate had when
+# it stored a verdict without its thresholds: a number you cannot re-derive
+# is a number you cannot defend.
+git add index.html data/shadow_book.json robert.html \
+  data/robert_shadow.json data/robert_chain_snaps.json
 if git diff --cached --quiet; then
   echo "no changes to publish"
 else

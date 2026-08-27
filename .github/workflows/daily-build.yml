@@ -314,7 +314,15 @@ jobs:
         run: |
           git config user.name "strategy-lab-bot"
           git config user.email "actions@github.com"
-          git add index.html data/shadow_book.json robert.html data/robert_shadow.json
+          # robert_chain_snaps.json joined this list on 08/27: the build
+          # CAPTURES exit quotes now, and a snapshot written to a runner's
+          # disk and not committed dies with the runner - leaving a closed row
+          # in robert_shadow.json tagged CHAIN with no measurement behind it.
+          # Same defect the chain gate had when it stored a verdict without
+          # its thresholds: a number you cannot re-derive is a number you
+          # cannot defend.
+          git add index.html data/shadow_book.json robert.html \
+            data/robert_shadow.json data/robert_chain_snaps.json
           if git diff --cached --quiet; then
             echo "no changes to publish"
             echo "published=false" >> "$GITHUB_OUTPUT"
