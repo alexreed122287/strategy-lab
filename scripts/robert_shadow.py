@@ -292,6 +292,51 @@ def book_stats(closed, open_marks, as_of):
                              "win": 100.0 * sum(1 for x in pn if x > 0) / len(pn)}
     st["chain_n"] = sum(1 for c in rows
                         if (c.get("opt") or {}).get("basis") == "CHAIN")
+    # ---- account view -------------------------------------------------
+    # The sleeve does NOT compound: every slot is sized off a fixed $100,000,
+    # so this balance is the sleeve plus cumulative P&L rather than an equity
+    # curve that feeds back into position size. Stated because "balance" invites
+    # the other reading.
+    st["sleeve"] = OL.SLEEVE
+    st["balance"] = OL.SLEEVE + st["realised"] + unreal
+    st["cash"] = st["balance"] - st["open_cost"]
+    year = as_of[:4]
+    st["year"] = year
+    st["ytd"] = sum(c["opt"]["pnl"] for c in rows
+                    if str(c.get("exit_date", ""))[:4] == year) + unreal
+    st["ytd_pct"] = 100.0 * st["ytd"] / OL.SLEEVE
+    # Does "year to date" actually mean a year here? Almost certainly not: the
+    # book opened 08/20/2026. Whenever inception falls inside the reported year
+    # the YTD figure IS the since-inception figure, and printing it under a
+    # label that implies twelve months of trading would be the single most
+    # misleading number on the page. The flag drives the disclosure below.
+    _first = min(c["entry_date"] for c in rows)
+    st["ytd_is_inception"] = _first[:4] == year
+    st["sessions"] = len({c["exit_date"] for c in rows}
+                         | {c["entry_date"] for c in rows}
+                         | {m["entry_date"] for m in open_marks})
+    # Month-by-month, the shape this grows into over an indefinite test. Closed
+    # trades land in the month they EXITED; open marks sit in the current month
+    # and move until they close.
+    mon = {}
+    for c in rows:
+        k = str(c.get("exit_date", ""))[:7]
+        m = mon.setdefault(k, {"n": 0, "realised": 0.0, "unrealised": 0.0})
+        m["n"] += 1
+        m["realised"] += c["opt"]["pnl"]
+    if open_marks:
+        mon.setdefault(as_of[:7], {"n": 0, "realised": 0.0, "unrealised": 0.0})
+        mon[as_of[:7]]["unrealised"] = unreal
+    run = OL.SLEEVE
+    st["months"] = []
+    for k in sorted(mon):
+        m = mon[k]
+        run += m["realised"] + m["unrealised"]
+        st["months"].append({"month": k, "n": m["n"],
+                             "realised": m["realised"],
+                             "unrealised": m["unrealised"],
+                             "balance": run,
+                             "pct": 100.0 * (m["realised"] + m["unrealised"]) / OL.SLEEVE})
     st["max_dd"] = 100.0 * mdd
     st["ret_sleeve"] = 100.0 * (eq_now / OL.SLEEVE - 1.0)
     first = min(c["entry_date"] for c in rows)
@@ -619,7 +664,49 @@ def main():
                       f'{ratio_note or "on the closed equity path"}', dim)
         tiles += tile("Max drawdown", pct(bk["max_dd"], 1, False),
                       "closed-trade equity, incl. open MTM", dim)
-    stats_html = f'<div class="tiles compact">{tiles}</div>'
+    # ---- the account line, above the statistics --------------------------
+    bal_html = ""
+    if bk["n"] or open_marks:
+        ytd = bk["ytd"]
+        same = bk["ytd_is_inception"]
+        ytd_lab = f'{bk["year"]} to date'
+        note = (f'the book opened {bk["since"]}, so this IS the whole record - '
+                f'{bk["days"]} days, not a year'
+                if same else f'since 01 Jan {bk["year"]}')
+        bal_html = (
+            '<div class="balance">'
+            '<div class="bal-main"><div class="k">Paper balance</div>'
+            f'<div class="v">${bk["balance"]:,.0f}</div>'
+            f'<div class="d">$100,000 sleeve, not compounded &middot; '
+            f'opened {bk["since"]}</div></div>'
+            f'<div class="bal-side"><div class="k">{ytd_lab}</div>'
+            f'<div class="v {sgn(ytd)}">{mny(ytd)}</div>'
+            f'<div class="d">{pct(bk["ytd_pct"])} &middot; {note}</div></div>'
+            '<div class="bal-side"><div class="k">Realised / open</div>'
+            f'<div class="v"><span class="{sgn(bk["realised"])}">'
+            f'{mny(bk["realised"])}</span> <span class="sep">/</span> '
+            f'<span class="{sgn(bk["unrealised"])}">{mny(bk["unrealised"])}'
+            '</span></div>'
+            f'<div class="d">{bk["n"]} closed &middot; {len(open_marks)} '
+            'marked to the last close</div></div>'
+            '<div class="bal-side"><div class="k">Deployed / cash</div>'
+            f'<div class="v">${bk["open_cost"]:,.0f} <span class="sep">/</span> '
+            f'${bk["cash"]:,.0f}</div>'
+            f'<div class="d">{100.0*bk["open_cost"]/OL.SLEEVE:.0f}% of the '
+            'sleeve at risk</div></div></div>')
+        if same:
+            bal_html += (
+                '<p class="small"><b>Read the year-to-date figure carefully.</b> '
+                f'This book opened on {bk["since"]}. There is no January-to-now '
+                'record to report, so the figure above is the same number as '
+                f'since-inception, covering {bk["days"]} days rather than eight '
+                'months - and it is paper, at modelled or quoted marks, with no '
+                'order ever having rested in a book. Nothing here was traded '
+                'earlier in the year under these rules; the backtest tables '
+                'further down are a different thing entirely and must not be '
+                'spliced onto this number to manufacture a fuller year.</p>')
+
+    stats_html = bal_html + f'<div class="tiles compact">{tiles}</div>'
 
     # The stock leg and the option leg do NOT agree on what a win is, and the
     # gap between them is the wrapper bar made visible: a stock move too small
@@ -715,6 +802,35 @@ def main():
                   f'</summary><p class="small">Queued for the next open: {q}.</p>'
                   f'<p class="small">Gap-recovered skips (open already above the '
                   f'prior SMA5, exactly as production would skip them): {sk}.</p>'
+                  '</details>')
+
+    # ---- month by month ----------------------------------------------------
+    if bk.get("months"):
+        mrows = ""
+        for m in bk["months"]:
+            y, mm = m["month"].split("-")
+            nm = ["Jan","Feb","Mar","Apr","May","Jun",
+                  "Jul","Aug","Sep","Oct","Nov","Dec"][int(mm)-1]
+            tot = m["realised"] + m["unrealised"]
+            mrows += (f'<tr><td>{nm} {y}</td><td>{m["n"]}</td>'
+                      f'<td class="{sgn(m["realised"])}">{mny(m["realised"])}</td>'
+                      f'<td class="{sgn(m["unrealised"])}">'
+                      + (mny(m["unrealised"]) if m["unrealised"] else "&mdash;")
+                      + f'</td><td class="{sgn(tot)}">{pct(m["pct"])}</td>'
+                      f'<td>${m["balance"]:,.0f}</td></tr>')
+        rowsh += ('<details class="gloss"><summary>Month by month &middot; '
+                  f'balance ${bk["balance"]:,.0f}</summary>'
+                  '<div class="tablewrap"><table>'
+                  '<tr><th>Month</th><th>Closed</th><th>Realised</th>'
+                  '<th>Open mark</th><th>Return</th><th>Balance</th></tr>'
+                  f'{mrows}</table></div>'
+                  '<p class="small">Closed trades land in the month they '
+                  'EXITED. The open-mark column is the current unrealised '
+                  'position on the newest bar and moves until those trades '
+                  'close - it is not banked. Balance is the $100,000 sleeve '
+                  'plus cumulative P&amp;L; slots are always sized off the '
+                  'fixed sleeve, so this is a record of what the strategy made, '
+                  'not an equity curve that fed back into position size.</p>'
                   '</details>')
 
     # ---- friction sensitivity ---------------------------------------------
