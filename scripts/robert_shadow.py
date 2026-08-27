@@ -16,9 +16,11 @@ is untouched: each nightly build this script
 This is the STOCK LEG, recorded at 0.02%/side (the vehicle-study assumption)
 and labeled as such. The option wrapper clears its own cost only when the
 stock leg averages >= +0.9%/trade - that bar is drawn on the ledger. The
-wrapper's realized friction is measured separately, by hand, in the
-Paper-Fill Log; this ledger is the skip-free signal-evidence machine, and 20
-closed trades here is one leg of the go-live gate.
+wrapper's realized friction is NOT measured here and cannot be: that needs
+orders resting in a book, and ROBERT is an indefinite paper test (posture set
+08/26/2026, capital deferred with no date). This ledger is the skip-free
+signal-evidence machine; 20 closed trades here is a sample milestone, not a
+gate to anything.
 
 State: data/robert_shadow.json (committed by the daily build).
 Output: static HTML spliced between ROBSHADOW markers in robert.html.
@@ -32,6 +34,7 @@ import datetime as dt
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import robert_option_leg as OL
+import robert_chain_snap as CS
 
 API = "https://api.tradier.com"
 SM, EM = "<!-- ROBSHADOW:START -->", "<!-- ROBSHADOW:END -->"
@@ -109,6 +112,17 @@ def sigma_at(seq, entry_date):
 
 
 _STRIKES = {}
+SNAPS = {"schema": 1, "snaps": {}}
+SNAPS_PATH = "data/robert_chain_snaps.json"
+_snaps_dirty = False
+
+
+def snap_for(t, day, side):
+    """A real captured quote for one leg, or None. Captured by
+    robert_chain_snap.py: entries on a 09:45 ET workflow, exits by this build."""
+    return SNAPS.get("snaps", {}).get(f"{t}|{day}|{side}")
+
+
 
 
 def real_strikes(t, expiry, tok):
@@ -143,6 +157,15 @@ def freeze_entry(row, bars, tok=None):
     """Attach the frozen entry leg to an open/closed row that lacks one."""
     if row.get("opt") or row["t"] not in bars:
         return
+    # A real quote captured AT the 09:45 entry beats a model reconstruction of
+    # it, every time. The model stays as the fallback for rows entered before
+    # the snapshot workflow existed, and for any morning the capture fails.
+    snap = snap_for(row["t"], row["entry_date"], "E")
+    if snap:
+        leg = OL.quote_leg(snap)
+        if leg:
+            row["opt"] = leg
+            return
     sig = sigma_at(bars[row["t"]], row["entry_date"])
     if not sig:
         return
@@ -151,6 +174,26 @@ def freeze_entry(row, bars, tok=None):
                        strikes=real_strikes(row["t"], exp, tok))
     if leg:
         row["opt"] = leg
+
+
+def freeze_exit_quoted(opt, t, exit_date, tok, as_of):
+    """Close a CHAIN leg against a real quote. Only snaps when the exit IS the
+    newest bar - this build runs after the close, which is the right moment for
+    an MOC print, but it is emphatically the wrong moment for an exit that
+    happened last week. Those keep the model."""
+    global _snaps_dirty
+    if opt.get("basis") != "CHAIN" or exit_date != as_of:
+        return False
+    snap = snap_for(t, exit_date, "X")
+    if not snap and tok:
+        if CS.snap_one(tok, SNAPS, t, "X", exit_date,
+                       opt["expiry"], opt["strike"]):
+            _snaps_dirty = True
+            snap = snap_for(t, exit_date, "X")
+    if not snap:
+        return False
+    OL.quote_exit(opt, snap)
+    return True
 
 
 def freeze_exit(opt, entry_px, entry_date, exit_px, exit_date):
@@ -236,6 +279,19 @@ def book_stats(closed, open_marks, as_of):
     eq_now = eq + unreal
     peak = max(peak, eq_now)
     mdd = min(mdd, eq_now / peak - 1.0)
+    # Friction sensitivity. Only rows measured at BOTH ends carry a band, so
+    # this deliberately covers fewer trades than the headline - and says so.
+    banded = [c for c in rows if (c.get("opt") or {}).get("band")]
+    if banded:
+        st["band_n"] = len(banded)
+        st["band"] = {}
+        for f in ("0.16", "0.50", "1.00"):
+            pn = [c["opt"]["band"][f]["pnl"] for c in banded]
+            rt = [c["opt"]["band"][f]["ret"] for c in banded]
+            st["band"][f] = {"pnl": sum(pn), "avg": 100.0 * sum(rt) / len(rt),
+                             "win": 100.0 * sum(1 for x in pn if x > 0) / len(pn)}
+    st["chain_n"] = sum(1 for c in rows
+                        if (c.get("opt") or {}).get("basis") == "CHAIN")
     st["max_dd"] = 100.0 * mdd
     st["ret_sleeve"] = 100.0 * (eq_now / OL.SLEEVE - 1.0)
     first = min(c["entry_date"] for c in rows)
@@ -307,6 +363,15 @@ def main():
                   file=sys.stderr)
         else:
             print(e_msg, file=sys.stderr)
+
+    global SNAPS, SNAPS_PATH
+    SNAPS_PATH = opt(a, "--snaps", SNAPS_PATH)
+    try:
+        SNAPS = CS.load(SNAPS_PATH)
+    except Exception as e:
+        print(f"WARNING: snapshot store unreadable ({e}) - option legs fall "
+              "back to model marks this run", file=sys.stderr)
+        SNAPS = {"schema": 1, "snaps": {}}
 
     st = {"open": [], "queued": [], "closed": [], "skipped": [], "closed_total": 0}
     if os.path.exists(led_p):
@@ -389,8 +454,9 @@ def main():
                     "net": round(net, 5)}
                 if p.get("opt"):
                     rec["opt"] = p["opt"]
-                    freeze_exit(rec["opt"], p["entry_px"], p["entry_date"],
-                                x, seq[j][0])
+                    if not freeze_exit_quoted(rec["opt"], t, seq[j][0], tok, as_of):
+                        freeze_exit(rec["opt"], p["entry_px"], p["entry_date"],
+                                    x, seq[j][0])
                 st["closed"].append(rec)
                 st["closed_total"] = len(st["closed"])
                 busy.discard(t); closed = True; break
@@ -462,6 +528,9 @@ def main():
         st["last_as_of"] = as_of
     os.makedirs(os.path.dirname(led_p) or ".", exist_ok=True)
     json.dump(st, open(led_p, "w"), indent=1)
+    if _snaps_dirty:
+        CS.save(SNAPS, SNAPS_PATH)
+        print(f"exit snapshots written to {SNAPS_PATH}", file=sys.stderr)
 
     # ---- mark the open book -------------------------------------------
     # Model marks drive every published statistic, so entry and exit sit on ONE
@@ -531,7 +600,7 @@ def main():
                       f'$100,000 sleeve &middot; since {bk["since"]} '
                       f'({bk["days"]}d)', sgn(bk["ret_sleeve"]))
         tiles += tile("Trades", f'{n} / {GATE_TARGET}',
-                      f'closed / go-live gate &middot; {len(open_marks)} open')
+                      f'closed / evidence milestone &middot; {len(open_marks)} open')
         tiles += tile("Win rate", pct(bk["win_pct"], 0, False),
                       f'{sum(1 for c in st["closed"] if c.get("opt",{}).get("pnl",0)>0)} of {n} closed')
         pf = ("no loss yet" if bk["pf"] is None else f'{bk["pf"]:.2f}')
@@ -648,6 +717,46 @@ def main():
                   f'prior SMA5, exactly as production would skip them): {sk}.</p>'
                   '</details>')
 
+    # ---- friction sensitivity ---------------------------------------------
+    # The point of the whole card under an indefinite-paper posture: f is the
+    # one thing this test cannot measure, so it is shown as a range rather than
+    # folded into a single number at the flattering end of it.
+    if bk.get("band"):
+        cells = ""
+        for f, lab in (("0.16", "0.16 &middot; published assumption"),
+                       ("0.50", "0.50 &middot; halfway"),
+                       ("1.00", "1.00 &middot; full quoted half-spread")):
+            b = bk["band"][f]
+            cells += (f'<tr><td>{lab}</td>'
+                      f'<td class="{sgn(b["pnl"])}">{mny(b["pnl"])}</td>'
+                      f'<td class="{sgn(b["avg"])}">{pct(b["avg"], 1)}</td>'
+                      f'<td>{pct(b["win"], 0, False)}</td></tr>')
+        rowsh += ('<details class="gloss" open><summary>Friction sensitivity - '
+                  'what the one unmeasurable variable is worth</summary>'
+                  '<div class="tablewrap"><table>'
+                  '<tr><th>f - share of the quoted half-spread paid</th>'
+                  '<th>Net P&amp;L</th><th>Avg / trade</th><th>Win rate</th></tr>'
+                  f'{cells}</table></div>'
+                  f'<p class="small">Covers the {bk["band_n"]} closed trade(s) '
+                  'whose spread was measured on a real chain at BOTH ends. '
+                  '<i>f</i> is the fraction of the quoted half-spread actually '
+                  'paid; it can only be measured by orders that rest in a book, '
+                  'so under an indefinite paper posture it stays unknown and the '
+                  'range above is the honest answer. The published spec assumes '
+                  '0.16 because that is where real prints typically land - but '
+                  'nothing on this page demonstrates that, and the 1.00 row is '
+                  'what the record looks like if it is wrong.</p></details>')
+    elif bk["n"]:
+        rowsh += ('<details class="gloss"><summary>Friction sensitivity - '
+                  'not available yet</summary><p class="small">No closed trade '
+                  'has a real quoted spread at both ends yet, so the f-band '
+                  'cannot be computed. Entries are captured at 09:45 ET by the '
+                  'robert-entry-snap workflow and exits by this build, both '
+                  'starting 08/26/2026; every trade opened from now on carries '
+                  'measured spreads and will appear here. The rows above are '
+                  'modelled marks at the locked 1.25%/2.5% assumption.</p>'
+                  '</details>')
+
     # ---- method ----------------------------------------------------------
     rowsh += (
         '<details class="gloss"><summary>How the option leg is priced - read '
@@ -661,8 +770,19 @@ def main():
         'days out; shallowest strike whose extrinsic is under 20% of premium. '
         'Delta lands 0.78-0.82 as an outcome of that rule. Frozen on the entry '
         'bar and never re-selected.</p>'
-        '<p class="small"><b>Price.</b> Black-Scholes at the underlying\'s '
-        'rv-blend IV proxy - the same number the scan card prints and gates at '
+        '<p class="small"><b>Price - measured first, modelled only as a '
+        'fallback.</b> From 08/26/2026 the quote is captured at the decision '
+        'moment: entries by the robert-entry-snap workflow at 09:45 ET, exits '
+        'by this build, which already runs after the close where the MOC print '
+        'is. A leg priced that way is tagged CHAIN, carries the real bid, ask, '
+        'spread, delta, IV and open interest, and pays f=0.16 of its own '
+        'MEASURED half-spread rather than a typical one. Rows entered before '
+        'that machinery existed are tagged MODEL and keep the description '
+        'below. Entry and exit are never mixed across bases within one '
+        'trade.</p>'
+        '<p class="small"><b>The model fallback.</b> Black-Scholes at the '
+        'underlying&rsquo;s rv-blend IV proxy - the same number the scan card '
+        'prints and gates at '
         '&le;60% - computed on closes strictly before the entry bar. Validated '
         'against live chains on 2026-08-26 for the six names then in the book: '
         'mean error &minus;1.4%, mean absolute error 4.5% versus the real mid, '
@@ -679,10 +799,12 @@ def main():
         'is conservative for this strategy, whose exits complete into strength '
         'where IV normally falls. The live-chain column is where that drift is '
         'reported rather than buried.</p>'
-        '<p class="small"><b>Friction.</b> 1.25% of premium in, 2.5% out - the '
-        'locked backtest\'s published assumption and the same pair the '
-        'Paper-Fill Log scores real fills against, derived from f=0.16 of the '
-        'quoted half-spread.</p>'
+        '<p class="small"><b>Friction.</b> MODEL rows use the locked '
+        "backtest's published 1.25% in / 2.5% out. CHAIN rows use f=0.16 of "
+        'the spread actually quoted on that contract at that moment, which is '
+        'the same assumption applied to a measured number instead of a typical '
+        'one. Either way <i>f</i> itself is assumed, never observed - see the '
+        'friction-sensitivity block above for what the assumption is worth.</p>'
         '<p class="small"><b>Sizing.</b> $100,000 sleeve, 6 slots &times; 15% = '
         '$15,000 a slot, floored at one contract so the most expensive - and '
         'most leveraged - names cannot quietly drop out of the record. Not '
@@ -706,9 +828,11 @@ def main():
             'the spec actually buys, on a $100,000 sleeve at 6 slots '
             '&times; 15%, at modelled marks after 1.25%/2.5% friction.</p>'
             f'{stats_html}'
-            f'<p class="small"><b>Stock-leg gate</b> (the go-live instrument, '
-            f'0.02%/side, unchanged): {stat}. The option wrapper clears its own '
-            'cost only when the stock leg averages &ge;+0.9%/trade.</p>'
+            f'<p class="small"><b>Stock leg</b> (the discretion-free evidence '
+            f'machine, 0.02%/side): {stat}. Twenty closed rows is a sample '
+            'milestone, not a go-live gate - capital is deferred indefinitely. '
+            'The option wrapper clears its own cost only when the stock leg '
+            'averages &ge;+0.9%/trade.</p>'
             f'{rowsh}')
     if not (st["open"] or st["queued"] or st["closed"]):
         html += '<p class="small">Ledger is armed and empty - it fills itself from the first qualifying signal.</p>'

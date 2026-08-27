@@ -213,6 +213,76 @@ def price_leg(spot: float, entry_date: str, sig: float,
     return out
 
 
+# --------------------------------------------------------------- real quotes
+#
+# Friction as a FRACTION OF THE MEASURED SPREAD rather than a flat percentage
+# of premium. The flat 1.25%/2.5% pair above is what the locked backtest
+# assumed, derived from f=0.16 of a typical quoted half-spread; once the spread
+# is actually measured at the moment of the decision there is no reason to keep
+# using a typical one. f itself stays unmeasured and unmeasurable while ROBERT
+# is paper - so it is reported as a BAND instead of a point, and the width of
+# that band is the honest size of what deferring capital leaves open.
+F_PUBLISHED = 0.16          # what the locked spec assumes real prints land at
+F_BAND = (0.16, 0.50, 1.00)  # published assumption, halfway, full quoted half-spread
+
+
+def side_cost(spread_pct, f):
+    """Fraction of premium given up on one side when you pay f of the quoted
+    half-spread. spread_pct is (ask-bid)/mid in percent."""
+    return f * (float(spread_pct) / 100.0) / 2.0
+
+
+def quote_leg(snap, f=F_PUBLISHED):
+    """Entry leg built from a REAL captured quote instead of Black-Scholes."""
+    mid = float(snap["mid"])
+    if mid <= 0:
+        return None
+    paid = mid * (1 + side_cost(snap["spread_pct"], f))
+    leg = {
+        "expiry": snap["expiry"], "strike": round(float(snap["strike"]), 2),
+        "dte": snap.get("dte"), "delta": snap.get("delta"),
+        "iv": snap.get("iv"), "sigma": snap.get("iv"),
+        "prem_mid": round(mid, 4), "prem_paid": round(paid, 4),
+        "spread_e": float(snap["spread_pct"]),
+        "bid_e": snap.get("bid"), "ask_e": snap.get("ask"),
+        "oi_e": snap.get("oi"), "vol_e": snap.get("volume"),
+        "extrinsic_pct": snap.get("extrinsic_pct"),
+        "captured_e": snap.get("captured"),
+        "basis": "CHAIN", "strike_src": "chain", "f": f,
+    }
+    leg["contracts"] = contracts_for(leg["prem_paid"])
+    leg["cost"] = round(leg["prem_paid"] * 100.0 * leg["contracts"], 2)
+    return leg
+
+
+def quote_exit(leg, snap, f=F_PUBLISHED):
+    """Close a CHAIN leg against a real captured exit quote, and record the
+    f-band alongside. The band is only defined when BOTH ends were measured -
+    a modelled entry has no spread to scale, and inventing one would be the
+    exact substitution this whole change exists to stop."""
+    mid = float(snap["mid"])
+    if mid <= 0 or not leg.get("prem_mid"):
+        return
+    leg["exit_mid"] = round(mid, 4)
+    leg["spread_x"] = float(snap["spread_pct"])
+    leg["bid_x"], leg["ask_x"] = snap.get("bid"), snap.get("ask")
+    leg["captured_x"] = snap.get("captured")
+    leg["exit_recv"] = round(mid * (1 - side_cost(snap["spread_pct"], f)), 4)
+    leg["ret"] = round(leg["exit_recv"] / leg["prem_paid"] - 1.0, 5)
+    leg["pnl"] = round((leg["exit_recv"] - leg["prem_paid"]) * 100.0
+                       * leg["contracts"], 2)
+    if leg.get("spread_e") is not None:
+        band = {}
+        for ff in F_BAND:
+            paid = leg["prem_mid"] * (1 + side_cost(leg["spread_e"], ff))
+            recv = mid * (1 - side_cost(leg["spread_x"], ff))
+            band["%.2f" % ff] = {
+                "ret": round(recv / paid - 1.0, 5),
+                "pnl": round((recv - paid) * 100.0 * leg["contracts"], 2),
+            }
+        leg["band"] = band
+
+
 def mark_leg(leg: dict, spot: float, as_of: str,
              chain_mid: float | None = None) -> dict:
     """Mark an OPEN leg to the newest bar. Uses a real chain mid when the build

@@ -1,0 +1,73 @@
+name: robert-entry-snap
+
+# Capture the REAL option quote at ROBERT's entry moment.
+#
+# The strategy enters at the next open, ~09:45 ET. The nightly build cannot see
+# that moment, so it has always reconstructed the entry premium with
+# Black-Scholes - a 4.5% mean absolute error against real chains, and no spread
+# at all. With capital deferred indefinitely (08/26/2026) the paper record IS
+# the deliverable, so the quote is measured rather than modelled.
+#
+# Snaps every name the previous night's build queued, whether or not it ends up
+# filling: deciding the gap-recovered skip here would be a second copy of a rule
+# that must not disagree with the ledger's. An unused snapshot costs one call.
+#
+# Read-only market data. Commits a JSON file. Places no orders - it cannot;
+# nothing in this repo holds a trading credential.
+
+on:
+  schedule:
+    # 13:45 UTC = 09:45 EDT, 14:45 UTC = 09:45 EST. The script keeps whichever
+    # lands inside its 09:30-11:30 ET window, and a frozen key kills the
+    # duplicate the other one would write.
+    - cron: "45 13 * * 1-5"
+    - cron: "45 14 * * 1-5"
+  workflow_dispatch:
+    inputs:
+      force:
+        description: bypass the market-hours window (off-hours test)
+        required: false
+        default: "false"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: robert-entry-snap
+  cancel-in-progress: false
+
+jobs:
+  snap:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Snapshot the queued entries
+        env:
+          TRADIER_TOKEN: ${{ secrets.TRADIER_TOKEN }}
+          FORCE: ${{ github.event.inputs.force }}
+        run: |
+          if [ -z "$TRADIER_TOKEN" ]; then
+            echo "::error::TRADIER_TOKEN secret is not set"; exit 1
+          fi
+          if [ "$FORCE" = "true" ]; then
+            python3 scripts/robert_chain_snap.py --force
+          else
+            python3 scripts/robert_chain_snap.py
+          fi
+
+      - name: Publish
+        run: |
+          git config user.name "robert-bot"
+          git config user.email "actions@users.noreply.github.com"
+          # The store is committed empty, so this always matches. Kept
+          # explicit rather than `git add -A`: this job holds
+          # contents:write and has no business committing anything else.
+          git add data/robert_chain_snaps.json
+          if git diff --cached --quiet; then
+            echo "no new snapshots"
+          else
+            git commit -m "ROBERT entry snapshots $(date -u +%F)"
+            git pull --rebase --autostash origin main
+            git push origin main
+          fi

@@ -1,0 +1,7 @@
+{
+ "schema": 1,
+ "note": "Real option quotes captured AT ROBERT decision moments. Keys are TICKER|DATE|E (entry, 09:45 ET workflow) or |X (exit, nightly build after the close). A key is frozen once written - robert_shadow.py prices off these in preference to its Black-Scholes fallback, so rewriting one would restate a closed trade.",
+ "snaps": {},
+ "updated": "2026-08-27 04:23 UTC",
+ "count": 0
+}
