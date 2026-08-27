@@ -30,6 +30,9 @@ Usage:
 import json, os, re, sys, time, urllib.parse, urllib.request
 import datetime as dt
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import robert_option_leg as OL
+
 API = "https://api.tradier.com"
 SM, EM = "<!-- ROBSHADOW:START -->", "<!-- ROBSHADOW:END -->"
 FR_SIDE = 0.0002
@@ -77,6 +80,171 @@ def rv_blend(cl):
         return (sum((y-m)**2 for y in x)/(len(x)-1))**0.5 if len(x) > 1 else 0.0
     r5, r20, r60 = (sd(lr[-n:])*(252**0.5) for n in (5, 20, 60))
     return max(0.25*r5 + 0.40*r20 + 0.35*r60, 0.05)
+
+
+# ---------------------------------------------------------------- option leg
+#
+# The ledger above is the STOCK leg and stays the ledger: it is what the 20-row
+# go-live gate counts and what the +0.9%/trade wrapper bar is drawn against.
+# What follows expresses the same rows in the vehicle the spec actually buys.
+#
+# FROZEN ON FIRST SIGHT. A row's contract, its entry premium and its sizing are
+# written once and never recomputed. The reason is the same one that put a
+# `gate` field in robert_chain_gate.py: a figure recomputed under later inputs
+# is a figure that silently restates history. rv_blend at the entry bar drifts
+# as bars accumulate, so a nightly recompute would quietly rewrite what an
+# already-closed trade "made". Instead the pricing inputs are stored beside the
+# output, and the output is re-derivable from them at any time.
+
+def sigma_at(seq, entry_date):
+    """rv-blend IV proxy from the closes STRICTLY BEFORE the entry bar - the
+    same number the scan card prints and gates at <=60%, computed on the
+    information a 09:45 entry could actually have had."""
+    cl = []
+    for r in seq:
+        if r[0] >= entry_date:
+            break
+        cl.append(r[4])
+    return rv_blend(cl) if len(cl) >= 61 else None
+
+
+_STRIKES = {}
+
+
+def real_strikes(t, expiry, tok):
+    """The listed strike set for one expiry, cached for the run. Fail-soft:
+    None hands select_strike back to its offline grid, which is wrong often
+    enough (PWR lists 10s, not 5s) that the frozen leg records which path it
+    took in `strike_src`."""
+    if not tok:
+        return None
+    key = (t, expiry)
+    if key in _STRIKES:
+        return _STRIKES[key]
+    out = None
+    try:
+        q = urllib.parse.urlencode({"symbol": t, "expiration": expiry})
+        req = urllib.request.Request(API + "/v1/markets/options/strikes?" + q,
+            headers={"Authorization": "Bearer " + tok, "Accept": "application/json"})
+        with urllib.request.urlopen(req, timeout=15) as r:
+            d = json.load(r)
+        ks = (d.get("strikes") or {}).get("strike") or []
+        if isinstance(ks, (int, float)):
+            ks = [ks]
+        ks = [float(k) for k in ks]
+        out = ks or None
+    except Exception:
+        out = None
+    _STRIKES[key] = out
+    return out
+
+
+def freeze_entry(row, bars, tok=None):
+    """Attach the frozen entry leg to an open/closed row that lacks one."""
+    if row.get("opt") or row["t"] not in bars:
+        return
+    sig = sigma_at(bars[row["t"]], row["entry_date"])
+    if not sig:
+        return
+    exp = OL.first_monthly(dt.date.fromisoformat(row["entry_date"])).isoformat()
+    leg = OL.price_leg(row["entry_px"], row["entry_date"], sig, expiry=exp,
+                       strikes=real_strikes(row["t"], exp, tok))
+    if leg:
+        row["opt"] = leg
+
+
+def freeze_exit(opt, entry_px, entry_date, exit_px, exit_date):
+    """Graft the exit onto an already-frozen contract. Reprices the SAME strike
+    and expiry at the frozen sigma, so prem_paid below is bit-identical to the
+    frozen one and the return is computed against what was actually recorded."""
+    leg = OL.price_leg(entry_px, entry_date, opt["sigma"], exit_px, exit_date,
+                       expiry=opt["expiry"], strike=opt["strike"])
+    if not leg:
+        return
+    for k in ("exit_mid", "exit_recv", "ret", "pnl"):
+        opt[k] = leg[k]
+
+
+def occ(t, expiry, strike):
+    y, m, d = expiry.split("-")
+    return "%s%s%s%sC%08d" % (t, y[2:], m, d, round(strike * 1000))
+
+
+def chain_mid(t, expiry, strike, tok):
+    """Live quoted mid for one contract. Fail-soft by design: a mark that
+    cannot be fetched falls back to the model rather than blanking the row or
+    killing the build. Returns None on anything unexpected."""
+    if not tok:
+        return None
+    try:
+        q = urllib.parse.urlencode({"symbols": occ(t, expiry, strike), "greeks": "false"})
+        req = urllib.request.Request(API + "/v1/markets/quotes?" + q,
+            headers={"Authorization": "Bearer " + tok, "Accept": "application/json"})
+        with urllib.request.urlopen(req, timeout=15) as r:
+            d = json.load(r)
+        qt = (d.get("quotes") or {}).get("quote")
+        if isinstance(qt, list):
+            qt = qt[0] if qt else None
+        if not qt:
+            return None
+        b, a = qt.get("bid"), qt.get("ask")
+        if not b or not a or float(b) <= 0 or float(a) <= 0:
+            return None
+        return (float(b) + float(a)) / 2.0
+    except Exception:
+        return None
+
+
+def book_stats(closed, open_marks, as_of):
+    """Forward-record statistics on the option leg, model-mark basis.
+
+    Every ratio here needs a sample the book does not have yet. They are
+    computed anyway and reported with their n, because the alternative -
+    showing nothing until row 20 - hides the shape of what is accumulating.
+    What is NOT done is dressing three trades as an annual rate: `meaningful`
+    is False below the gate target and the page greys the ratios accordingly.
+    """
+    rows = [c for c in closed if c.get("opt", {}).get("pnl") is not None]
+    pnl = [c["opt"]["pnl"] for c in rows]
+    ret = [c["opt"]["ret"] for c in rows]
+    n = len(rows)
+    unreal = sum(m["pnl"] for m in open_marks)
+    st = {"n": n, "realised": sum(pnl), "unrealised": unreal,
+          "net": sum(pnl) + unreal, "meaningful": n >= GATE_TARGET,
+          "open_cost": sum(m["cost"] for m in open_marks)}
+    if not n:
+        return st
+    wins = [x for x in pnl if x > 0]
+    loss = [x for x in pnl if x <= 0]
+    st["win_pct"] = 100.0 * len(wins) / n
+    st["pf"] = (sum(wins) / abs(sum(loss))) if loss and sum(loss) else None
+    st["avg_ret"] = 100.0 * sum(ret) / n
+    st["avg_pnl"] = sum(pnl) / n
+    st["best"] = max(ret) * 100.0
+    st["worst"] = min(ret) * 100.0
+    # Downside deviation about a zero target, per trade, annualised at the
+    # spec's stated 65-trade-a-year cadence. Undefined while no trade has lost.
+    dd = (sum(min(r, 0.0) ** 2 for r in ret) / n) ** 0.5
+    st["sortino"] = ((sum(ret) / n) * 65.0) / (dd * (65.0 ** 0.5)) if dd > 0 else None
+    # Equity path over the sleeve, closed trades in exit order, open MTM last.
+    eq = OL.SLEEVE
+    peak, mdd = eq, 0.0
+    for c in sorted(rows, key=lambda x: x["exit_date"]):
+        eq += c["opt"]["pnl"]
+        peak = max(peak, eq)
+        mdd = min(mdd, eq / peak - 1.0)
+    eq_now = eq + unreal
+    peak = max(peak, eq_now)
+    mdd = min(mdd, eq_now / peak - 1.0)
+    st["max_dd"] = 100.0 * mdd
+    st["ret_sleeve"] = 100.0 * (eq_now / OL.SLEEVE - 1.0)
+    first = min(c["entry_date"] for c in rows)
+    days = (dt.date.fromisoformat(as_of) - dt.date.fromisoformat(first)).days
+    st["days"] = days
+    st["since"] = first
+    if days >= 1 and eq_now > 0:
+        st["cagr"] = 100.0 * ((eq_now / OL.SLEEVE) ** (365.0 / days) - 1.0)
+    return st
 
 def main():
     a = sys.argv[1:]
@@ -180,6 +348,13 @@ def main():
                            "entry_date": seq[idx][0], "entry_px": o})
     st["queued"] = still_q
 
+    # Freeze the option leg on anything now open - newly filled rows and any
+    # row that predates this overlay (the backfill). Runs BEFORE the exit loop
+    # so a position that opens and closes across the same pass still carries a
+    # contract into its closed record.
+    for p in st["open"]:
+        freeze_entry(p, bars, tok)
+
     still_o = []
     for p in st["open"]:
         t = p["t"]
@@ -207,15 +382,30 @@ def main():
             if (s5 is not None and cl[-1] > s5) or bars_held >= 10:
                 x = seq[j][4]
                 net = (x*(1-FR_SIDE))/(p["entry_px"]*(1+FR_SIDE)) - 1.0
-                st["closed"].append({"t": t, "entry_date": p["entry_date"],
+                rec = {"t": t, "entry_date": p["entry_date"],
                     "exit_date": seq[j][0], "entry_px": round(p["entry_px"],4),
                     "exit_px": round(x,4), "bars": bars_held,
                     "reason": "SMA5" if (s5 is not None and cl[-1] > s5) else "TIME",
-                    "net": round(net, 5)})
+                    "net": round(net, 5)}
+                if p.get("opt"):
+                    rec["opt"] = p["opt"]
+                    freeze_exit(rec["opt"], p["entry_px"], p["entry_date"],
+                                x, seq[j][0])
+                st["closed"].append(rec)
                 st["closed_total"] = len(st["closed"])
                 busy.discard(t); closed = True; break
         if not closed: still_o.append(p)
     st["open"] = still_o
+
+    # Closed rows written before this overlay existed carry no contract. Price
+    # them once, from the entry-bar information they were taken on, and freeze.
+    for c in st["closed"]:
+        if c.get("opt"):
+            continue
+        freeze_entry(c, bars, tok)
+        if c.get("opt"):
+            freeze_exit(c["opt"], c["entry_px"], c["entry_date"],
+                        c["exit_px"], c["exit_date"])
 
     new_q = []
     for t in uni:
@@ -273,32 +463,253 @@ def main():
     os.makedirs(os.path.dirname(led_p) or ".", exist_ok=True)
     json.dump(st, open(led_p, "w"), indent=1)
 
+    # ---- mark the open book -------------------------------------------
+    # Model marks drive every published statistic, so entry and exit sit on ONE
+    # basis and a 4.5% pricing error cannot leak into a 7% return. The live
+    # chain mid is fetched alongside and shown next to the model mark as a
+    # running check on the model - never mixed into the arithmetic.
+    open_marks = []
+    for p in st["open"]:
+        o = p.get("opt")
+        if not o or p["t"] not in bars:
+            continue
+        spot = bars[p["t"]][-1][4]
+        cm = chain_mid(p["t"], o["expiry"], o["strike"], tok)
+        m = OL.mark_leg(o, spot, as_of)
+        held = (dt.date.fromisoformat(as_of)
+                - dt.date.fromisoformat(p["entry_date"])).days
+        m.update({"t": p["t"], "opt": o, "spot": spot, "held": held,
+                  "entry_date": p["entry_date"], "entry_px": p["entry_px"],
+                  "contracts": o["contracts"], "cost": o["cost"],
+                  "stock_ret": spot / p["entry_px"] - 1.0,
+                  "chain_mid": cm,
+                  "chain_gap": (cm / m["mark_mid"] - 1.0) if cm else None})
+        open_marks.append(m)
+
+    bk = book_stats(st["closed"], open_marks, as_of)
+
+    # ---- stock-leg gate line (unchanged instrument) --------------------
     nets = [c["net"] for c in st["closed"]]
     wr = 100.0*sum(1 for n in nets if n > 0)/len(nets) if nets else None
     avg = 100.0*sum(nets)/len(nets) if nets else None
     gate_left = max(GATE_TARGET - len(nets), 0)
+
+    def mny(v, dp=0):
+        return ("+$" if v >= 0 else "&minus;$") + ("{:,.%df}" % dp).format(abs(v))
+
+    def sgn(v):
+        return "pos" if v > 0 else ("neg" if v < 0 else "")
+
+    def pct(v, dp=2, sign=True):
+        """The page renders negatives with a real minus sign, not a hyphen -
+        the tiles at the top of it already do. Percentages went out as hyphens
+        in the first cut and sat next to &minus;-formatted dollars."""
+        f = ("{:+.%df}" % dp) if sign else ("{:.%df}" % dp)
+        return f.format(v).replace("-", "&minus;") + "%"
+
+    def contract(o):
+        y, m, d = o["expiry"].split("-")
+        mon = ["Jan","Feb","Mar","Apr","May","Jun",
+               "Jul","Aug","Sep","Oct","Nov","Dec"][int(m)-1]
+        k = ("%g" % o["strike"])
+        return f'{mon}{int(d)} {k}C'
+
+    def tile(k, v, d, cls=""):
+        return (f'<div class="tile"><div class="k">{k}</div>'
+                f'<div class="v {cls}">{v}</div><div class="d">{d}</div></div>')
+
+    # ---- headline tiles ------------------------------------------------
+    n = bk["n"]
+    dim = "" if bk["meaningful"] else "dim"
+    ratio_note = ("" if bk["meaningful"]
+                  else f'n={n} - not meaningful until {GATE_TARGET}')
+    tiles = tile("Net P&amp;L", mny(bk["net"]),
+                 f'{n} closed + {len(open_marks)} open, model marks',
+                 sgn(bk["net"]))
+    if n:
+        tiles += tile("Return on sleeve", pct(bk["ret_sleeve"]),
+                      f'$100,000 sleeve &middot; since {bk["since"]} '
+                      f'({bk["days"]}d)', sgn(bk["ret_sleeve"]))
+        tiles += tile("Trades", f'{n} / {GATE_TARGET}',
+                      f'closed / go-live gate &middot; {len(open_marks)} open')
+        tiles += tile("Win rate", pct(bk["win_pct"], 0, False),
+                      f'{sum(1 for c in st["closed"] if c.get("opt",{}).get("pnl",0)>0)} of {n} closed')
+        pf = ("no loss yet" if bk["pf"] is None else f'{bk["pf"]:.2f}')
+        tiles += tile("Profit factor", pf,
+                      ratio_note or "gross win / gross loss, $", dim)
+        tiles += tile("Avg / trade", pct(bk["avg_ret"], 1),
+                      f'{mny(bk["avg_pnl"])} per closed contract set',
+                      sgn(bk["avg_ret"]))
+        srt = ("&mdash;" if bk["sortino"] is None else f'{bk["sortino"]:.2f}')
+        tiles += tile("Sortino", srt,
+                      "needs a losing trade" if bk["sortino"] is None
+                      else (ratio_note or "annualised at 65 trades/yr"), dim)
+        cg = bk.get("cagr")
+        tiles += tile("CAGR", "&mdash;" if cg is None else pct(cg, 0),
+                      f'annualised from {bk["days"]} days - '
+                      f'{ratio_note or "on the closed equity path"}', dim)
+        tiles += tile("Max drawdown", pct(bk["max_dd"], 1, False),
+                      "closed-trade equity, incl. open MTM", dim)
+    stats_html = f'<div class="tiles compact">{tiles}</div>'
+
+    # The stock leg and the option leg do NOT agree on what a win is, and the
+    # gap between them is the wrapper bar made visible: a stock move too small
+    # to clear 1.25% in and 2.5% out is a losing call on a winning trade. Two
+    # win rates side by side with no explanation reads as a bug, so name the
+    # rows that diverge rather than leaving the reader to find them.
+    split = [c for c in st["closed"]
+             if c.get("opt", {}).get("ret") is not None
+             and (c["net"] > 0) != (c["opt"]["ret"] > 0)]
+    if split:
+        who = ", ".join(f'{c["t"]} ({pct(100*c["net"])} stock &rarr; '
+                        f'{pct(100*c["opt"]["ret"],1)} call)' for c in split[:6])
+        stats_html += (
+            '<p class="small"><b>The two win rates differ on purpose.</b> The '
+            f'stock leg calls {len(nets)-len([c for c in st["closed"] if c["net"]<=0])} '
+            f'of {len(nets)} a win; the option leg calls '
+            f'{sum(1 for c in st["closed"] if c.get("opt",{}).get("ret",0)>0)} of '
+            f'{bk["n"]}. The rows that split: {who}. That is the +0.9%/trade '
+            'wrapper bar doing its job - a move too small to cover 1.25% in and '
+            '2.5% out is a losing call on a winning trade, and it is the single '
+            'reason the stock ledger alone cannot tell you whether ROBERT '
+            'makes money.</p>')
+
+    # ---- open book -----------------------------------------------------
     rowsh = ""
-    if st["open"]:
-        rowsh += '<div class="tablewrap"><table><tr><th>Open</th><th>Entered</th><th>Entry</th></tr>'
-        for p in st["open"]:
-            rowsh += f'<tr><td><b>{p["t"]}</b></td><td>{p["entry_date"]}</td><td>{p["entry_px"]:.2f}</td></tr>'
-        rowsh += "</table></div>"
-    if st["queued"]:
-        rowsh += '<p class="small">Queued for the next open: ' + ", ".join(
-            f'{q["t"]} (RSI2 {q.get("rsi2","?")})' for q in st["queued"]) + "</p>"
+    if open_marks:
+        body = ""
+        for m in open_marks:
+            o = m["opt"]
+            ch = ("&mdash;" if m["chain_mid"] is None else
+                  f'{m["chain_mid"]:.2f} <span class="tag">'
+                  + pct(100*m["chain_gap"], 1) + " vs model</span>")
+            body += (f'<tr><td><b>{m["t"]}</b></td><td>{contract(o)}</td>'
+                     f'<td>{m["entry_date"]}</td><td>{m["held"]}</td>'
+                     f'<td class="{sgn(m["stock_ret"])}">{pct(100*m["stock_ret"])}</td>'
+                     f'<td>{o["prem_paid"]:.2f}</td><td>{m["mark_mid"]:.2f}</td>'
+                     f'<td>{ch}</td><td>{o["contracts"]}</td>'
+                     f'<td class="{sgn(m["ret"])}">{pct(100*m["ret"],1)}</td>'
+                     f'<td class="{sgn(m["pnl"])}">{mny(m["pnl"])}</td></tr>')
+        rowsh += (f'<details class="gloss" open><summary>Open positions '
+                  f'({len(open_marks)}) &middot; {mny(bk["unrealised"])} '
+                  f'unrealised &middot; {mny(bk["open_cost"])[1:]} at risk'
+                  f'</summary><div class="tablewrap"><table>'
+                  '<tr><th>Ticker</th><th>Contract</th><th>Entered</th><th>Days</th>'
+                  '<th>Stock</th><th>Prem paid</th><th>Model mark</th>'
+                  '<th>Live chain</th><th>Ctr</th><th>Option</th>'
+                  f'<th>P&amp;L</th></tr>{body}</table></div>'
+                  '<p class="small">Model mark reprices the frozen contract at '
+                  f'the {as_of} close and is what the tiles above count. Live '
+                  'chain is the current quoted mid for the same contract, shown '
+                  'with its gap to the model - a running check on the pricing, '
+                  'kept out of the arithmetic so entry and exit stay on one '
+                  'basis.</p></details>')
+
+    # ---- closed book ---------------------------------------------------
     if st["closed"]:
-        rowsh += '<div class="tablewrap"><table><tr><th>Closed</th><th>Entry</th><th>Exit</th><th>Bars</th><th>Why</th><th>Net</th></tr>'
-        for c in st["closed"][-10:]:
-            rowsh += (f'<tr><td><b>{c["t"]}</b></td><td>{c["entry_date"]}</td><td>{c["exit_date"]}</td>'
-                      f'<td>{c["bars"]}</td><td>{c["reason"]}</td><td>{100*c["net"]:+.2f}%</td></tr>')
-        rowsh += "</table></div>"
+        body = ""
+        for c in sorted(st["closed"], key=lambda x: x["exit_date"],
+                        reverse=True)[:25]:
+            o = c.get("opt") or {}
+            if o.get("pnl") is None:
+                body += (f'<tr><td><b>{c["t"]}</b></td><td colspan="5" '
+                         'class="small">no contract priced - entry bar history '
+                         'unavailable</td>'
+                         f'<td class="{sgn(c["net"])}">{pct(100*c["net"])}</td>'
+                         '<td colspan="4">&mdash;</td></tr>')
+                continue
+            body += (f'<tr><td><b>{c["t"]}</b></td><td>{contract(o)}</td>'
+                     f'<td>{c["entry_date"]}</td><td>{c["exit_date"]}</td>'
+                     f'<td>{c["bars"]}</td><td>{c["reason"]}</td>'
+                     f'<td class="{sgn(c["net"])}">{pct(100*c["net"])}</td>'
+                     f'<td>{o["prem_paid"]:.2f}</td><td>{o["exit_recv"]:.2f}</td>'
+                     f'<td>{o["contracts"]}</td>'
+                     f'<td class="{sgn(o["ret"])}">{pct(100*o["ret"],1)}</td>'
+                     f'<td class="{sgn(o["pnl"])}">{mny(o["pnl"])}</td></tr>')
+        rowsh += (f'<details class="gloss"><summary>Closed trades ({len(nets)})'
+                  f' &middot; {mny(bk["realised"])} realised'
+                  + (f' &middot; {wr:.0f}% win' if nets else "") +
+                  '</summary><div class="tablewrap"><table>'
+                  '<tr><th>Ticker</th><th>Contract</th><th>In</th><th>Out</th>'
+                  '<th>Bars</th><th>Why</th><th>Stock</th><th>Prem in</th>'
+                  '<th>Prem out</th><th>Ctr</th><th>Option</th>'
+                  f'<th>P&amp;L</th></tr>{body}</table></div></details>')
+
+    # ---- queue and skips ------------------------------------------------
+    if st["queued"] or st["skipped"]:
+        q = (", ".join(f'{x["t"]} (RSI2 {x.get("rsi2","?")})'
+                       for x in st["queued"]) or "nothing queued")
+        sk = ", ".join(f'{x["t"]} {x["signal_date"]}'
+                       for x in st["skipped"][-12:]) or "none"
+        rowsh += ('<details class="gloss"><summary>Queue and gap-skips '
+                  f'({len(st["queued"])} queued, {len(st["skipped"])} skipped)'
+                  f'</summary><p class="small">Queued for the next open: {q}.</p>'
+                  f'<p class="small">Gap-recovered skips (open already above the '
+                  f'prior SMA5, exactly as production would skip them): {sk}.</p>'
+                  '</details>')
+
+    # ---- method ----------------------------------------------------------
+    rowsh += (
+        '<details class="gloss"><summary>How the option leg is priced - read '
+        'this before quoting a dollar figure</summary>'
+        '<p class="small"><b>These are not fills.</b> No order has ever rested '
+        'in a book for any row on this page. The dollar column is what the '
+        'specced contract would have returned at modelled marks, and the one '
+        'variable it cannot contain is realised friction - which is the whole '
+        'of D11 and the reason the Paper-Fill Log exists.</p>'
+        '<p class="small"><b>Contract.</b> First standard monthly at least 30 '
+        'days out; shallowest strike whose extrinsic is under 20% of premium. '
+        'Delta lands 0.78-0.82 as an outcome of that rule. Frozen on the entry '
+        'bar and never re-selected.</p>'
+        '<p class="small"><b>Price.</b> Black-Scholes at the underlying\'s '
+        'rv-blend IV proxy - the same number the scan card prints and gates at '
+        '&le;60% - computed on closes strictly before the entry bar. Validated '
+        'against live chains on 2026-08-26 for the six names then in the book: '
+        'mean error &minus;1.4%, mean absolute error 4.5% versus the real mid, '
+        'no systematic bias. The 1.25 RV&rarr;IV multiplier carried by '
+        'rsi2_call_model is deliberately not applied - it over-prices this '
+        'basket by 6-12%.</p>'
+        '<p class="small"><b>What that validation does not cover.</b> It is a '
+        'point-in-time check on pricing a fresh contract. Vol is then held FLAT '
+        'at the entry reading for the life of the trade, so an open position '
+        'whose IV has moved will drift from its live quote by more than 4.5% - '
+        'PANW sat 13% under its chain mid on 2026-08-26 after selling off into '
+        'a vol bid. Flat vol is the deliberate choice: it keeps entry and exit '
+        'on one basis so a pricing error cannot masquerade as a return, and it '
+        'is conservative for this strategy, whose exits complete into strength '
+        'where IV normally falls. The live-chain column is where that drift is '
+        'reported rather than buried.</p>'
+        '<p class="small"><b>Friction.</b> 1.25% of premium in, 2.5% out - the '
+        'locked backtest\'s published assumption and the same pair the '
+        'Paper-Fill Log scores real fills against, derived from f=0.16 of the '
+        'quoted half-spread.</p>'
+        '<p class="small"><b>Sizing.</b> $100,000 sleeve, 6 slots &times; 15% = '
+        '$15,000 a slot, floored at one contract so the most expensive - and '
+        'most leveraged - names cannot quietly drop out of the record. Not '
+        'compounded: each slot is sized off the fixed sleeve, so the dollar '
+        'column reads as a per-trade impact rather than a growth curve.</p>'
+        '<p class="small"><b>What the ratios need.</b> Profit factor, Sortino, '
+        'CAGR and max drawdown are all shown greyed until the book reaches '
+        f'{GATE_TARGET} closed trades. At n={n} they describe this sample, not '
+        'the strategy; the CAGR tile in particular annualises '
+        f'{bk.get("days", 0)} days and should be read as arithmetic, not as a '
+        'forecast.</p></details>')
+
     stat = (f'{len(nets)} closed / {GATE_TARGET} gate ({gate_left} to go) &middot; '
             + (f'{wr:.0f}% win &middot; {avg:+.2f}%/trade vs the +0.9% wrapper bar &middot; '
                if nets else "") +
             f'{len(st["open"])} open &middot; {len(st["queued"])} queued &middot; '
             f'{len(st["skipped"])} gap-skipped')
-    html = (f'<p class="small">Stock-leg ledger as of the {as_of} bar - auto-entered at the next open, '
-            f'auto-exited at the close over the SMA5 or 10 bars, 0.02%/side. {stat}.</p>{rowsh}')
+    html = (f'<p class="small">Automatic paper ledger as of the {as_of} bar - '
+            'entered at the next open, exited at the close over the SMA5 or at '
+            '10 bars. Headline figures are the <b>option leg</b>: the DITM call '
+            'the spec actually buys, on a $100,000 sleeve at 6 slots '
+            '&times; 15%, at modelled marks after 1.25%/2.5% friction.</p>'
+            f'{stats_html}'
+            f'<p class="small"><b>Stock-leg gate</b> (the go-live instrument, '
+            f'0.02%/side, unchanged): {stat}. The option wrapper clears its own '
+            'cost only when the stock leg averages &ge;+0.9%/trade.</p>'
+            f'{rowsh}')
     if not (st["open"] or st["queued"] or st["closed"]):
         html += '<p class="small">Ledger is armed and empty - it fills itself from the first qualifying signal.</p>'
 

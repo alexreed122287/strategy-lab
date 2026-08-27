@@ -4,6 +4,7 @@
    delete one to make a run green - either the page is wrong, or the assertion
    is stale and needs replacing with what is now true. */
 const path = require('path');
+const fs = require('fs');
 /* playwright-core is not vendored here - the repo stays dependency-free. Resolve
    it from wherever it is installed (local, global, or NODE_PATH) and say how to
    get it rather than dying on a bare MODULE_NOT_FOUND. */
@@ -23,7 +24,27 @@ const { chromium } = (() => {
 })();
 const PAGE = 'file://' + path.resolve(__dirname, '..', 'index.html');
 (async () => {
-  const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || '/opt/pw-browsers/chromium' });
+  /* Resolve a browser instead of hardcoding one path. '/opt/pw-browsers/chromium'
+     does not exist on this Mac, so from 2026-08-19 every local build died here
+     with "executable doesn't exist" - the render gate refuses to publish
+     unverified, so the Mac stopped publishing entirely and index.html's
+     SCAN/SIGNALS blobs (which only the Mac can generate) froze for a week
+     while the cloud backstop kept refreshing everything else. Probe, and say
+     what was tried when nothing is found. */
+  const CANDIDATES = [
+    process.env.CHROMIUM_PATH,
+    '/opt/pw-browsers/chromium',
+    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+    '/Applications/Chromium.app/Contents/MacOS/Chromium',
+    '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
+  ].filter(Boolean);
+  const exe = CANDIDATES.find(c => { try { return fs.existsSync(c); } catch (e) { return false; } });
+  if (!exe) {
+    console.error('smoke: no chromium binary found. Tried:\n  ' + CANDIDATES.join('\n  ') +
+                  '\nSet CHROMIUM_PATH, or install Chrome.');
+    process.exit(2);
+  }
+  const browser = await chromium.launch({ executablePath: exe });
   const page = await browser.newPage();
   const errors = [];
   page.on('pageerror', e => errors.push('PAGEERROR: ' + e.message));

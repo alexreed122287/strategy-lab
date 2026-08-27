@@ -12,8 +12,10 @@
   "SGI",
   "AMKR",
   "ATI",
-  "FORM"
+  "FORM",
+  "SOXX"
  ],
  "queued": "2026-08-15",
- "purpose": "first-trade chain gate for the 13 full-market adds - OI>=250, spread<=5% at the ~0.80-delta first monthly"
+ "purpose": "first-trade chain gate at the ~0.80-delta first monthly >=30 DTE. PASS = OI >= 10 and quoted spread <= 25% of mid (gate amended 2026-08-17; this field previously still described the retired OI>=250 / spread<=5% rule). Covers the 13 full-market adds of 08/07/2026 plus SOXX, added 2026-08-26: SOXX was taken off the structurally-silent list on 08/19 once its RS252 was measured at +79.4%, so it can fire as a live entry and needs the same mandatory pre-trade check as any other name.",
+ "amended": "2026-08-26"
 }

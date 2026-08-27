@@ -219,8 +219,13 @@ def render_and_splice(doc):
               (" (" + str(stored_gate.get("oi_min")) + "/" + str(stored_gate.get("spread_max_pct")) + "%)" if stored_gate else "") +
               " and are restated above under the current one - the measurements are unchanged."
               if restated else "") + "</p>\n" +
-             "<table class=\"small\"><tr><th>Ticker</th><th>Expiry</th><th>Strike</th><th>Delta</th><th>OI</th><th>Bid / Ask</th><th>Spread</th><th>Verdict</th></tr>\n" +
-             "\n".join(rows) + "\n</table>\n<!-- ROBGATE:END -->")
+             # Wrapped: an eight-column table was the one element on
+             # robert.html that pushed the BODY wider than the viewport on a
+             # phone (453px against a 390px screen), so the whole page scrolled
+             # sideways instead of just this table. Every other table on the
+             # page already sits in a .tablewrap.
+             "<div class=\"tablewrap\"><table class=\"small\"><tr><th>Ticker</th><th>Expiry</th><th>Strike</th><th>Delta</th><th>OI</th><th>Bid / Ask</th><th>Spread</th><th>Verdict</th></tr>\n" +
+             "\n".join(rows) + "\n</table></div>\n<!-- ROBGATE:END -->")
     try:
         html = open("robert.html").read()
         if "<!-- ROBGATE:START -->" in html:
