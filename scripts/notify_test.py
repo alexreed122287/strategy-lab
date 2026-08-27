@@ -40,14 +40,28 @@ def run_js_rankblock(cases):
     page = os.path.abspath(PAGE)
     script = """
 const path=require('path');
+const fs=require('fs');
 const {execSync}=require('child_process');
 let chromium;
 try{ chromium=require(execSync('npm root -g',{encoding:'utf8'}).trim()+'/playwright-core').chromium; }
 catch(e){ try{ chromium=require('playwright-core').chromium; }catch(e2){ process.exit(3); } }
+/* Same probe as smoke_test.js, and the same reason. This check GATES the buy
+   mail: when it cannot find a browser it reports a FAIL and exits 1, and both
+   the build's mail step and digest_backstop.sh then decline. So a missing
+   browser binary does not degrade to "one comparison skipped" - it silently
+   stops all mail, indefinitely, while the page keeps publishing. That is the
+   failure mode this repo already caught twice on 2026-08-17. */
+const EXE=[process.env.CHROMIUM_PATH,
+  '/opt/pw-browsers/chromium',
+  '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+  '/Applications/Chromium.app/Contents/MacOS/Chromium',
+  '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
+].filter(Boolean).find(c=>{ try{ return fs.existsSync(c); }catch(e){ return false; } });
+if(!EXE){ process.exit(3); }
 const CASES=%s;
 (async()=>{
   let b;
-  try{ b=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||'/opt/pw-browsers/chromium'}); }
+  try{ b=await chromium.launch({executablePath:EXE}); }
   catch(e){ process.exit(3); }
   const p=await b.newPage();
   await p.goto('file://'+%s);
