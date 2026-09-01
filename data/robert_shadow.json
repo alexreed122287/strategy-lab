@@ -1,67 +1,27 @@
 {
- "open": [
+ "open": [],
+ "queued": [
   {
-   "t": "PANW",
-   "signal_date": "2026-08-19",
-   "entry_date": "2026-08-20",
-   "entry_px": 354.12,
-   "opt": {
-    "expiry": "2026-10-16",
-    "strike": 310.0,
-    "dte": 57,
-    "sigma": 0.4641,
-    "delta": 0.8,
-    "prem_mid": 53.4862,
-    "prem_paid": 54.1548,
-    "basis": "MODEL",
-    "strike_src": "chain",
-    "extrinsic_pct": 17.5,
-    "contracts": 2,
-    "cost": 10830.96
-   }
+   "t": "AMAT",
+   "signal_date": "2026-08-31",
+   "rsi2": 4.53
   },
   {
-   "t": "PWR",
-   "signal_date": "2026-08-24",
-   "entry_date": "2026-08-25",
-   "entry_px": 632.95,
-   "opt": {
-    "expiry": "2026-10-16",
-    "strike": 550.0,
-    "dte": 52,
-    "sigma": 0.5124,
-    "delta": 0.801,
-    "prem_mid": 100.2313,
-    "prem_paid": 101.4842,
-    "basis": "MODEL",
-    "strike_src": "chain",
-    "extrinsic_pct": 17.2,
-    "contracts": 1,
-    "cost": 10148.42
-   }
+   "t": "ASML",
+   "signal_date": "2026-08-31",
+   "rsi2": 2.91
   },
   {
-   "t": "SOXX",
-   "signal_date": "2026-08-24",
-   "entry_date": "2026-08-25",
-   "entry_px": 515.91,
-   "opt": {
-    "expiry": "2026-10-16",
-    "strike": 450.0,
-    "dte": 52,
-    "sigma": 0.5356,
-    "delta": 0.788,
-    "prem_mid": 81.7399,
-    "prem_paid": 82.7616,
-    "basis": "MODEL",
-    "strike_src": "chain",
-    "extrinsic_pct": 19.4,
-    "contracts": 1,
-    "cost": 8276.16
-   }
+   "t": "ATI",
+   "signal_date": "2026-08-31",
+   "rsi2": 8.7
+  },
+  {
+   "t": "KLAC",
+   "signal_date": "2026-08-31",
+   "rsi2": 3.85
   }
  ],
- "queued": [],
  "closed": [
   {
    "t": "GOOGL",
@@ -146,9 +106,93 @@
     "ret": 0.16096,
     "pnl": 2290.5
    }
+  },
+  {
+   "t": "PANW",
+   "entry_date": "2026-08-20",
+   "exit_date": "2026-08-27",
+   "entry_px": 354.12,
+   "exit_px": 382.85,
+   "bars": 5,
+   "reason": "SMA5",
+   "net": 0.0807,
+   "opt": {
+    "expiry": "2026-10-16",
+    "strike": 310.0,
+    "dte": 57,
+    "sigma": 0.4641,
+    "delta": 0.8,
+    "prem_mid": 53.4862,
+    "prem_paid": 54.1548,
+    "basis": "MODEL",
+    "strike_src": "chain",
+    "extrinsic_pct": 17.5,
+    "contracts": 2,
+    "cost": 10830.96,
+    "exit_mid": 77.0844,
+    "exit_recv": 75.1572,
+    "ret": 0.38781,
+    "pnl": 4200.38
+   }
+  },
+  {
+   "t": "PWR",
+   "entry_date": "2026-08-25",
+   "exit_date": "2026-08-27",
+   "entry_px": 632.95,
+   "exit_px": 621.83,
+   "bars": 2,
+   "reason": "SMA5",
+   "net": -0.01796,
+   "opt": {
+    "expiry": "2026-10-16",
+    "strike": 550.0,
+    "dte": 52,
+    "sigma": 0.5124,
+    "delta": 0.801,
+    "prem_mid": 100.2313,
+    "prem_paid": 101.4842,
+    "basis": "MODEL",
+    "strike_src": "chain",
+    "extrinsic_pct": 17.2,
+    "contracts": 1,
+    "cost": 10148.42,
+    "exit_mid": 90.7073,
+    "exit_recv": 88.4396,
+    "ret": -0.12854,
+    "pnl": -1304.51
+   }
+  },
+  {
+   "t": "SOXX",
+   "entry_date": "2026-08-25",
+   "exit_date": "2026-08-27",
+   "entry_px": 515.91,
+   "exit_px": 525.43,
+   "bars": 2,
+   "reason": "SMA5",
+   "net": 0.01805,
+   "opt": {
+    "expiry": "2026-10-16",
+    "strike": 450.0,
+    "dte": 52,
+    "sigma": 0.5356,
+    "delta": 0.788,
+    "prem_mid": 81.7399,
+    "prem_paid": 82.7616,
+    "basis": "MODEL",
+    "strike_src": "chain",
+    "extrinsic_pct": 19.4,
+    "contracts": 1,
+    "cost": 8276.16,
+    "exit_mid": 88.755,
+    "exit_recv": 86.5361,
+    "ret": 0.04559,
+    "pnl": 377.31
+   }
   }
  ],
  "skipped": [],
- "closed_total": 3,
- "last_as_of": "2026-08-26"
+ "closed_total": 6,
+ "last_as_of": "2026-08-31"
 }
