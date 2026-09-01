@@ -1,27 +1,87 @@
 {
- "open": [],
- "queued": [
+ "open": [
   {
    "t": "AMAT",
    "signal_date": "2026-08-31",
-   "rsi2": 4.53
+   "entry_date": "2026-09-01",
+   "entry_px": 450.72,
+   "opt": {
+    "expiry": "2026-10-16",
+    "strike": 390.0,
+    "dte": 45,
+    "sigma": 0.5689,
+    "delta": 0.8,
+    "prem_mid": 73.2269,
+    "prem_paid": 74.1423,
+    "basis": "MODEL",
+    "strike_src": "chain",
+    "extrinsic_pct": 17.1,
+    "contracts": 2,
+    "cost": 14828.46
+   }
   },
   {
    "t": "ASML",
    "signal_date": "2026-08-31",
-   "rsi2": 2.91
+   "entry_date": "2026-09-01",
+   "entry_px": 1680.74,
+   "opt": {
+    "expiry": "2026-10-16",
+    "strike": 1530.0,
+    "dte": 45,
+    "sigma": 0.3712,
+    "delta": 0.792,
+    "prem_mid": 183.7462,
+    "prem_paid": 186.043,
+    "basis": "MODEL",
+    "strike_src": "chain",
+    "extrinsic_pct": 18.0,
+    "contracts": 1,
+    "cost": 18604.3
+   }
   },
   {
    "t": "ATI",
    "signal_date": "2026-08-31",
-   "rsi2": 8.7
+   "entry_date": "2026-09-01",
+   "entry_px": 203.69,
+   "opt": {
+    "expiry": "2026-10-16",
+    "strike": 180.0,
+    "dte": 45,
+    "sigma": 0.428,
+    "delta": 0.822,
+    "prem_mid": 27.5225,
+    "prem_paid": 27.8665,
+    "basis": "MODEL",
+    "strike_src": "chain",
+    "extrinsic_pct": 13.9,
+    "contracts": 5,
+    "cost": 13933.25
+   }
   },
   {
    "t": "KLAC",
    "signal_date": "2026-08-31",
-   "rsi2": 3.85
+   "entry_date": "2026-09-01",
+   "entry_px": 172.74,
+   "opt": {
+    "expiry": "2026-10-16",
+    "strike": 150.0,
+    "dte": 45,
+    "sigma": 0.5779,
+    "delta": 0.793,
+    "prem_mid": 27.8303,
+    "prem_paid": 28.1782,
+    "basis": "MODEL",
+    "strike_src": "chain",
+    "extrinsic_pct": 18.3,
+    "contracts": 5,
+    "cost": 14089.1
+   }
   }
  ],
+ "queued": [],
  "closed": [
   {
    "t": "GOOGL",
@@ -194,5 +254,5 @@
  ],
  "skipped": [],
  "closed_total": 6,
- "last_as_of": "2026-08-31"
+ "last_as_of": "2026-09-01"
 }
