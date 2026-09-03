@@ -41,26 +41,6 @@
    }
   },
   {
-   "t": "ATI",
-   "signal_date": "2026-08-31",
-   "entry_date": "2026-09-01",
-   "entry_px": 203.69,
-   "opt": {
-    "expiry": "2026-10-16",
-    "strike": 180.0,
-    "dte": 45,
-    "sigma": 0.428,
-    "delta": 0.822,
-    "prem_mid": 27.5225,
-    "prem_paid": 27.8665,
-    "basis": "MODEL",
-    "strike_src": "chain",
-    "extrinsic_pct": 13.9,
-    "contracts": 5,
-    "cost": 13933.25
-   }
-  },
-  {
    "t": "KLAC",
    "signal_date": "2026-08-31",
    "entry_date": "2026-09-01",
@@ -79,20 +59,49 @@
     "contracts": 5,
     "cost": 14089.1
    }
-  }
- ],
- "queued": [
+  },
   {
    "t": "FLEX",
    "signal_date": "2026-09-02",
-   "rsi2": 9.99
+   "entry_date": "2026-09-03",
+   "entry_px": 105.49,
+   "opt": {
+    "expiry": "2026-10-16",
+    "strike": 90.0,
+    "dte": 43,
+    "sigma": 0.5486,
+    "delta": 0.831,
+    "prem_mid": 17.7727,
+    "prem_paid": 17.9948,
+    "basis": "MODEL",
+    "strike_src": "chain",
+    "extrinsic_pct": 12.8,
+    "contracts": 8,
+    "cost": 14395.84
+   }
   },
   {
    "t": "LRCX",
    "signal_date": "2026-09-02",
-   "rsi2": 4.38
+   "entry_date": "2026-09-03",
+   "entry_px": 283.73,
+   "opt": {
+    "expiry": "2026-10-16",
+    "strike": 240.0,
+    "dte": 43,
+    "sigma": 0.5969,
+    "delta": 0.826,
+    "prem_mid": 50.594,
+    "prem_paid": 51.2264,
+    "basis": "MODEL",
+    "strike_src": "chain",
+    "extrinsic_pct": 13.6,
+    "contracts": 2,
+    "cost": 10245.28
+   }
   }
  ],
+ "queued": [],
  "closed": [
   {
    "t": "GOOGL",
@@ -261,9 +270,37 @@
     "ret": 0.04559,
     "pnl": 377.31
    }
+  },
+  {
+   "t": "ATI",
+   "entry_date": "2026-09-01",
+   "exit_date": "2026-09-03",
+   "entry_px": 203.69,
+   "exit_px": 204.54,
+   "bars": 2,
+   "reason": "SMA5",
+   "net": 0.00377,
+   "opt": {
+    "expiry": "2026-10-16",
+    "strike": 180.0,
+    "dte": 45,
+    "sigma": 0.428,
+    "delta": 0.822,
+    "prem_mid": 27.5225,
+    "prem_paid": 27.8665,
+    "basis": "MODEL",
+    "strike_src": "chain",
+    "extrinsic_pct": 13.9,
+    "contracts": 5,
+    "cost": 13933.25,
+    "exit_mid": 28.0271,
+    "exit_recv": 27.3264,
+    "ret": -0.0194,
+    "pnl": -270.25
+   }
   }
  ],
  "skipped": [],
- "closed_total": 6,
- "last_as_of": "2026-09-02"
+ "closed_total": 7,
+ "last_as_of": "2026-09-03"
 }
