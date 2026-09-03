@@ -1,7 +1,0 @@
-{
- "schema": 1,
- "note": "Durable Paper-Fill Log. Written ONLY by scripts/log_fill.py (CLI on the Mac, or the log-fill workflow). Do not hand-edit: log_fill.py --verify is what proves the D11 sample is clean.",
- "fills": [],
- "updated": "2026-08-27 04:04 UTC",
- "count": 0
-}

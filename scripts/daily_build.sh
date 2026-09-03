@@ -158,8 +158,8 @@ for n in ["SCAN","BASKETS","SIGNALS","REGIME","DAILY","CALLS","TF","METHOD","BOO
     json.loads(m.group(1))
 track = json.loads(re.search(r'const TRACK = (.*?);\n', html, re.S).group(1))
 assert track and track.get("tickers"), "TRACK is empty - refusing to publish"
-assert "robert.html" in html and "paper-log.html" in html, \
-    "nav links to ROBERT / Paper-Fill Log missing - interface regressed, refusing to publish"
+assert "robert.html" in html, \
+    "nav link to ROBERT missing - interface regressed, refusing to publish"
 print("validation OK:", len(track["tickers"]), "tickers as of", track["as_of"])
 PYEOF
 python3 - "$REPO/robert.html" <<'PYCHK'
