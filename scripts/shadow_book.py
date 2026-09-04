@@ -36,6 +36,19 @@ import os
 import re
 import sys
 
+# Delisting/halt rule (2026-09-04). A position whose symbol has printed no bar
+# for this many SESSIONS (counted on the market calendar = union of all bar
+# dates in the corpus, so a data-provider gap on one name cannot count) is
+# closed at its LAST available close, exit_reason "delisted", with the gap
+# written on the row. Without this, the "hold as_of until every open row is
+# checked" guard below turns a permanent gap (WBS: acquired by SAN 2026-08-20,
+# last trade 08-19) into a permanent lock: the ledger stamp froze at 08-19 for
+# 11 sessions, and notify_buys.py - which only ships exits when SHADOW.as_of
+# equals the page as_of - silently sent zero sell alerts the whole time.
+# Three sessions rides out a one-day provider gap (the 2026-08-14 class this
+# guard was built for) without letting a take-private sit as a phantom slot.
+DELIST_SESSIONS = 3
+
 FRICTION_RT = {"GAPW_RSI2": 0.001, "GAPW_RSI14": 0.001, "ZSCORE": 0.0002,
                "RSI2": 0.0, "MFI": 0.0}
 # ENTRY BASIS. Everything is MOO as of 2026-08-03.
@@ -499,6 +512,8 @@ def main():
     if led.get("as_of") == as_of:
         print("shadow: already processed %s - idempotent no-op" % as_of, file=sys.stderr)
     dates = {s: [r[0] for r in v] for s, v in bars.items()}
+    # Market calendar = every session any name printed; used by the delist rule.
+    calendar = sorted({d for v in dates.values() for d in v})
     closes = {s: [float(r[4] if len(r) >= 6 else r[1]) for r in v] for s, v in bars.items()}
     opens = {s: [float(r[1]) if len(r) >= 6 else None for r in v] for s, v in bars.items()}
 
@@ -566,6 +581,28 @@ def main():
             if p["state"] != "open":
                 continue
             ds = dates.get(p["sym"]) or []
+            if as_of not in ds and p["entry_date"] in ds:
+                # Delisting/halt rule - see DELIST_SESSIONS. Sessions are
+                # counted on the whole corpus's calendar, never on this name.
+                last = ds[-1]
+                gap = sum(1 for d in calendar if d > last)
+                if gap >= DELIST_SESSIONS:
+                    px = closes[p["sym"]][-1]
+                    held = calendar.index(last) - calendar.index(p["entry_date"]) \
+                        if last in calendar and p["entry_date"] in calendar else p.get("bars_held", 0)
+                    p.pop("exit_unchecked", None)
+                    p.pop("exit_unchecked_why", None)
+                    p.update(state="closed", exit_date=last, exit_px=round(px, 4),
+                             exit_reason="delisted", bars_held=held,
+                             net=round(px / p["entry_px"] - 1.0 - FRICTION_RT[p["book"]], 5),
+                             note="closed at last available close %s: no bar for %d "
+                                  "sessions through %s (delisted/halted). Consideration "
+                                  "received in a corporate action is NOT modelled."
+                                  % (last, gap, as_of))
+                    print("WARNING: DELISTED %s %s - no bar for %d sessions since %s; "
+                          "closed at last close %.4f (net %+.2f%%)."
+                          % (p["book"], p["sym"], gap, last, px, p["net"] * 100))
+                    continue
             if as_of not in ds or p["entry_date"] not in ds:
                 # NOT a silent continue. This skip sits before bars_held, before
                 # the rule test and before the 10-bar time stop, and the whole
