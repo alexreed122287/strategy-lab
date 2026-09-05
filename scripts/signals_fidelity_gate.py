@@ -165,6 +165,45 @@ validating runner-bound code requires the runner's import surface, not
 just its data; stdlib-only is the build's contract, not a style choice.
 NOTE: this gate script itself still imports pandas/numpy - it runs on the
 Mac or in an analysis sandbox, never on the Actions runner.
+
+CLEARED 2026-09-05 - the data gap this gate has carried since 08-03 is gone,
+and the run is no longer a partial-credit comparison. The owner pushed
+market-data-brain current (@5d8e644, 680 parquets through 2026-09-04, up from
+the 465-name 08-01 mirror), so for the first time the cloud and the Mac can be
+scored on the SAME corpus. Method: ran the real generator
+(strategy-lab-dashboard/scripts/signals.py @e9700d9, X26 stubbed empty so it
+scans brain names only) against that brain, then ran signals_cloud.py against
+bars derived from the same parquets truncated to the cloud's 410-bar window,
+with the re-baked 660-name universe. Result:
+
+    mac rows 100 | cloud rows 100
+    overlap 100 | field mismatches 0   (state/depth/close/as_of/age/
+                                        buy_date/new_today/earnings_soon/
+                                        stale_days/vehicle)
+    cloud-only 0 | mac-only 0 | row ORDER identical | market_asof equal
+    FIDELITY: PASS
+
+No missing rows and no extras - the 08-14 run's 44 misses and 2 extras were
+both artifacts of the stale mirror, not of the port. The 410-bar warm-up
+delta remains below the 0.02 display rounding, now confirmed on 100 rows of
+current data rather than 145 rows of 07-31 data.
+
+Two parity repairs landed with this run. (1) market_asof was being taken as
+the max as_of across EMITTED ROWS; the Mac takes it across every symbol the
+scan processes. Identical on any normal day, but on a day when only frozen
+names signal the row-only max equals the stale date and demote_stale would
+demote nothing - the one input that could silently un-stale a dead ticker.
+Now derived corpus-wide, matching signals.py. (2) The universe no longer
+excludes inactive names. PR #78 dropped EA by hand; demote_stale (ported
+08-14, exercised here on EA/EQR/WBS at -31/-18/-16 days) is the class fix, so
+exclusion would now DIVERGE from the Mac by dropping rows it emits. Membership
+is once again exactly the Mac's rule: brain parquets minus manifest-flagged
+minus full-history len/continuity failures. 480 -> 660 names; observed_only is
+empty for the first time.
+
+Standing consequence: the fidelity question is now CLOSED outright, not "up to
+data availability". Re-bake data/signals_universe.json on every brain push and
+re-run this comparison; that is the whole maintenance contract.
 """
 import argparse, glob, json, os, re
 import numpy as np, pandas as pd

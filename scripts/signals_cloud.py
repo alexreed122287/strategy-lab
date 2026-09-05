@@ -292,6 +292,7 @@ def main():
 
     signals = []
     covered = 0
+    market_asof = None
     for sym in uni:
         b = load_bars(bars, sym)
         # min_bars mirrors the generator's len>=320 gate; the fetch window must
@@ -305,6 +306,8 @@ def main():
         f = features(b)
         i = len(b["dates"]) - 1
         asof = b["dates"][i]
+        if market_asof is None or asof > market_asof:
+            market_asof = asof
         c, s200 = f["c"][i], f["sma200"][i]
         if s200 is None:  # np.isfinite(sma200) gate
             continue
@@ -364,7 +367,11 @@ def main():
     # days after its take-private closed. Universe removal (PR #78) patched
     # that one name; this is the class fix. The market's last close is the max
     # as_of across the corpus, so one frozen name cannot drag it backwards.
-    market_asof = max((r["as_of"] for r in signals), default=None)
+    # Mac parity: derived from every symbol the scan processed, not just the
+    # ones that emitted a row - on a day when only frozen names signal, the
+    # row-only max would equal the stale date and demote nothing.
+    market_asof = max((market_asof.isoformat() if market_asof else ""),
+                      max((r["as_of"] for r in signals), default="")) or None
     for r in signals:
         lag = (date.fromisoformat(market_asof)
                - date.fromisoformat(r["as_of"])).days
