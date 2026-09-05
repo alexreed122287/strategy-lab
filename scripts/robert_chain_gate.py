@@ -157,6 +157,18 @@ def main():
     if not FORCE and not in_window:
         print("outside the Monday-morning window; exiting cleanly")
         return
+    # Market holidays. The clock check above knows weekdays, not Labor Day:
+    # on a closed Monday Tradier still answers with Friday's frozen book, and
+    # the sweep would store it labelled "live sweep". Ask the exchange clock;
+    # if the endpoint itself fails, sweep anyway rather than lose the week.
+    if not FORCE:
+        try:
+            state = (get("/markets/clock").get("clock") or {}).get("state")
+            if state and state != "open":
+                print("market is %s today (holiday?); exiting cleanly" % state)
+                return
+        except Exception as e:
+            print("clock check failed (%s) - sweeping anyway" % type(e).__name__)
     # Idempotency. Under EDT both firings (09:40 and 10:40 ET) now fall inside
     # the window. Whichever arrives first sweeps; the second finds today's live
     # result on disk and exits. Keyed on the result file rather than the clock,
