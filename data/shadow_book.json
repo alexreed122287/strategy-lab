@@ -1,26 +1,7 @@
 {
- "as_of": "2026-08-19",
+ "as_of": "2026-09-04",
  "started": "2026-07-31",
  "positions": [
-  {
-   "book": "MFI",
-   "sym": "WBS",
-   "signal_date": "2026-08-18",
-   "basis": "moo",
-   "bars_held": 0,
-   "signal_close": 77.97,
-   "entry_date": "2026-08-19",
-   "entry_px": 78.03,
-   "exit_date": null,
-   "exit_px": null,
-   "exit_reason": null,
-   "net": null,
-   "state": "open",
-   "mark_net": -0.0059,
-   "mark_date": "2026-08-19",
-   "exit_unchecked": "2026-09-04",
-   "exit_unchecked_why": "no bar for 2026-09-04"
-  },
   {
    "book": "GAPW_RSI14",
    "sym": "MUR",
@@ -1238,6 +1219,54 @@
    "basis": "moo",
    "bars_held": 0,
    "signal_close": 468.05,
+   "slot_rank": 2,
+   "entry_date": null,
+   "entry_px": null,
+   "exit_date": null,
+   "exit_px": null,
+   "exit_reason": null,
+   "net": null,
+   "state": "pending_open"
+  },
+  {
+   "book": "MFI",
+   "sym": "FR",
+   "signal_date": "2026-09-04",
+   "basis": "moo",
+   "bars_held": 0,
+   "signal_close": 61.85,
+   "slot_rank": 1,
+   "entry_date": null,
+   "entry_px": null,
+   "exit_date": null,
+   "exit_px": null,
+   "exit_reason": null,
+   "net": null,
+   "state": "pending_open"
+  },
+  {
+   "book": "MFI",
+   "sym": "USFD",
+   "signal_date": "2026-09-04",
+   "basis": "moo",
+   "bars_held": 0,
+   "signal_close": 104.04,
+   "slot_rank": 2,
+   "entry_date": null,
+   "entry_px": null,
+   "exit_date": null,
+   "exit_px": null,
+   "exit_reason": null,
+   "net": null,
+   "state": "pending_open"
+  },
+  {
+   "book": "RSI2",
+   "sym": "HRB",
+   "signal_date": "2026-09-04",
+   "basis": "moo",
+   "bars_held": 0,
+   "signal_close": 49.06,
    "slot_rank": 2,
    "entry_date": null,
    "entry_px": null,
@@ -9395,11 +9424,25 @@
    "exit_reason": "close>sma5",
    "net": 0.0337,
    "state": "closed"
+  },
+  {
+   "book": "MFI",
+   "sym": "WBS",
+   "signal_date": "2026-08-18",
+   "basis": "moo",
+   "bars_held": 0,
+   "signal_close": 77.97,
+   "entry_date": "2026-08-19",
+   "entry_px": 78.03,
+   "exit_date": "2026-08-19",
+   "exit_px": 77.5696,
+   "exit_reason": "delisted",
+   "net": -0.0059,
+   "state": "closed",
+   "mark_net": -0.0059,
+   "mark_date": "2026-08-19",
+   "note": "closed at last available close 2026-08-19 (last ledger mark): no bar for 12 sessions through 2026-09-04 (delisted/halted). Consideration received in a corporate action is NOT modelled."
   }
  ],
- "note": "Shadow forward book ledger - seeded 2026-08-02, accumulates automatically from the next daily build. Committed by daily_build.sh so the forward record survives machines.",
- "unchecked_as_of": "2026-09-04",
- "unchecked": [
-  "MFI/WBS"
- ]
+ "note": "Shadow forward book ledger - seeded 2026-08-02, accumulates automatically from the next daily build. Committed by daily_build.sh so the forward record survives machines."
 }
