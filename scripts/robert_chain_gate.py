@@ -146,8 +146,14 @@ def main():
     # did not run and the workflow still reported success. Widened to
     # 09:30-11:00 ET to absorb that drift; the duplicate this admits under EDT
     # is killed by the already-swept check below, not by the clock.
+    # 2026-08-31: both firings arrived at 15:36 and 16:20 ET - hours late, not
+    # minutes - and the 11:00 cutoff rejected both, so the card sat at the
+    # 08-24 sweep for two weeks. The market is open all session and the
+    # measurement (OI, quoted spread) is no less live at 15:00 than at 09:40,
+    # so the window is now the whole regular session, and a third cron at
+    # 17:40 UTC gives a same-day retry if the morning pair drifts out again.
     in_window = (now.weekday() == 0
-                 and dt.time(9, 30) <= now.time() <= dt.time(11, 0))
+                 and dt.time(9, 30) <= now.time() <= dt.time(16, 0))
     if not FORCE and not in_window:
         print("outside the Monday-morning window; exiting cleanly")
         return
