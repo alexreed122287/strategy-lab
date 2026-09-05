@@ -40,7 +40,8 @@ import sys
 # for this many SESSIONS (counted on the market calendar = union of all bar
 # dates in the corpus, so a data-provider gap on one name cannot count) is
 # closed at its LAST available close, exit_reason "delisted", with the gap
-# written on the row. Without this, the "hold as_of until every open row is
+# written on the row. "Last available" is the last bar on file, or - when the
+# name has left SCAN and is no longer fetched at all - the row's own last mark. Without this, the "hold as_of until every open row is
 # checked" guard below turns a permanent gap (WBS: acquired by SAN 2026-08-20,
 # last trade 08-19) into a permanent lock: the ledger stamp froze at 08-19 for
 # 11 sessions, and notify_buys.py - which only ships exits when SHADOW.as_of
@@ -581,13 +582,29 @@ def main():
             if p["state"] != "open":
                 continue
             ds = dates.get(p["sym"]) or []
-            if as_of not in ds and p["entry_date"] in ds:
+            if as_of not in ds:
                 # Delisting/halt rule - see DELIST_SESSIONS. Sessions are
                 # counted on the whole corpus's calendar, never on this name.
-                last = ds[-1]
-                gap = sum(1 for d in calendar if d > last)
-                if gap >= DELIST_SESSIONS:
-                    px = closes[p["sym"]][-1]
+                #
+                # Two ways a name can have no bar today. (a) It is still
+                # fetched and simply stopped printing: its last bar is on
+                # file. (b) It fell out of SCAN, so dump_closes - which parses
+                # its ticker list off the page - no longer fetches it AT ALL
+                # and ds is empty. The first cut of this rule (08fa143)
+                # handled only (a); WBS was case (b), sat at "0 bars on file"
+                # for 16 sessions, and the rule never ran. For (b) the last
+                # close this ledger ever saw is the row's own mark: _mark()
+                # stores close*(1-f/2)/(entry*(1+f/2))-1, inverted here.
+                last = px = src = None
+                if ds and p["entry_date"] in ds:
+                    last, px, src = ds[-1], closes[p["sym"]][-1], "bars"
+                elif p.get("mark_date") and p.get("mark_net") is not None and p.get("entry_px"):
+                    f = FRICTION_RT.get(p["book"], 0.0)
+                    last = p["mark_date"]
+                    px = p["entry_px"] * (1 + f / 2) * (1 + p["mark_net"]) / (1 - f / 2)
+                    src = "last ledger mark"
+                gap = sum(1 for d in calendar if d > last) if last else 0
+                if last and gap >= DELIST_SESSIONS:
                     held = calendar.index(last) - calendar.index(p["entry_date"]) \
                         if last in calendar and p["entry_date"] in calendar else p.get("bars_held", 0)
                     p.pop("exit_unchecked", None)
@@ -595,13 +612,13 @@ def main():
                     p.update(state="closed", exit_date=last, exit_px=round(px, 4),
                              exit_reason="delisted", bars_held=held,
                              net=round(px / p["entry_px"] - 1.0 - FRICTION_RT[p["book"]], 5),
-                             note="closed at last available close %s: no bar for %d "
+                             note="closed at last available close %s (%s): no bar for %d "
                                   "sessions through %s (delisted/halted). Consideration "
                                   "received in a corporate action is NOT modelled."
-                                  % (last, gap, as_of))
-                    print("WARNING: DELISTED %s %s - no bar for %d sessions since %s; "
+                                  % (last, src, gap, as_of))
+                    print("WARNING: DELISTED %s %s - no bar for %d sessions since %s (%s); "
                           "closed at last close %.4f (net %+.2f%%)."
-                          % (p["book"], p["sym"], gap, last, px, p["net"] * 100))
+                          % (p["book"], p["sym"], gap, last, src, px, p["net"] * 100))
                     continue
             if as_of not in ds or p["entry_date"] not in ds:
                 # NOT a silent continue. This skip sits before bars_held, before

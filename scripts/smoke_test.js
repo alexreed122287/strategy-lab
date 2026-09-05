@@ -12,6 +12,18 @@ const { chromium } = (() => {
   const { execSync } = require('child_process');
   const roots = [];
   try { roots.push(execSync('npm root -g', { encoding: 'utf8' }).trim()); } catch (e) {}
+  /* `npm root -g` answers only for the node that happens to be first on PATH.
+     Under launchd that is `bash -lc`, where Homebrew's node (installed
+     2026-08-29) shadows the ~/.local node that actually holds playwright-core,
+     and every scheduled build from 08/31 to 09/04 exited 2 here - fail-closed,
+     so the symptom was five silent non-publishes. Probe every root a global
+     install could have landed in, whichever node is running. */
+  const home = process.env.HOME || '';
+  for (const r of [
+    path.join(home, '.local', 'lib', 'node_modules'),
+    '/opt/homebrew/lib/node_modules',
+    '/usr/local/lib/node_modules',
+  ]) if (!roots.includes(r)) roots.push(r);
   for (const name of ['playwright-core', 'playwright']) {
     try { return require(name); } catch (e) {}
     for (const r of roots) {
