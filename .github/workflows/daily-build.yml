@@ -155,8 +155,12 @@ jobs:
       - name: Fetch bars
         if: steps.guard.outputs.proceed == 'true'
         run: |
+          # --extra: signals-universe names no page blob references, so
+          # page_tickers() never sees them (they came in with the 09-04 brain
+          # push). Without this they sit in the universe and never get bars.
           python3 scripts/dump_closes.py --index index.html \
-            --out /tmp/bars.json --days 600 --ohlcv
+            --out /tmp/bars.json --days 600 --ohlcv \
+            --extra CRWV,ERIE,NVR
           python3 -c "import json;b=json.load(open('/tmp/bars.json'));print('bars for',len(b),'symbols')"
 
       # There is no market-data-brain here, so this used to emit earnings:0 -
