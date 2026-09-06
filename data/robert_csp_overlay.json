@@ -1,0 +1,55 @@
+{
+    "as_of": "2026-09-05",
+    "status": "synthetic_research_only",
+    "basis": "Black-Scholes mark-to-market using underlying trade entry/exit paths; no historical put NBBOs",
+    "assumptions": {
+        "put_delta": "0.25",
+        "robert_dte": "actual recorded 30-50 DTE",
+        "robert_iv": "actual recorded entry IV",
+        "rsi2_dte": "45 calendar days proxy",
+        "rsi2_iv": "35% constant proxy",
+        "exit": "underlying strategy exit",
+        "rates": "4% risk-free rate",
+        "costs": "commissions and bid/ask slippage not modeled"
+    },
+    "results": {
+        "robert_all": {
+            "trades": 287,
+            "win_rate_pct": 87.5,
+            "avg_collateral_return_pct": 0.578,
+            "profit_factor": 11.08,
+            "p05_return_pct": -0.63,
+            "worst_return_pct": -4.31
+        },
+        "robert_oos_labeled_window": {
+            "trades": 120,
+            "win_rate_pct": 90.0,
+            "avg_collateral_return_pct": 0.516,
+            "profit_factor": 4.81
+        },
+        "rsi2_all": {
+            "trades": 1762,
+            "win_rate_pct": 80.0,
+            "avg_collateral_return_pct": 0.205,
+            "profit_factor": 2.47,
+            "p05_return_pct": -1.87,
+            "worst_return_pct": -37.68
+        },
+        "rsi2_2020": {
+            "trades": 131,
+            "win_rate_pct": 76.3,
+            "avg_collateral_return_pct": -0.929,
+            "profit_factor": 0.47
+        },
+        "rsi2_2022": {
+            "trades": 65,
+            "win_rate_pct": 80.0,
+            "avg_collateral_return_pct": -0.045,
+            "profit_factor": 1.19
+        }
+    },
+    "recommendation": {
+        "robert": "paper-test only; complete ROBERT gates, 20-25 delta, 30-45 DTE, strike must be acceptable for assignment",
+        "rsi2": "do not trade as an unrestricted CSP overlay; require additional validation with historical put chains and strict assignment limits"
+    }
+}
