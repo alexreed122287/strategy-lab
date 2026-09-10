@@ -1,6 +1,12 @@
 {
  "open": [],
- "queued": [],
+ "queued": [
+  {
+   "t": "ATI",
+   "signal_date": "2026-09-10",
+   "rsi2": 9.86
+  }
+ ],
  "closed": [
   {
    "t": "GOOGL",
@@ -341,5 +347,5 @@
  ],
  "skipped": [],
  "closed_total": 12,
- "last_as_of": "2026-09-09"
+ "last_as_of": "2026-09-10"
 }
