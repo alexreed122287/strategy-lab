@@ -1,12 +1,27 @@
 {
- "open": [],
- "queued": [
+ "open": [
   {
    "t": "ATI",
    "signal_date": "2026-09-10",
-   "rsi2": 9.86
+   "entry_date": "2026-09-11",
+   "entry_px": 202.04,
+   "opt": {
+    "expiry": "2026-10-16",
+    "strike": 185.0,
+    "dte": 35,
+    "sigma": 0.38,
+    "delta": 0.797,
+    "prem_mid": 20.4311,
+    "prem_paid": 20.6865,
+    "basis": "MODEL",
+    "strike_src": "chain",
+    "extrinsic_pct": 16.6,
+    "contracts": 7,
+    "cost": 14480.55
+   }
   }
  ],
+ "queued": [],
  "closed": [
   {
    "t": "GOOGL",
@@ -347,5 +362,5 @@
  ],
  "skipped": [],
  "closed_total": 12,
- "last_as_of": "2026-09-10"
+ "last_as_of": "2026-09-11"
 }
