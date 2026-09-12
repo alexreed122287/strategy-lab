@@ -1,373 +1,1605 @@
 <!doctype html>
 <html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ROBERT - Strategy Lab</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27><rect width=%2716%27 height=%2716%27 rx=%273%27 fill=%27%23121212%27/><path d=%27M2 12 L6 7 L9 9 L14 3%27 stroke=%27%2356B4E9%27 stroke-width=%272%27 fill=%27none%27/></svg>">
-<style>
-/* Design tokens lifted from the Strategy Lab dashboard (Okabe-Ito, dark base). */
-:root {
-  color-scheme: dark;
-  --surface-1: #000000; --surface-2: #121212; --border: #333330;
-  --text-primary: #f6f6f4; --text-secondary: #c0bfb9; --text-muted: #8d8c85;
-  --series-1: #56B4E9; --good: #009E73; --warning: #F0E442;
-  --serious: #E69F00; --critical: #D55E00;
-}
-* { box-sizing: border-box; }
-body { margin: 0; background: var(--surface-1); color: var(--text-primary);
-  font: 14px/1.45 -apple-system, "Segoe UI", Roboto, sans-serif; }
-header { padding: 14px 20px 0; }
-h1 { font-size: 18px; margin: 0 0 2px; }
-h1 b { color: var(--series-1); }
-.sub { color: var(--text-secondary); font-size: 12px; margin-bottom: 10px; }
-nav { display: flex; gap: 2px; border-bottom: 1px solid var(--border);
-  padding: 0 20px; position: sticky; top: 0; z-index: 30; background: var(--surface-1); }
-nav a, nav span { border-bottom: 2px solid transparent; color: var(--text-secondary);
-  padding: 8px 14px; font-size: 13px; text-decoration: none; white-space: nowrap;
-  border-radius: 8px 8px 0 0; }
-nav span.on { color: var(--text-primary); border-bottom-color: var(--series-1);
-  background: var(--surface-2); font-weight: 600; }
-nav a:hover { color: var(--text-primary); }
-main { padding: 16px 20px 60px; max-width: 1100px; }
-.tiles { display: flex; gap: 12px; flex-wrap: wrap; margin: 10px 0 18px; }
-.tile { background: var(--surface-2); border: 1px solid var(--border);
-  border-radius: 10px; padding: 12px 16px; min-width: 160px; }
-.tile .k { font-size: 11px; color: var(--text-secondary); text-transform: uppercase;
-  letter-spacing: .04em; }
-.tile .v { font-size: 24px; font-weight: 700; margin-top: 2px; }
-.tile .d { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
-.card { background: var(--surface-2); border: 1px solid var(--border);
-  border-radius: 10px; padding: 14px 16px; margin-bottom: 12px; }
-.card h3 { margin: 0 0 6px; font-size: 14px; }
-.card p, .card li { color: var(--text-secondary); font-size: 13px; }
-.card ul { margin: 6px 0 2px 18px; padding: 0; }
-.okbox { border-left: 4px solid var(--good); }
-.warnbox { border-left: 4px solid var(--warning); }
-.chip { display: inline-block; border-radius: 10px; padding: 1px 8px; font-size: 11px;
-  font-weight: 600; color: #fff; }
-.chip.info { background: var(--series-1); }
-.chip.watch { background: var(--warning); color: #1a1a19; }
-.tablewrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 10px;
-  margin-bottom: 12px; }
-table { border-collapse: collapse; width: 100%; font-size: 13px; }
-th, td { text-align: right; padding: 5px 8px; border-bottom: 1px solid var(--border);
-  white-space: nowrap; }
-th { color: var(--text-secondary); font-weight: 600; position: sticky; top: 0;
-  background: var(--surface-2); }
-th:first-child, td:first-child { text-align: left; }
-.tablewrap th:first-child, .tablewrap td:first-child { position: sticky; left: 0;
-  z-index: 2; background: var(--surface-1); }
-.tablewrap th:first-child { z-index: 3; background: var(--surface-2); }
-tr:hover td { background: var(--surface-2); }
-.tablewrap table tr:last-child td { border-bottom: none; }
-details.gloss { background: var(--surface-2); border: 1px solid var(--border);
-  border-radius: 10px; padding: 9px 12px; margin: 10px 0; }
-details.gloss summary { cursor: pointer; font-size: 12px; font-weight: 600;
-  color: var(--text-secondary); }
-details.gloss[open] summary { margin-bottom: 8px; }
-code { background: var(--surface-1); border: 1px solid var(--border);
-  border-radius: 4px; padding: 1px 6px; font-size: 12px; }
-.small { font-size: 11px; color: var(--text-muted); }
-/* Account line. The balance is the number a reader looks for first, so it gets
-   its own rank above the statistics rather than becoming a tenth stat tile. */
-.balance { display: grid; gap: 8px; margin: 10px 0 10px;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
-.balance > div { background: var(--surface-2); border: 1px solid var(--border);
-  border-radius: 10px; padding: 10px 14px; }
-.balance .bal-main { border-color: var(--series-1); }
-.balance .k { font-size: 11px; color: var(--text-secondary);
-  text-transform: uppercase; letter-spacing: .04em; }
-.balance .bal-main .v { font-size: 30px; font-weight: 700; margin-top: 2px; }
-.balance .bal-side .v { font-size: 20px; font-weight: 700; margin-top: 2px; }
-.balance .d { font-size: 10px; color: var(--text-muted); margin-top: 3px;
-  line-height: 1.35; }
-.balance .sep { color: var(--text-muted); font-weight: 400; }
-@media (max-width: 700px) { .balance .bal-main .v { font-size: 25px; } }
 
-/* Shadow forward book - dense stat row + P&L colouring. The tiles at the top
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ROBERT - Strategy Lab</title>
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27><rect width=%2716%27 height=%2716%27 rx=%273%27 fill=%27%23121212%27/><path d=%27M2 12 L6 7 L9 9 L14 3%27 stroke=%27%2356B4E9%27 stroke-width=%272%27 fill=%27none%27/></svg>">
+  <style>
+    /* Design tokens lifted from the Strategy Lab dashboard (Okabe-Ito, dark base). */
+    :root {
+      color-scheme: dark;
+      --surface-1: #000000;
+      --surface-2: #121212;
+      --border: #333330;
+      --text-primary: #f6f6f4;
+      --text-secondary: #c0bfb9;
+      --text-muted: #8d8c85;
+      --series-1: #56B4E9;
+      --good: #009E73;
+      --warning: #F0E442;
+      --serious: #E69F00;
+      --critical: #D55E00;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--surface-1);
+      color: var(--text-primary);
+      font: 14px/1.45 -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
+
+    header {
+      padding: 14px 20px 0;
+    }
+
+    h1 {
+      font-size: 18px;
+      margin: 0 0 2px;
+    }
+
+    h1 b {
+      color: var(--series-1);
+    }
+
+    .sub {
+      color: var(--text-secondary);
+      font-size: 12px;
+      margin-bottom: 10px;
+    }
+
+    nav {
+      display: flex;
+      gap: 2px;
+      border-bottom: 1px solid var(--border);
+      padding: 0 20px;
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      background: var(--surface-1);
+    }
+
+    nav a,
+    nav span {
+      border-bottom: 2px solid transparent;
+      color: var(--text-secondary);
+      padding: 8px 14px;
+      font-size: 13px;
+      text-decoration: none;
+      white-space: nowrap;
+      border-radius: 8px 8px 0 0;
+    }
+
+    nav span.on {
+      color: var(--text-primary);
+      border-bottom-color: var(--series-1);
+      background: var(--surface-2);
+      font-weight: 600;
+    }
+
+    nav a:hover {
+      color: var(--text-primary);
+    }
+
+    main {
+      padding: 16px 20px 60px;
+      max-width: 1100px;
+    }
+
+    .tiles {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin: 10px 0 18px;
+    }
+
+    .tile {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 16px;
+      min-width: 160px;
+    }
+
+    .tile .k {
+      font-size: 11px;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+
+    .tile .v {
+      font-size: 24px;
+      font-weight: 700;
+      margin-top: 2px;
+    }
+
+    .tile .d {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .card {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin-bottom: 12px;
+    }
+
+    .card h3 {
+      margin: 0 0 6px;
+      font-size: 14px;
+    }
+
+    .card p,
+    .card li {
+      color: var(--text-secondary);
+      font-size: 13px;
+    }
+
+    .card ul {
+      margin: 6px 0 2px 18px;
+      padding: 0;
+    }
+
+    .okbox {
+      border-left: 4px solid var(--good);
+    }
+
+    .warnbox {
+      border-left: 4px solid var(--warning);
+    }
+
+    .chip {
+      display: inline-block;
+      border-radius: 10px;
+      padding: 1px 8px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    .chip.info {
+      background: var(--series-1);
+    }
+
+    .chip.watch {
+      background: var(--warning);
+      color: #1a1a19;
+    }
+
+    .tablewrap {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      margin-bottom: 12px;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      font-size: 13px;
+    }
+
+    th,
+    td {
+      text-align: right;
+      padding: 5px 8px;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    th {
+      color: var(--text-secondary);
+      font-weight: 600;
+      position: sticky;
+      top: 0;
+      background: var(--surface-2);
+    }
+
+    th:first-child,
+    td:first-child {
+      text-align: left;
+    }
+
+    .tablewrap th:first-child,
+    .tablewrap td:first-child {
+      position: sticky;
+      left: 0;
+      z-index: 2;
+      background: var(--surface-1);
+    }
+
+    .tablewrap th:first-child {
+      z-index: 3;
+      background: var(--surface-2);
+    }
+
+    tr:hover td {
+      background: var(--surface-2);
+    }
+
+    .tablewrap table tr:last-child td {
+      border-bottom: none;
+    }
+
+    details.gloss {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 9px 12px;
+      margin: 10px 0;
+    }
+
+    details.gloss summary {
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    details.gloss[open] summary {
+      margin-bottom: 8px;
+    }
+
+    code {
+      background: var(--surface-1);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-size: 12px;
+    }
+
+    .small {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    /* Account line. The balance is the number a reader looks for first, so it gets
+   its own rank above the statistics rather than becoming a tenth stat tile. */
+    .balance {
+      display: grid;
+      gap: 8px;
+      margin: 10px 0 10px;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    }
+
+    .balance>div {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 14px;
+    }
+
+    .balance .bal-main {
+      border-color: var(--series-1);
+    }
+
+    .balance .k {
+      font-size: 11px;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+
+    .balance .bal-main .v {
+      font-size: 30px;
+      font-weight: 700;
+      margin-top: 2px;
+    }
+
+    .balance .bal-side .v {
+      font-size: 20px;
+      font-weight: 700;
+      margin-top: 2px;
+    }
+
+    .balance .d {
+      font-size: 10px;
+      color: var(--text-muted);
+      margin-top: 3px;
+      line-height: 1.35;
+    }
+
+    .balance .sep {
+      color: var(--text-muted);
+      font-weight: 400;
+    }
+
+    @media (max-width: 700px) {
+      .balance .bal-main .v {
+        font-size: 25px;
+      }
+    }
+
+    /* Shadow forward book - dense stat row + P&L colouring. The tiles at the top
    of the page stay large; these are a second, compact rank inside a card. */
-/* Grid, not flex, and auto-FILL rather than auto-fit: with nine stats the
+    /* Grid, not flex, and auto-FILL rather than auto-fit: with nine stats the
    flex row let the last one stretch to the full width of its own line, which
    read as a banner rather than as the ninth of nine. auto-fill keeps the empty
    tracks so a short last row stays column-width. */
-.tiles.compact { display: grid; gap: 8px; margin: 10px 0 12px;
-  grid-template-columns: repeat(auto-fill, minmax(116px, 1fr)); }
-.tiles.compact .tile { min-width: 0; padding: 8px 12px; }
-.tiles.compact .tile .v { font-size: 19px; }
-.tiles.compact .tile .d { font-size: 10px; line-height: 1.35; margin-top: 3px; }
-/* Greyed, not hidden: a ratio computed on too few trades is still shown, but
+    .tiles.compact {
+      display: grid;
+      gap: 8px;
+      margin: 10px 0 12px;
+      grid-template-columns: repeat(auto-fill, minmax(116px, 1fr));
+    }
+
+    .tiles.compact .tile {
+      min-width: 0;
+      padding: 8px 12px;
+    }
+
+    .tiles.compact .tile .v {
+      font-size: 19px;
+    }
+
+    .tiles.compact .tile .d {
+      font-size: 10px;
+      line-height: 1.35;
+      margin-top: 3px;
+    }
+
+    /* Greyed, not hidden: a ratio computed on too few trades is still shown, but
    it must not read as a headline. See the method note in the shadow card. */
-.v.dim { color: var(--text-muted); font-weight: 600; }
-.v.pos, td.pos { color: var(--good); }
-.v.neg, td.neg { color: var(--critical); }
-.tag { display: inline-block; border: 1px solid var(--border); border-radius: 8px;
-  padding: 0 5px; font-size: 10px; color: var(--text-muted); }
-details.gloss > .tablewrap { margin: 8px 0 4px; }
-details.gloss > p:last-child { margin-bottom: 2px; }
-.footer { color: var(--text-muted); font-size: 11px; margin-top: 30px;
-  border-top: 1px solid var(--border); padding-top: 10px; }
-@media (max-width: 700px) {
-  header { padding: 10px 12px 0; } h1 { font-size: 16px; }
-  nav { padding: 0 8px; overflow-x: auto; scrollbar-width: none; }
-  main { padding: 12px 10px 80px; }
-  th, td { padding: 6px 6px; font-size: 12px; }
-}
-</style>
-</head>
-<body>
-<header>
-  <h1>ROBERT - <b>R</b>elentless <b>O</b>utperformers, <b>B</b>riefly <b>E</b>mbarrassed; <b>R</b>apidly <b>T</b>raded</h1>
-  <div class="sub">RSI(2) DITM long-call line. Production spec locked 08/06/2026; validated in-sample 2023-2026 and out-of-sample 2020-2023 including the 2022 bear. <span class="chip watch">PAPER ONLY - indefinite forward test on real data, no capital</span></div>
-</header>
-<nav>
-  <a href="./">&larr; Dashboard</a>
-  <span class="on">ROBERT</span>
-  <a href="jason.html">JASON</a>
-</nav>
-<main>
+    .v.dim {
+      color: var(--text-muted);
+      font-weight: 600;
+    }
 
-<div class="tiles">
-  <div class="tile"><div class="k">OOS profit factor</div><div class="v">2.396</div><div class="d">2020-2023, includes 2022 bear</div></div>
-  <div class="tile"><div class="k">OOS expectancy</div><div class="v">+8.63%</div><div class="d">per trade, honest friction + event IV</div></div>
-  <div class="tile"><div class="k">OOS max drawdown</div><div class="v">&minus;21.9%</div><div class="d">in-sample &minus;29.5%</div></div>
-  <div class="tile"><div class="k">2022</div><div class="v">+0.9%</div><div class="d">PF 1.02 - bear year &asymp; flat, not profitable</div></div>
-  <div class="tile"><div class="k">Cadence</div><div class="v">50-85</div><div class="d">trades per year, 89-name basket</div></div>
-</div>
+    .v.pos,
+    td.pos {
+      color: var(--good);
+    }
 
-<div class="card" id="robsig">
-  <h3>Tonight's scan - signals for the next open</h3>
-<!-- ROBSIG:START -->
-<p class="small">Scan as of the 2026-09-11 bar - 5 raw signal(s), 1 pass all gates. Entry is the NEXT open, ~09:45 ET limit at mid; skip if the open is already above the prior SMA5.</p><div class="tablewrap"><table>
-<tr><th>Ticker</th><th>RSI(2)</th><th>RS252 vs SPY</th><th>IV proxy</th><th>Earnings</th><th>Verdict</th></tr>
-<tr><td><b>TROW</b></td><td>2.73</td><td>-18%</td><td>18%</td><td>clear</td><td><span style="font-size:11px;padding:2px 8px;border-radius:10px;border:1px solid #8d8c85;color:#8d8c85;white-space:nowrap">signal, gated out: RS gate</span></td></tr>
-<tr><td><b>ROP</b></td><td>4.45</td><td>-41%</td><td>29%</td><td>clear</td><td><span style="font-size:11px;padding:2px 8px;border-radius:10px;border:1px solid #8d8c85;color:#8d8c85;white-space:nowrap">signal, gated out: RS gate</span></td></tr>
-<tr><td><b>GE</b></td><td>8.42</td><td>-3%</td><td>29%</td><td>clear</td><td><span style="font-size:11px;padding:2px 8px;border-radius:10px;border:1px solid #8d8c85;color:#8d8c85;white-space:nowrap">signal, gated out: RS gate</span></td></tr>
-<tr><td><b>NVDA</b></td><td>9.08</td><td>+6%</td><td>37%</td><td>clear</td><td><span style="font-size:11px;padding:2px 8px;border-radius:10px;border:1px solid #8d8c85;color:#8d8c85;white-space:nowrap">signal, gated out: RS gate</span></td></tr>
-<tr><td><b>ATI</b></td><td>9.42</td><td>+143%</td><td>37%</td><td>clear</td><td><span style="font-size:11px;padding:2px 8px;border-radius:10px;border:1px solid #009E73;color:#009E73;white-space:nowrap">TAKE - verify chain at 09:45 (OI&ge;10, spread&le;25%)</span></td></tr>
-</table></div>
-<!-- ROBSIG:END -->
-</div>
+    .v.neg,
+    td.neg {
+      color: var(--critical);
+    }
 
-<div class="card" id="robshadow">
-  <h3>Shadow forward book - automatic paper trading</h3>
-<!-- ROBSHADOW:START -->
-<p class="small">Automatic paper ledger as of the 2026-09-11 bar - entered at the next open, exited at the close over the SMA5 or at 10 bars. Headline figures are the <b>option leg</b>: the DITM call the spec actually buys, on a $100,000 sleeve at 6 slots &times; 15%, at modelled marks after 1.25%/2.5% friction.</p><div class="balance"><div class="bal-main"><div class="k">Paper balance</div><div class="v">$115,863</div><div class="d">$100,000 sleeve, not compounded &middot; opened 2026-08-20</div></div><div class="bal-side"><div class="k">2026 to date</div><div class="v pos">+$15,863</div><div class="d">+15.86% &middot; the book opened 2026-08-20, so this IS the whole record - 22 days, not a year</div></div><div class="bal-side"><div class="k">Realised / open</div><div class="v"><span class="pos">+$18,134</span> <span class="sep">/</span> <span class="neg">&minus;$2,271</span></div><div class="d">12 closed &middot; 1 marked to the last close</div></div><div class="bal-side"><div class="k">Deployed / cash</div><div class="v">$14,481 <span class="sep">/</span> $101,382</div><div class="d">14% of the sleeve at risk</div></div></div><p class="small"><b>Read the year-to-date figure carefully.</b> This book opened on 2026-08-20. There is no January-to-now record to report, so the figure above is the same number as since-inception, covering 22 days rather than eight months - and it is paper, at modelled or quoted marks, with no order ever having rested in a book. Nothing here was traded earlier in the year under these rules; the backtest tables further down are a different thing entirely and must not be spliced onto this number to manufacture a fuller year.</p><div class="tiles compact"><div class="tile"><div class="k">Net P&amp;L</div><div class="v pos">+$15,863</div><div class="d">12 closed + 1 open, model marks</div></div><div class="tile"><div class="k">Return on sleeve</div><div class="v pos">+15.86%</div><div class="d">$100,000 sleeve &middot; since 2026-08-20 (22d)</div></div><div class="tile"><div class="k">Trades</div><div class="v ">12 / 20</div><div class="d">closed / evidence milestone &middot; 1 open</div></div><div class="tile"><div class="k">Win rate</div><div class="v ">67%</div><div class="d">8 of 12 closed</div></div><div class="tile"><div class="k">Profit factor</div><div class="v dim">10.25</div><div class="d">n=12 - not meaningful until 20</div></div><div class="tile"><div class="k">Avg / trade</div><div class="v pos">+11.8%</div><div class="d">+$1,511 per closed contract set</div></div><div class="tile"><div class="k">Sortino</div><div class="v dim">25.08</div><div class="d">n=12 - not meaningful until 20</div></div><div class="tile"><div class="k">CAGR</div><div class="v dim">+1051%</div><div class="d">annualised from 22 days - n=12 - not meaningful until 20</div></div><div class="tile"><div class="k">Max drawdown</div><div class="v dim">&minus;1.9%</div><div class="d">closed-trade equity, incl. open MTM</div></div></div><p class="small"><b>The two win rates differ on purpose.</b> The stock leg calls 11 of 12 a win; the option leg calls 8 of 12. The rows that split: ATI (+0.54% stock &rarr; &minus;2.1% call), ATI (+0.38% stock &rarr; &minus;1.9% call), AMAT (+0.84% stock &rarr; &minus;0.6% call). That is the +0.9%/trade wrapper bar doing its job - a move too small to cover 1.25% in and 2.5% out is a losing call on a winning trade, and it is the single reason the stock ledger alone cannot tell you whether ROBERT makes money.</p><p class="small"><b>Stock leg</b> (the discretion-free evidence machine, 0.02%/side): 12 closed / 20 gate (8 to go) &middot; 92% win &middot; +2.94%/trade vs the +0.9% wrapper bar &middot; 1 open &middot; 0 queued &middot; 0 gap-skipped. Twenty closed rows is a sample milestone, not a go-live gate - capital is deferred indefinitely. The option wrapper clears its own cost only when the stock leg averages &ge;+0.9%/trade.</p><details class="gloss" open><summary>Open positions (1) &middot; &minus;$2,271 unrealised &middot; $14,481 at risk</summary><div class="tablewrap"><table><tr><th>Ticker</th><th>Contract</th><th>Entered</th><th>Days</th><th>Stock</th><th>Prem paid</th><th>Model mark</th><th>Live chain</th><th>Ctr</th><th>Option</th><th>P&amp;L</th></tr><tr><td><b>ATI</b></td><td>Oct16 185C</td><td>2026-09-11</td><td>0</td><td class="neg">&minus;1.62%</td><td>20.69</td><td>17.89</td><td>19.65 <span class="tag">+9.8% vs model</span></td><td>7</td><td class="neg">&minus;15.7%</td><td class="neg">&minus;$2,271</td></tr></table></div><p class="small">Model mark reprices the frozen contract at the 2026-09-11 close and is what the tiles above count. Live chain is the current quoted mid for the same contract, shown with its gap to the model - a running check on the pricing, kept out of the arithmetic so entry and exit stay on one basis.</p></details><details class="gloss"><summary>Closed trades (12) &middot; +$18,134 realised &middot; 92% win</summary><div class="tablewrap"><table><tr><th>Ticker</th><th>Contract</th><th>In</th><th>Out</th><th>Bars</th><th>Why</th><th>Stock</th><th>Prem in</th><th>Prem out</th><th>Ctr</th><th>Option</th><th>P&amp;L</th></tr><tr><td><b>AMAT</b></td><td>Oct16 390C</td><td>2026-09-01</td><td>2026-09-04</td><td>3</td><td>SMA5</td><td class="pos">+0.84%</td><td>74.14</td><td>73.66</td><td>2</td><td class="neg">&minus;0.6%</td><td class="neg">&minus;$96</td></tr><tr><td><b>ASML</b></td><td>Oct16 1530C</td><td>2026-09-01</td><td>2026-09-04</td><td>3</td><td>SMA5</td><td class="pos">+1.99%</td><td>186.04</td><td>204.12</td><td>1</td><td class="pos">+9.7%</td><td class="pos">+$1,808</td></tr><tr><td><b>KLAC</b></td><td>Oct16 150C</td><td>2026-09-01</td><td>2026-09-04</td><td>3</td><td>SMA5</td><td class="pos">+7.40%</td><td>28.18</td><td>37.37</td><td>5</td><td class="pos">+32.6%</td><td class="pos">+$4,598</td></tr><tr><td><b>FLEX</b></td><td>Oct16 90C</td><td>2026-09-03</td><td>2026-09-04</td><td>1</td><td>SMA5</td><td class="pos">+3.77%</td><td>17.99</td><td>20.62</td><td>8</td><td class="pos">+14.6%</td><td class="pos">+$2,102</td></tr><tr><td><b>LRCX</b></td><td>Oct16 240C</td><td>2026-09-03</td><td>2026-09-04</td><td>1</td><td>SMA5</td><td class="pos">+8.39%</td><td>51.23</td><td>69.50</td><td>2</td><td class="pos">+35.7%</td><td class="pos">+$3,655</td></tr><tr><td><b>ATI</b></td><td>Oct16 180C</td><td>2026-09-01</td><td>2026-09-03</td><td>2</td><td>SMA5</td><td class="pos">+0.38%</td><td>27.87</td><td>27.33</td><td>5</td><td class="neg">&minus;1.9%</td><td class="neg">&minus;$270</td></tr><tr><td><b>PANW</b></td><td>Oct16 310C</td><td>2026-08-20</td><td>2026-08-27</td><td>5</td><td>SMA5</td><td class="pos">+8.07%</td><td>54.15</td><td>75.16</td><td>2</td><td class="pos">+38.8%</td><td class="pos">+$4,200</td></tr><tr><td><b>PWR</b></td><td>Oct16 550C</td><td>2026-08-25</td><td>2026-08-27</td><td>2</td><td>SMA5</td><td class="neg">&minus;1.80%</td><td>101.48</td><td>88.44</td><td>1</td><td class="neg">&minus;12.9%</td><td class="neg">&minus;$1,305</td></tr><tr><td><b>SOXX</b></td><td>Oct16 450C</td><td>2026-08-25</td><td>2026-08-27</td><td>2</td><td>SMA5</td><td class="pos">+1.80%</td><td>82.76</td><td>86.54</td><td>1</td><td class="pos">+4.6%</td><td class="pos">+$377</td></tr><tr><td><b>SNX</b></td><td>Oct16 230C</td><td>2026-08-25</td><td>2026-08-26</td><td>1</td><td>SMA5</td><td class="pos">+2.33%</td><td>23.72</td><td>27.53</td><td>6</td><td class="pos">+16.1%</td><td class="pos">+$2,290</td></tr><tr><td><b>ATI</b></td><td>Oct16 185C</td><td>2026-08-20</td><td>2026-08-25</td><td>3</td><td>SMA5</td><td class="pos">+0.54%</td><td>34.18</td><td>33.45</td><td>4</td><td class="neg">&minus;2.1%</td><td class="neg">&minus;$290</td></tr><tr><td><b>GOOGL</b></td><td>Oct16 315C</td><td>2026-08-21</td><td>2026-08-24</td><td>1</td><td>SMA5</td><td class="pos">+1.56%</td><td>34.84</td><td>37.50</td><td>4</td><td class="pos">+7.6%</td><td class="pos">+$1,064</td></tr></table></div></details><details class="gloss"><summary>Month by month &middot; balance $115,863</summary><div class="tablewrap"><table><tr><th>Month</th><th>Closed</th><th>Realised</th><th>Open mark</th><th>Return</th><th>Balance</th></tr><tr><td>Aug 2026</td><td>6</td><td class="pos">+$6,337</td><td class="">&mdash;</td><td class="pos">+6.34%</td><td>$106,337</td></tr><tr><td>Sep 2026</td><td>6</td><td class="pos">+$11,797</td><td class="neg">&minus;$2,271</td><td class="pos">+9.53%</td><td>$115,863</td></tr></table></div><p class="small">Closed trades land in the month they EXITED. The open-mark column is the current unrealised position on the newest bar and moves until those trades close - it is not banked. Balance is the $100,000 sleeve plus cumulative P&amp;L; slots are always sized off the fixed sleeve, so this is a record of what the strategy made, not an equity curve that fed back into position size.</p></details><details class="gloss"><summary>Friction sensitivity - not available yet</summary><p class="small">No closed trade has a real quoted spread at both ends yet, so the f-band cannot be computed. Entries are captured at 09:45 ET by the robert-entry-snap workflow and exits by this build, both starting 08/26/2026; every trade opened from now on carries measured spreads and will appear here. The rows above are modelled marks at the locked 1.25%/2.5% assumption.</p></details><details class="gloss"><summary>How the option leg is priced - read this before quoting a dollar figure</summary><p class="small"><b>These are not fills.</b> No order has ever rested in a book for any row on this page. The dollar column is what the specced contract would have returned at modelled marks, and the one variable it cannot contain is realised friction - which is the whole of D11 and the reason the Paper-Fill Log exists.</p><p class="small"><b>Contract.</b> First standard monthly at least 30 days out; shallowest strike whose extrinsic is under 20% of premium. Delta lands 0.78-0.82 as an outcome of that rule. Frozen on the entry bar and never re-selected.</p><p class="small"><b>Price - measured first, modelled only as a fallback.</b> From 08/26/2026 the quote is captured at the decision moment: entries by the robert-entry-snap workflow at 09:45 ET, exits by this build, which already runs after the close where the MOC print is. A leg priced that way is tagged CHAIN, carries the real bid, ask, spread, delta, IV and open interest, and pays f=0.16 of its own MEASURED half-spread rather than a typical one. Rows entered before that machinery existed are tagged MODEL and keep the description below. Entry and exit are never mixed across bases within one trade.</p><p class="small"><b>The model fallback.</b> Black-Scholes at the underlying&rsquo;s rv-blend IV proxy - the same number the scan card prints and gates at &le;60% - computed on closes strictly before the entry bar. Validated against live chains on 2026-08-26 for the six names then in the book: mean error &minus;1.4%, mean absolute error 4.5% versus the real mid, no systematic bias. The 1.25 RV&rarr;IV multiplier carried by rsi2_call_model is deliberately not applied - it over-prices this basket by 6-12%.</p><p class="small"><b>What that validation does not cover.</b> It is a point-in-time check on pricing a fresh contract. Vol is then held FLAT at the entry reading for the life of the trade, so an open position whose IV has moved will drift from its live quote by more than 4.5% - PANW sat 13% under its chain mid on 2026-08-26 after selling off into a vol bid. Flat vol is the deliberate choice: it keeps entry and exit on one basis so a pricing error cannot masquerade as a return, and it is conservative for this strategy, whose exits complete into strength where IV normally falls. The live-chain column is where that drift is reported rather than buried.</p><p class="small"><b>Friction.</b> MODEL rows use the locked backtest's published 1.25% in / 2.5% out. CHAIN rows use f=0.16 of the spread actually quoted on that contract at that moment, which is the same assumption applied to a measured number instead of a typical one. Either way <i>f</i> itself is assumed, never observed - see the friction-sensitivity block above for what the assumption is worth.</p><p class="small"><b>Sizing.</b> $100,000 sleeve, 6 slots &times; 15% = $15,000 a slot, floored at one contract so the most expensive - and most leveraged - names cannot quietly drop out of the record. Not compounded: each slot is sized off the fixed sleeve, so the dollar column reads as a per-trade impact rather than a growth curve.</p><p class="small"><b>What the ratios need.</b> Profit factor, Sortino, CAGR and max drawdown are all shown greyed until the book reaches 20 closed trades. At n=12 they describe this sample, not the strategy; the CAGR tile in particular annualises 22 days and should be read as arithmetic, not as a forecast.</p></details>
-<!-- ROBSHADOW:END -->
-<div class="card warnbox" id="csp-overlay">
-  <h3>CSP overlay study - research only</h3>
-  <p class="small">Added 2026-09-05. This is a <b>synthetic cash-secured-put overlay</b>, not a live or historical option-chain backtest. It uses the underlying trade entry/exit paths, Black-Scholes marks, a 4% risk-free rate, and a 25-delta put. ROBERT uses its recorded 30-50 DTE and entry IV; the broader RSI2 ledger uses a 45-DTE / 35% IV proxy. No put NBBOs, commissions, bid/ask slippage, early assignment, or expiration settlement are modeled.</p>
-  <div class="tablewrap"><table>
-    <tr><th>Overlay</th><th>Trades</th><th>Modeled win rate</th><th>Avg collateral return</th><th>PF</th><th>5th percentile</th><th>Worst trade</th></tr>
-    <tr><td><b>ROBERT</b></td><td>287</td><td class="pos">87.5%</td><td class="pos">+0.578%</td><td class="pos">11.08</td><td>&minus;0.63%</td><td>&minus;4.31%</td></tr>
-    <tr><td>ROBERT scored-window subset</td><td>120</td><td class="pos">90.0%</td><td class="pos">+0.516%</td><td class="pos">4.81</td><td>-</td><td>-</td></tr>
-    <tr><td><b>Broad RSI2 ledger</b></td><td>1,762</td><td class="pos">80.0%</td><td class="pos">+0.205%</td><td>2.47</td><td>&minus;1.87%</td><td class="neg">&minus;37.68%</td></tr>
-  </table></div>
-  <p><b>Read-through:</b> ROBERT is the better CSP candidate because its RS252, SMA200, IV, and earnings gates reduce weak-leader assignments. The broad RSI2 overlay has a high modeled win rate but materially worse tails; its 2020 subset was <b>&minus;0.929% average return / PF 0.47</b>, and its worst modeled trade lost 37.68% of strike collateral.</p>
-  <p><b>Candidate rules for paper testing:</b> keep every ROBERT gate; sell only a 20-25 delta put at 30-45 DTE; choose a strike you genuinely accept owning; avoid earnings inside the holding period; close on the ROBERT SMA5/time-stop exit; cap assignment by ticker, sector, and total sleeve. For RSI2, do not use an unrestricted CSP overlay—require historical put-chain validation first.</p>
-  <p class="small"><b>Important:</b> win rate is modeled, not realized. A CSP can win frequently and still lose money when a few assignments are large. The canonical inputs and assumptions are committed in <code>data/robert_csp_overlay.json</code>.</p>
-</div>
-<!-- ROBGATE:START -->
-<h3>Chain gate - pending adds</h3>
-<p class="small">2026-09-04 21:21 ET (OFF-HOURS TEST - quotes may be stale or empty) - first monthly &ge;30 DTE, ~0.80&Delta; call. PASS = OI &ge; 10 and quoted spread &le; 25% of mid (gate amended 2026-08-17); volume column is the fillability read. 7/14 pass. A FAIL here means the name generates signals it cannot fill at viable cost - cull before first trade.</p>
-<div class="tablewrap"><table class="small"><tr><th>Ticker</th><th>Expiry</th><th>Strike</th><th>Delta</th><th>OI</th><th>Bid / Ask</th><th>Spread</th><th>Verdict</th></tr>
-<tr><td>SPOT</td><td>2026-10-16</td><td>490.0</td><td>0.81</td><td>51</td><td>60.05 / 63.75</td><td>6.0%</td><td>PASS</td></tr>
-<tr><td>XPO</td><td>2026-10-16</td><td>175.0</td><td>0.78</td><td>0</td><td>20.20 / 23.80</td><td>16.4%</td><td>FAIL</td></tr>
-<tr><td>RRX</td><td>2026-10-16</td><td>145.0</td><td>0.81</td><td>5</td><td>19.00 / 22.60</td><td>17.3%</td><td>FAIL</td></tr>
-<tr><td>MKSI</td><td>2026-10-16</td><td>230.0</td><td>0.77</td><td>4</td><td>36.70 / 40.60</td><td>10.1%</td><td>FAIL</td></tr>
-<tr><td>BURL</td><td>2026-10-16</td><td>240.0</td><td>0.82</td><td>13</td><td>29.30 / 31.80</td><td>8.2%</td><td>PASS</td></tr>
-<tr><td>SNX</td><td>2026-10-16</td><td>240.0</td><td>0.77</td><td>106</td><td>27.90 / 30.50</td><td>8.9%</td><td>PASS</td></tr>
-<tr><td>MOD</td><td>2026-10-16</td><td>165.0</td><td>0.8</td><td>6</td><td>34.00 / 38.20</td><td>11.6%</td><td>FAIL</td></tr>
-<tr><td>EVR</td><td>2026-10-16</td><td>270.0</td><td>0.77</td><td>1</td><td>32.30 / 35.40</td><td>9.2%</td><td>FAIL</td></tr>
-<tr><td>PAAS</td><td>2026-10-16</td><td>45.0</td><td>0.82</td><td>3307</td><td>7.30 / 8.00</td><td>9.2%</td><td>PASS</td></tr>
-<tr><td>SGI</td><td>2026-10-16</td><td>62.5</td><td>0.79</td><td>6</td><td>6.70 / 10.10</td><td>40.5%</td><td>FAIL</td></tr>
-<tr><td>AMKR</td><td>2026-10-16</td><td>41.0</td><td>0.81</td><td>1</td><td>6.90 / 8.80</td><td>24.2%</td><td>FAIL</td></tr>
-<tr><td>ATI</td><td>2026-10-16</td><td>190.0</td><td>0.78</td><td>105</td><td>24.40 / 26.70</td><td>9.0%</td><td>PASS</td></tr>
-<tr><td>FORM</td><td>2026-10-16</td><td>90.0</td><td>0.77</td><td>10</td><td>16.40 / 19.80</td><td>18.8%</td><td>PASS</td></tr>
-<tr><td>SOXX</td><td>2026-10-16</td><td>465.0</td><td>0.81</td><td>43</td><td>60.50 / 66.60</td><td>9.6%</td><td>PASS</td></tr>
-</table></div>
-<!-- ROBGATE:END -->
-</div>
+    .tag {
+      display: inline-block;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0 5px;
+      font-size: 10px;
+      color: var(--text-muted);
+    }
 
-<h3 style="font-size:14px;margin:16px 0 6px">Backtest results - locked production spec (all layers: RS gate + event IV + filters + honest friction)</h3>
-<div class="tablewrap">
-<table>
-  <tr><th>Window</th><th>Trades</th><th>Win rate</th><th>Avg/trade</th><th>PF</th><th>CAGR</th><th>Max DD</th><th>Sharpe</th></tr>
-  <tr><td>In-sample 08/2023-08/2026</td><td>167</td><td>68.3%</td><td>+9.97%</td><td>4.140</td><td>108%</td><td>&minus;29.5%</td><td>1.71</td></tr>
-  <tr><td>Out-of-sample 08/2020-08/2023</td><td>120</td><td>70.8%</td><td>+8.63%</td><td>2.396</td><td>59%</td><td>&minus;21.9%</td><td>1.33</td></tr>
-</table>
-</div>
-<div class="card warnbox" style="margin-top:10px">
-  <h3>Corrected 2026-08-19 &mdash; the OOS row above is not out-of-sample</h3>
-  <p>This label was wrong. The 89-name universe's own admission rule requires n&ge;3 trades <b>and a positive
-  average return</b> in each of two scoring windows, and 08/2020-08/2023 is one of them - the same window
-  labeled "Out-of-sample" above. A name could only be in this universe today because it already performed
-  well in that window. That is a second selection window, not a held-out test.</p>
-  <p>Measured genuinely out of era - 2010-2020, entirely before either admission window, where a name's
-  presence in the universe could not have depended on how it did there - the universe's edge over a matched
-  control is <b>+0.43pp/trade, t=1.14</b>. That is not statistically significant. Inside the two scored
-  windows the same comparison reads +1.32pp/trade. The gap between those two numbers is roughly what
-  selecting the universe on its own outcome is worth.</p>
-  <p>The IS-vs-OOS PF gap (4.140 vs 2.396) is not edge decay either: it is dollar-weighted over a sleeve that
-  compounded 9.15x across IS and 4.03x across OOS, while Avg/trade beside it is trade-weighted. Equal-weighted,
-  the two windows are 2.934 and 2.896 - a 1.3% difference where the table above shows 42%. The "in-sample is
-  regime-flattered" reasoning below measured the order position sizes grew, not any change in edge.</p>
-  <p class="small">None of this means the strategy has no edge - the RS252 gate does appear to do real work
-  inside its scored windows. It means the OOS row cannot be read as confirmation, and the honest edge estimate
-  for sizing purposes is closer to the pre-admission number than to either row in the table above.</p>
-</div>
-<h3 style="font-size:14px;margin:16px 0 6px">Universe expansion check - 77 vs 90 names, paired runs both windows</h3>
-<div class="tablewrap">
-<table>
-  <tr><th>Run</th><th>Trades</th><th>Win rate</th><th>Avg/trade</th><th>PF</th><th>CAGR</th><th>Max DD</th><th>Sharpe</th><th>2022 P&amp;L</th></tr>
-  <tr><td>IS - 77 names</td><td>193</td><td>69.9%</td><td>+10.74%</td><td>4.127</td><td>149%</td><td>&minus;36.7%</td><td>1.91</td><td>-</td></tr>
-  <tr><td>IS - 90 names</td><td>227</td><td>70%</td><td>+10.57%</td><td>3.794</td><td>183%</td><td>&minus;38.4%</td><td>1.91</td><td>-</td></tr>
-  <tr><td>OOS - 77 names</td><td>145</td><td>68.3%</td><td>+9.39%</td><td>2.806</td><td>84.7%</td><td>&minus;22%</td><td>1.39</td><td>+$28.3k</td></tr>
-  <tr><td>OOS - 90 names</td><td>176</td><td>67.6%</td><td>+8.49%</td><td>2.423</td><td>93%</td><td>&minus;32.9%</td><td>1.42</td><td>+$37.3k</td></tr>
-</table>
-</div>
-<p class="small">The paired expansion runs use identical wiring on both sides but mark exits slightly richer than the locked-spec prints above - read the 77&rarr;90 deltas, not the absolute levels. Verdict: +18-21% trades, CAGR up both windows, Sharpe flat, 2022 improved; cost = OOS max DD deepens &minus;22% &rarr; &minus;33%. Plan-around: PF 2.0-2.4, +7-9% per trade, DD &minus;25 to &minus;35%, 50-85 trades/yr, bear years &asymp; flat. The 13 adds ran +11.19%/trade IS (43 trades) and +7.02% OOS (38 trades).</p>
+    details.gloss>.tablewrap {
+      margin: 8px 0 4px;
+    }
 
-<div class="card">
-  <h3>What the name means</h3>
-  <p><b>Relentless Outperformers</b> - the gate: RS252 &gt; +40% vs SPY at the signal. Only names that beat the market for the past year qualify; the ungated version is nearly a coin flip through the cycle (OOS PF 1.157). <b>Briefly Embarrassed</b> - the trigger: RSI(2) &lt; 10 above the 200-day SMA. A two-day oversold print in a leader is a lapse of dignity, not a breakdown. <b>Rapidly Traded</b> - in at the next open, out at the close over the SMA5; median hold 2.6 bars.</p>
-  <p class="small">On the fills, call him Bob - all he does is bounce.</p>
-</div>
+    details.gloss>p:last-child {
+      margin-bottom: 2px;
+    }
 
-<div class="card">
-  <h3>Locked spec</h3>
-  <ul>
-    <li><b>Signal:</b> RSI(2) &lt; 10 AND close &gt; SMA200 on the completed daily bar</li>
-    <li><b>Gates:</b> RS252 vs SPY &gt; +40% at signal (40-60 band acceptable, never higher) &middot; no earnings within 7 days &middot; ATM IV &le; 60%</li>
-    <li><b>Entry:</b> next open, ~09:45 ET limit at mid; skip if the open is already above the prior SMA5</li>
-    <li><b>Contract:</b> shallowest strike with extrinsic &lt; 20% of premium (delta lands 0.78-0.80 as an outcome), first monthly 30-50 DTE, <b>OI &ge; 10, quoted spread &le; 25% of mid</b> (amended 08/17/2026 from OI &ge; 250 / 5%; quoted width overstates realistic cost 2-3x - work the mid, and read contract volume rather than OI for fillability)</li>
-    <li><b>Exit:</b> sell at the close when close &gt; SMA5, or 10-bar time stop. No stop-loss - path-simulated stops collapse PF to 0.90</li>
-    <li><b>Sizing:</b> 6 slots &times; 15% (5-8 slot plateau; concentrated 40/40/20 reliably worst)</li>
-    <li><b>Universe:</b> 89 names screened under pre-stated two-window bars (13 full-market adds 08/07/2026 - SPOT, XPO, RRX, MKSI, BURL, SNX, MOD, EVR, PAAS, SGI, AMKR, ATI, FORM - chain-gated nightly, see the chain-gate block above; <a href="robert_universe.txt" style="color:#56B4E9">full 89-ticker list</a>); a live chain check remains mandatory before any name's first trade; re-screen semiannually, no re-ranking on live results</li>
-  </ul>
-</div>
+    .footer {
+      color: var(--text-muted);
+      font-size: 11px;
+      margin-top: 30px;
+      border-top: 1px solid var(--border);
+      padding-top: 10px;
+    }
 
-<div class="card warnbox">
-  <h3>Chain gate - thresholds amended 08/17/2026</h3>
-  <p>The order-time liquidity gate moved from <b>OI &ge; 250 / spread &le; 5%</b> to <b>OI &ge; 10 / spread &le; 25% of mid</b>, with <b>contract volume</b> reported alongside as the fillability read - resting OI is a stock of old positions, prints are flow. The OI floor now exists only for size feasibility (OI 7 cannot fill 11 contracts) and to kill dead books; scale it to roughly 10x the intended contract count.</p>
-  <p><b>The reason, stated precisely.</b> The 250/5% floor was never isolated in a backtest: the model-marks run priced options off Black-Scholes, which cannot produce open interest at all, so that gate never bound on anything. It was an inherited assumption that excluded roughly 90% of the basket for no measured reason - and that is the whole case for loosening it. The <i>weaker</i> argument, which this page deliberately does not lean on, is that OI and quoted spread barely correlate with trade quality (+0.11 / +0.17) in the real-OPRA reprice: that study measured entry-mid to exit-mid P&amp;L, which never pays the spread, so it structurally cannot detect what a spread gate exists to control.</p>
-  <p>Scored across the 89 names on the 08/15 chains, the change is close to a reversal:</p>
-  <div class="tablewrap"><table>
-    <tr><th>Gate</th><th>Pass</th><th>Marginal</th><th>Fail</th></tr>
-    <tr><td>Former - OI &ge; 250, spread &le; 5%</td><td>8</td><td>-</td><td>81</td></tr>
-    <tr><td>Amended - OI &ge; 10, spread &le; 25%</td><td><b>69</b></td><td>8</td><td>12</td></tr>
-  </table></div>
-  <p class="small"><b>The cull is suspended, 08/27/2026.</b> The chain-gate block above still says
-  a FAIL means "cull before first trade". There is no first trade - capital is deferred
-  indefinitely - and the OI floor's own stated purpose is size feasibility, scaled to about 10x the
-  intended contract count. With no intended contract count that purpose cannot bind, so culling ten
-  names on it now would discard forward evidence to satisfy a constraint that is not operating.
-  Note what is actually failing: all ten fail on <b>open interest alone</b>, at spreads of 6-19%
-  (EVR 6.3%, MOD 7.7%, BURL 8.7%) - not on the cost measure. They stay in the basket, keep
-  generating signals, and accumulate measured spreads like every other name. Whether they can be
-  filled is then answered per name by the friction band in the shadow book, which measures the
-  thing the OI floor was standing in for, rather than being settled in advance by a proxy. The
-  threshold itself is deliberately unchanged so the measurement stays comparable across the whole
-  history. Trimming a basket to its liquid names on a proxy is how a hand-picked universe gets
-  built by accident.</p>
+    @media (max-width: 700px) {
+      header {
+        padding: 10px 12px 0;
+      }
 
-  <p class="small">Twelve names fail under either gate: DD, EME, EVR, HUBB, IBKR, MKSI, MSCI, ROP, RRX, SGI, SPGI, TPR. <b>Counter-evidence kept in view:</b> the friction work measured 0.80-delta half-spreads running 13.0% down to 3.4% across liquidity quintiles, with only the most liquid tier breaking even - which points the other way from a loose gate. That tension is not resolved here. The 09/01 pilot is the first thing that pays real spreads, and it is what decides whether a loose gate survives contact with actual fills.</p>
-</div>
+      h1 {
+        font-size: 16px;
+      }
 
-<div class="card">
-  <h3>The universe - all 89 names</h3>
-  <style>
-    .uwrap{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 12px}
-    .uchip{font-size:12px;padding:3px 9px;border-radius:12px;border:1px solid #333330;color:#c0bfb9;background:#121212;white-space:nowrap}
-    .uchip.new{border-color:#009E73;color:#009E73;font-weight:600}
-    .uchip.silent{color:#8d8c85;border-style:dashed;opacity:.8}
-    .uchip.flag{border-color:#E69F00;color:#E69F00;font-weight:600}
-    .uhead{font-size:12px;color:#8d8c85;margin:10px 0 2px;text-transform:uppercase;letter-spacing:.04em}
+      nav {
+        padding: 0 8px;
+        overflow-x: auto;
+        scrollbar-width: none;
+      }
+
+      main {
+        padding: 12px 10px 80px;
+      }
+
+      th,
+      td {
+        padding: 6px 6px;
+        font-size: 12px;
+      }
+    }
   </style>
-  <div class="uhead">New full-market adds (13) - added 08/07/2026; chain-gated nightly, see the chain-gate block</div>
-  <div class="uwrap"><span class="uchip new">SPOT</span><span class="uchip new">XPO</span><span class="uchip new">RRX</span><span class="uchip new">MKSI</span><span class="uchip new">BURL</span><span class="uchip new">SNX</span><span class="uchip new">MOD</span><span class="uchip new">EVR</span><span class="uchip new">PAAS</span><span class="uchip new">SGI</span><span class="uchip new">AMKR</span><span class="uchip new">ATI</span><span class="uchip new">FORM</span></div>
-  <div class="uhead">Active incumbents (65)</div>
-  <div class="uwrap"><span class="uchip">AAPL</span><span class="uchip">ADBE</span><span class="uchip">AMAT</span><span class="uchip">AMD</span><span class="uchip">ANET</span><span class="uchip">APH</span><span class="uchip">ARES</span><span class="uchip">ASML</span><span class="uchip">AVGO</span><span class="uchip">BLDR</span><span class="uchip">BNY</span><span class="uchip">COHR</span><span class="uchip">CVNA</span><span class="uchip">DD</span><span class="uchip">DHI</span><span class="uchip">DRI</span><span class="uchip">DVN</span><span class="uchip">EBAY</span><span class="uchip">ECHO</span><span class="uchip">EME</span><span class="uchip">ETR</span><span class="uchip">EWT</span><span class="uchip">EXPE</span><span class="uchip">FIS</span><span class="uchip">FITB</span><span class="uchip">FLEX</span><span class="uchip">GE</span><span class="uchip">GLW</span><span class="uchip">GM</span><span class="uchip">GOOGL</span><span class="uchip">HUBB</span><span class="uchip">HWM</span><span class="uchip flag">IBKR</span><span class="uchip">IVZ</span><span class="uchip">JCI</span><span class="uchip">KLAC</span><span class="uchip">KMI</span><span class="uchip">LITE</span><span class="uchip">LNG</span><span class="uchip">LRCX</span><span class="uchip">LYV</span><span class="uchip">META</span><span class="uchip">MSCI</span><span class="uchip">MSFT</span><span class="uchip">MU</span><span class="uchip">NOW</span><span class="uchip">NRG</span><span class="uchip">NVDA</span><span class="uchip">NXPI</span><span class="uchip">PANW</span><span class="uchip">PDD</span><span class="uchip">PHM</span><span class="uchip">PWR</span><span class="uchip">SYF</span><span class="uchip">TER</span><span class="uchip">TMUS</span><span class="uchip">TPR</span><span class="uchip">TRGP</span><span class="uchip">TROW</span><span class="uchip">TSM</span><span class="uchip">TTWO</span><span class="uchip">ULTA</span><span class="uchip">URI</span><span class="uchip">VRT</span><span class="uchip">WDC</span></div>
-  <p class="small" style="margin:6px 0 0"><b>FFIV was cut 08/17/2026</b> on a negative pooled stock-leg average in both windows (n=6); the basket is now 89 names. <span style="color:#E69F00;font-weight:600">IBKR</span> carries the same defect on a larger sample (n=14) and also fails the chain gate under either threshold set, but is <b>deliberately retained</b> by owner decision - it stays flagged rather than cut.</p>
-  <div class="uhead">Structurally silent under the RS gate (10) - kept at zero cost</div>
-  <div class="uwrap"><span class="uchip silent">SPY</span><span class="uchip silent">QQQ</span><span class="uchip silent">XLK</span><span class="uchip silent">CHD</span><span class="uchip silent">EXPD</span><span class="uchip silent">HLT</span><span class="uchip silent">J</span><span class="uchip silent">ROP</span><span class="uchip silent">SPGI</span><span class="uchip silent">V</span></div>
-  <p class="small">The seven dashed stocks have never produced a gated signal in either window. <b>SOXX was
-  removed from this list 08/19</b> - "index ETFs cannot be +40% vs SPY by definition" was wrong: SOXX's RS252
-  as of 2026-08-18 measures <b>+79.4%</b> (114.0% raw return vs SPY's 19.3%), clearing the gate with room to
-  spare, and it contributed $50,881 of the $802,720 IS total (6.34%, 4th of 42 tickers) in the backtest above.
-  SPY/QQQ/XLK are broad-market trackers with no leverage tilt and stay silent on the merits. Because SOXX will
-  fire as a live entry, it needs the same mandatory pre-trade chain check as any other name, and until
-  08/26 it did not get one - the nightly sweep list was built from the 13 new adds and SOXX was not among
-  them. <b>Added to the sweep 08/26/2026</b>, so the Monday run now covers 14 names; SOXX is also an open
-  position in the shadow book below, which is what made the omission worth closing rather than noting. Full list: <a href="robert_universe.txt" style="color:#56B4E9">robert_universe.txt</a></p>
-</div>
+</head>
 
-<p class="small" style="margin:0 0 14px">Plan-around line: PF 2.0-2.4, +7-9% per trade, drawdowns &minus;22 to &minus;30%, bear years roughly flat.
-<b>Correction 08/19:</b> the OOS row does not earn special trust - see the warnbox above. The honest edge
-estimate is the pre-admission (2010-2020) figure, +0.43pp/trade, not significant at this sample size.</p>
+<body>
+  <header>
+    <h1>ROBERT - <b>R</b>elentless <b>O</b>utperformers, <b>B</b>riefly <b>E</b>mbarrassed; <b>R</b>apidly <b>T</b>raded
+    </h1>
+    <div class="sub">RSI(2) DITM long-call line. Production spec locked 08/06/2026; validated in-sample 2023-2026 and
+      out-of-sample 2020-2023 including the 2022 bear. <span class="chip watch">PAPER ONLY - indefinite forward test on
+        real data, no capital</span></div>
+  </header>
+  <nav>
+    <a href="./">&larr; Dashboard</a>
+    <span class="on">ROBERT</span>
+    <a href="jason.html">JASON</a>
+  </nav>
+  <main>
 
-<h3 style="font-size:14px;margin:16px 0 6px">Options vs shares - ROBERT vs the Agentic leveraged-ETF config, each as-specced</h3>
-<p class="small" style="margin:0 0 8px">Both columns are simulations. The leveraged-ETF config was <b>retired 07/06/2026 having never placed a trade</b> - verified 08/16 against account 680183373, whose fill history contains no SOXL, UPRO, TQQQ or TECL, with the engine left in dry-run and its scheduler removed. Read this as backtest versus backtest, not challenger versus incumbent.</p>
-<div class="tablewrap">
-<table>
-  <tr><th>Metric</th><th>Shares (sim) IS</th><th>ROBERT IS</th><th>Shares (sim) OOS</th><th>ROBERT OOS</th></tr>
-  <tr><td>Trades</td><td>54</td><td>167</td><td>44</td><td>120</td></tr>
-  <tr><td>Win rate</td><td>68.5%</td><td>68.3%</td><td>72.7%</td><td>70.8%</td></tr>
-  <tr><td>Avg/trade</td><td>+1.36%</td><td>+9.97%</td><td>+1.87%</td><td>+8.63%</td></tr>
-  <tr><td>Profit factor</td><td>2.034</td><td>4.140</td><td>2.563</td><td>2.396</td></tr>
-  <tr><td>CAGR</td><td>6.8%</td><td>108%</td><td>7.6%</td><td>59%</td></tr>
-  <tr><td>Max drawdown</td><td>&minus;6%</td><td>&minus;29.5%</td><td>&minus;10.2%</td><td>&minus;21.9%</td></tr>
-  <tr><td>Sharpe</td><td>0.73</td><td>1.71</td><td>0.77</td><td>1.33</td></tr>
-  <tr><td>Avg capital deployed</td><td>4.5%</td><td>~25-30%</td><td>4.2%</td><td>~25-30%</td></tr>
-</table>
-</div>
+    <div class="tiles">
+      <div class="tile">
+        <div class="k">OOS profit factor</div>
+        <div class="v">2.396</div>
+        <div class="d">2020-2023, includes 2022 bear</div>
+      </div>
+      <div class="tile">
+        <div class="k">OOS expectancy</div>
+        <div class="v">+8.63%</div>
+        <div class="d">per trade, honest friction + event IV</div>
+      </div>
+      <div class="tile">
+        <div class="k">OOS max drawdown</div>
+        <div class="v">&minus;21.9%</div>
+        <div class="d">in-sample &minus;29.5%</div>
+      </div>
+      <div class="tile">
+        <div class="k">2022</div>
+        <div class="v">+0.9%</div>
+        <div class="d">PF 1.02 - bear year &asymp; flat, not profitable</div>
+      </div>
+      <div class="tile">
+        <div class="k">Cadence</div>
+        <div class="v">50-85</div>
+        <div class="d">trades per year, 89-name basket</div>
+      </div>
+    </div>
 
-<details class="gloss">
-  <summary>Reading the comparison - same signal, different vehicle, different throughput</summary>
-  <p>Win rates are nearly identical in both vehicles (68-73%) - the vehicle doesn't change whether trades win. The calls pay 5-7x per trade (single names move more than indexes on a bounce, and DITM calls carry more effective leverage than a 3x fund) and fire 2.5-3x as often (77 gated names vs four correlated index sources whose signals mostly overlap and collapse to one position). The shares config would keep ~95% of capital in cash at &minus;6 to &minus;10% simulated drawdowns, with far lower execution uncertainty - share orders in liquid index ETFs, though never actually filled either; ROBERT compounds 59-108% at &minus;22 to &minus;30% drawdowns with option friction still to be proven live. Normalised for capital at risk the gap narrows sharply: ~215% per unit deployed for ROBERT against ~180% for the shares config, so most of the headline CAGR advantage is deploying 6x more capital rather than converting it better. What survives normalisation is Sharpe (1.33-1.71 vs 0.73-0.77) and sample (120-176 OOS trades vs 44). Shares config sim: SMH&rarr;SOXL, SPY&rarr;UPRO, QQQ&rarr;TQQQ, XLK&rarr;TECL; 2 slots &times; 27.5%; one index ETF at a time; SOXL never alongside TQQQ/TECL.</p>
-</details>
+    <div class="card" id="robsig">
+      <h3>Tonight's scan - signals for the next open</h3>
+      <!-- ROBSIG:START -->
+      <p class="small">Scan as of the 2026-09-11 bar - 5 raw signal(s), 1 pass all gates. Entry is the NEXT open, ~09:45
+        ET limit at mid; skip if the open is already above the prior SMA5.</p>
+      <div class="tablewrap">
+        <table>
+          <tr>
+            <th>Ticker</th>
+            <th>RSI(2)</th>
+            <th>RS252 vs SPY</th>
+            <th>IV proxy</th>
+            <th>Earnings</th>
+            <th>Verdict</th>
+          </tr>
+          <tr>
+            <td><b>TROW</b></td>
+            <td>2.73</td>
+            <td>-18%</td>
+            <td>18%</td>
+            <td>clear</td>
+            <td><span
+                style="font-size:11px;padding:2px 8px;border-radius:10px;border:1px solid #8d8c85;color:#8d8c85;white-space:nowrap">signal,
+                gated out: RS gate</span></td>
+          </tr>
+          <tr>
+            <td><b>ROP</b></td>
+            <td>4.45</td>
+            <td>-41%</td>
+            <td>29%</td>
+            <td>clear</td>
+            <td><span
+                style="font-size:11px;padding:2px 8px;border-radius:10px;border:1px solid #8d8c85;color:#8d8c85;white-space:nowrap">signal,
+                gated out: RS gate</span></td>
+          </tr>
+          <tr>
+            <td><b>GE</b></td>
+            <td>8.42</td>
+            <td>-3%</td>
+            <td>29%</td>
+            <td>clear</td>
+            <td><span
+                style="font-size:11px;padding:2px 8px;border-radius:10px;border:1px solid #8d8c85;color:#8d8c85;white-space:nowrap">signal,
+                gated out: RS gate</span></td>
+          </tr>
+          <tr>
+            <td><b>NVDA</b></td>
+            <td>9.08</td>
+            <td>+6%</td>
+            <td>37%</td>
+            <td>clear</td>
+            <td><span
+                style="font-size:11px;padding:2px 8px;border-radius:10px;border:1px solid #8d8c85;color:#8d8c85;white-space:nowrap">signal,
+                gated out: RS gate</span></td>
+          </tr>
+          <tr>
+            <td><b>ATI</b></td>
+            <td>9.42</td>
+            <td>+143%</td>
+            <td>37%</td>
+            <td>clear</td>
+            <td><span
+                style="font-size:11px;padding:2px 8px;border-radius:10px;border:1px solid #009E73;color:#009E73;white-space:nowrap">TAKE
+                - verify chain at 09:45 (OI&ge;10, spread&le;25%)</span></td>
+          </tr>
+        </table>
+      </div>
+      <!-- ROBSIG:END -->
+    </div>
 
-<div class="card warnbox">
-  <h3>Capital is deferred indefinitely - what this test can and cannot settle</h3>
-  <p><b>Posture, set 08/26/2026.</b> ROBERT runs as a forward paper test on real data for an
-  indefinite period. No allocation, no x-number, no staging ladder in progress. The
-  <b>09/01/2026 pilot this card used to schedule is withdrawn</b> - not moved to a later date.
-  Nothing on this page should be read as a plan to trade it on a timetable.</p>
+    <div class="card" id="robshadow">
+      <h3>Shadow forward book - automatic paper trading</h3>
+      <!-- ROBSHADOW:START -->
+      <p class="small">Automatic paper ledger as of the 2026-09-11 bar - entered at the next open, exited at the close
+        over the SMA5 or at 10 bars. Headline figures are the <b>option leg</b>: the DITM call the spec actually buys,
+        on a $100,000 sleeve at 6 slots &times; 15%, at modelled marks after 1.25%/2.5% friction.</p>
+      <div class="balance">
+        <div class="bal-main">
+          <div class="k">Paper balance</div>
+          <div class="v">$115,863</div>
+          <div class="d">$100,000 sleeve, not compounded &middot; opened 2026-08-20</div>
+        </div>
+        <div class="bal-side">
+          <div class="k">2026 to date</div>
+          <div class="v pos">+$15,863</div>
+          <div class="d">+15.86% &middot; the book opened 2026-08-20, so this IS the whole record - 22 days, not a year
+          </div>
+        </div>
+        <div class="bal-side">
+          <div class="k">Realised / open</div>
+          <div class="v"><span class="pos">+$18,134</span> <span class="sep">/</span> <span
+              class="neg">&minus;$2,271</span></div>
+          <div class="d">12 closed &middot; 1 marked to the last close</div>
+        </div>
+        <div class="bal-side">
+          <div class="k">Deployed / cash</div>
+          <div class="v">$14,481 <span class="sep">/</span> $101,382</div>
+          <div class="d">14% of the sleeve at risk</div>
+        </div>
+      </div>
+      <p class="small"><b>Read the year-to-date figure carefully.</b> This book opened on 2026-08-20. There is no
+        January-to-now record to report, so the figure above is the same number as since-inception, covering 22 days
+        rather than eight months - and it is paper, at modelled or quoted marks, with no order ever having rested in a
+        book. Nothing here was traded earlier in the year under these rules; the backtest tables further down are a
+        different thing entirely and must not be spliced onto this number to manufacture a fuller year.</p>
+      <div class="tiles compact">
+        <div class="tile">
+          <div class="k">Net P&amp;L</div>
+          <div class="v pos">+$15,863</div>
+          <div class="d">12 closed + 1 open, model marks</div>
+        </div>
+        <div class="tile">
+          <div class="k">Return on sleeve</div>
+          <div class="v pos">+15.86%</div>
+          <div class="d">$100,000 sleeve &middot; since 2026-08-20 (22d)</div>
+        </div>
+        <div class="tile">
+          <div class="k">Trades</div>
+          <div class="v ">12 / 20</div>
+          <div class="d">closed / evidence milestone &middot; 1 open</div>
+        </div>
+        <div class="tile">
+          <div class="k">Win rate</div>
+          <div class="v ">67%</div>
+          <div class="d">8 of 12 closed</div>
+        </div>
+        <div class="tile">
+          <div class="k">Profit factor</div>
+          <div class="v dim">10.25</div>
+          <div class="d">n=12 - not meaningful until 20</div>
+        </div>
+        <div class="tile">
+          <div class="k">Avg / trade</div>
+          <div class="v pos">+11.8%</div>
+          <div class="d">+$1,511 per closed contract set</div>
+        </div>
+        <div class="tile">
+          <div class="k">Sortino</div>
+          <div class="v dim">25.08</div>
+          <div class="d">n=12 - not meaningful until 20</div>
+        </div>
+        <div class="tile">
+          <div class="k">CAGR</div>
+          <div class="v dim">+1051%</div>
+          <div class="d">annualised from 22 days - n=12 - not meaningful until 20</div>
+        </div>
+        <div class="tile">
+          <div class="k">Max drawdown</div>
+          <div class="v dim">&minus;1.9%</div>
+          <div class="d">closed-trade equity, incl. open MTM</div>
+        </div>
+      </div>
+      <p class="small"><b>The two win rates differ on purpose.</b> The stock leg calls 11 of 12 a win; the option leg
+        calls 8 of 12. The rows that split: ATI (+0.54% stock &rarr; &minus;2.1% call), ATI (+0.38% stock &rarr;
+        &minus;1.9% call), AMAT (+0.84% stock &rarr; &minus;0.6% call). That is the +0.9%/trade wrapper bar doing its
+        job - a move too small to cover 1.25% in and 2.5% out is a losing call on a winning trade, and it is the single
+        reason the stock ledger alone cannot tell you whether ROBERT makes money.</p>
+      <p class="small"><b>Stock leg</b> (the discretion-free evidence machine, 0.02%/side): 12 closed / 20 gate (8 to
+        go) &middot; 92% win &middot; +2.94%/trade vs the +0.9% wrapper bar &middot; 1 open &middot; 0 queued &middot; 0
+        gap-skipped. Twenty closed rows is a sample milestone, not a go-live gate - capital is deferred indefinitely.
+        The option wrapper clears its own cost only when the stock leg averages &ge;+0.9%/trade.</p>
+      <details class="gloss" open>
+        <summary>Open positions (1) &middot; &minus;$2,271 unrealised &middot; $14,481 at risk</summary>
+        <div class="tablewrap">
+          <table>
+            <tr>
+              <th>Ticker</th>
+              <th>Contract</th>
+              <th>Entered</th>
+              <th>Days</th>
+              <th>Stock</th>
+              <th>Prem paid</th>
+              <th>Model mark</th>
+              <th>Live chain</th>
+              <th>Ctr</th>
+              <th>Option</th>
+              <th>P&amp;L</th>
+            </tr>
+            <tr>
+              <td><b>ATI</b></td>
+              <td>Oct16 185C</td>
+              <td>2026-09-11</td>
+              <td>0</td>
+              <td class="neg">&minus;1.62%</td>
+              <td>20.69</td>
+              <td>17.89</td>
+              <td>19.65 <span class="tag">+9.8% vs model</span></td>
+              <td>7</td>
+              <td class="neg">&minus;15.7%</td>
+              <td class="neg">&minus;$2,271</td>
+            </tr>
+          </table>
+        </div>
+        <p class="small">Model mark reprices the frozen contract at the 2026-09-11 close and is what the tiles above
+          count. Live chain is the current quoted mid for the same contract, shown with its gap to the model - a running
+          check on the pricing, kept out of the arithmetic so entry and exit stay on one basis.</p>
+      </details>
+      <details class="gloss">
+        <summary>Closed trades (12) &middot; +$18,134 realised &middot; 92% win</summary>
+        <div class="tablewrap">
+          <table>
+            <tr>
+              <th>Ticker</th>
+              <th>Contract</th>
+              <th>In</th>
+              <th>Out</th>
+              <th>Bars</th>
+              <th>Why</th>
+              <th>Stock</th>
+              <th>Prem in</th>
+              <th>Prem out</th>
+              <th>Ctr</th>
+              <th>Option</th>
+              <th>P&amp;L</th>
+            </tr>
+            <tr>
+              <td><b>AMAT</b></td>
+              <td>Oct16 390C</td>
+              <td>2026-09-01</td>
+              <td>2026-09-04</td>
+              <td>3</td>
+              <td>SMA5</td>
+              <td class="pos">+0.84%</td>
+              <td>74.14</td>
+              <td>73.66</td>
+              <td>2</td>
+              <td class="neg">&minus;0.6%</td>
+              <td class="neg">&minus;$96</td>
+            </tr>
+            <tr>
+              <td><b>ASML</b></td>
+              <td>Oct16 1530C</td>
+              <td>2026-09-01</td>
+              <td>2026-09-04</td>
+              <td>3</td>
+              <td>SMA5</td>
+              <td class="pos">+1.99%</td>
+              <td>186.04</td>
+              <td>204.12</td>
+              <td>1</td>
+              <td class="pos">+9.7%</td>
+              <td class="pos">+$1,808</td>
+            </tr>
+            <tr>
+              <td><b>KLAC</b></td>
+              <td>Oct16 150C</td>
+              <td>2026-09-01</td>
+              <td>2026-09-04</td>
+              <td>3</td>
+              <td>SMA5</td>
+              <td class="pos">+7.40%</td>
+              <td>28.18</td>
+              <td>37.37</td>
+              <td>5</td>
+              <td class="pos">+32.6%</td>
+              <td class="pos">+$4,598</td>
+            </tr>
+            <tr>
+              <td><b>FLEX</b></td>
+              <td>Oct16 90C</td>
+              <td>2026-09-03</td>
+              <td>2026-09-04</td>
+              <td>1</td>
+              <td>SMA5</td>
+              <td class="pos">+3.77%</td>
+              <td>17.99</td>
+              <td>20.62</td>
+              <td>8</td>
+              <td class="pos">+14.6%</td>
+              <td class="pos">+$2,102</td>
+            </tr>
+            <tr>
+              <td><b>LRCX</b></td>
+              <td>Oct16 240C</td>
+              <td>2026-09-03</td>
+              <td>2026-09-04</td>
+              <td>1</td>
+              <td>SMA5</td>
+              <td class="pos">+8.39%</td>
+              <td>51.23</td>
+              <td>69.50</td>
+              <td>2</td>
+              <td class="pos">+35.7%</td>
+              <td class="pos">+$3,655</td>
+            </tr>
+            <tr>
+              <td><b>ATI</b></td>
+              <td>Oct16 180C</td>
+              <td>2026-09-01</td>
+              <td>2026-09-03</td>
+              <td>2</td>
+              <td>SMA5</td>
+              <td class="pos">+0.38%</td>
+              <td>27.87</td>
+              <td>27.33</td>
+              <td>5</td>
+              <td class="neg">&minus;1.9%</td>
+              <td class="neg">&minus;$270</td>
+            </tr>
+            <tr>
+              <td><b>PANW</b></td>
+              <td>Oct16 310C</td>
+              <td>2026-08-20</td>
+              <td>2026-08-27</td>
+              <td>5</td>
+              <td>SMA5</td>
+              <td class="pos">+8.07%</td>
+              <td>54.15</td>
+              <td>75.16</td>
+              <td>2</td>
+              <td class="pos">+38.8%</td>
+              <td class="pos">+$4,200</td>
+            </tr>
+            <tr>
+              <td><b>PWR</b></td>
+              <td>Oct16 550C</td>
+              <td>2026-08-25</td>
+              <td>2026-08-27</td>
+              <td>2</td>
+              <td>SMA5</td>
+              <td class="neg">&minus;1.80%</td>
+              <td>101.48</td>
+              <td>88.44</td>
+              <td>1</td>
+              <td class="neg">&minus;12.9%</td>
+              <td class="neg">&minus;$1,305</td>
+            </tr>
+            <tr>
+              <td><b>SOXX</b></td>
+              <td>Oct16 450C</td>
+              <td>2026-08-25</td>
+              <td>2026-08-27</td>
+              <td>2</td>
+              <td>SMA5</td>
+              <td class="pos">+1.80%</td>
+              <td>82.76</td>
+              <td>86.54</td>
+              <td>1</td>
+              <td class="pos">+4.6%</td>
+              <td class="pos">+$377</td>
+            </tr>
+            <tr>
+              <td><b>SNX</b></td>
+              <td>Oct16 230C</td>
+              <td>2026-08-25</td>
+              <td>2026-08-26</td>
+              <td>1</td>
+              <td>SMA5</td>
+              <td class="pos">+2.33%</td>
+              <td>23.72</td>
+              <td>27.53</td>
+              <td>6</td>
+              <td class="pos">+16.1%</td>
+              <td class="pos">+$2,290</td>
+            </tr>
+            <tr>
+              <td><b>ATI</b></td>
+              <td>Oct16 185C</td>
+              <td>2026-08-20</td>
+              <td>2026-08-25</td>
+              <td>3</td>
+              <td>SMA5</td>
+              <td class="pos">+0.54%</td>
+              <td>34.18</td>
+              <td>33.45</td>
+              <td>4</td>
+              <td class="neg">&minus;2.1%</td>
+              <td class="neg">&minus;$290</td>
+            </tr>
+            <tr>
+              <td><b>GOOGL</b></td>
+              <td>Oct16 315C</td>
+              <td>2026-08-21</td>
+              <td>2026-08-24</td>
+              <td>1</td>
+              <td>SMA5</td>
+              <td class="pos">+1.56%</td>
+              <td>34.84</td>
+              <td>37.50</td>
+              <td>4</td>
+              <td class="pos">+7.6%</td>
+              <td class="pos">+$1,064</td>
+            </tr>
+          </table>
+        </div>
+      </details>
+      <details class="gloss">
+        <summary>Month by month &middot; balance $115,863</summary>
+        <div class="tablewrap">
+          <table>
+            <tr>
+              <th>Month</th>
+              <th>Closed</th>
+              <th>Realised</th>
+              <th>Open mark</th>
+              <th>Return</th>
+              <th>Balance</th>
+            </tr>
+            <tr>
+              <td>Aug 2026</td>
+              <td>6</td>
+              <td class="pos">+$6,337</td>
+              <td class="">&mdash;</td>
+              <td class="pos">+6.34%</td>
+              <td>$106,337</td>
+            </tr>
+            <tr>
+              <td>Sep 2026</td>
+              <td>6</td>
+              <td class="pos">+$11,797</td>
+              <td class="neg">&minus;$2,271</td>
+              <td class="pos">+9.53%</td>
+              <td>$115,863</td>
+            </tr>
+          </table>
+        </div>
+        <p class="small">Closed trades land in the month they EXITED. The open-mark column is the current unrealised
+          position on the newest bar and moves until those trades close - it is not banked. Balance is the $100,000
+          sleeve plus cumulative P&amp;L; slots are always sized off the fixed sleeve, so this is a record of what the
+          strategy made, not an equity curve that fed back into position size.</p>
+      </details>
+      <details class="gloss">
+        <summary>Friction sensitivity - not available yet</summary>
+        <p class="small">No closed trade has a real quoted spread at both ends yet, so the f-band cannot be computed.
+          Entries are captured at 09:45 ET by the robert-entry-snap workflow and exits by this build, both starting
+          08/26/2026; every trade opened from now on carries measured spreads and will appear here. The rows above are
+          modelled marks at the locked 1.25%/2.5% assumption.</p>
+      </details>
+      <details class="gloss">
+        <summary>How the option leg is priced - read this before quoting a dollar figure</summary>
+        <p class="small"><b>These are not fills.</b> No order has ever rested in a book for any row on this page. The
+          dollar column is what the specced contract would have returned at modelled marks, and the one variable it
+          cannot contain is realised friction - which is the whole of D11 and the reason the Paper-Fill Log exists.</p>
+        <p class="small"><b>Contract.</b> First standard monthly at least 30 days out; shallowest strike whose extrinsic
+          is under 20% of premium. Delta lands 0.78-0.82 as an outcome of that rule. Frozen on the entry bar and never
+          re-selected.</p>
+        <p class="small"><b>Price - measured first, modelled only as a fallback.</b> From 08/26/2026 the quote is
+          captured at the decision moment: entries by the robert-entry-snap workflow at 09:45 ET, exits by this build,
+          which already runs after the close where the MOC print is. A leg priced that way is tagged CHAIN, carries the
+          real bid, ask, spread, delta, IV and open interest, and pays f=0.16 of its own MEASURED half-spread rather
+          than a typical one. Rows entered before that machinery existed are tagged MODEL and keep the description
+          below. Entry and exit are never mixed across bases within one trade.</p>
+        <p class="small"><b>The model fallback.</b> Black-Scholes at the underlying&rsquo;s rv-blend IV proxy - the same
+          number the scan card prints and gates at &le;60% - computed on closes strictly before the entry bar. Validated
+          against live chains on 2026-08-26 for the six names then in the book: mean error &minus;1.4%, mean absolute
+          error 4.5% versus the real mid, no systematic bias. The 1.25 RV&rarr;IV multiplier carried by rsi2_call_model
+          is deliberately not applied - it over-prices this basket by 6-12%.</p>
+        <p class="small"><b>What that validation does not cover.</b> It is a point-in-time check on pricing a fresh
+          contract. Vol is then held FLAT at the entry reading for the life of the trade, so an open position whose IV
+          has moved will drift from its live quote by more than 4.5% - PANW sat 13% under its chain mid on 2026-08-26
+          after selling off into a vol bid. Flat vol is the deliberate choice: it keeps entry and exit on one basis so a
+          pricing error cannot masquerade as a return, and it is conservative for this strategy, whose exits complete
+          into strength where IV normally falls. The live-chain column is where that drift is reported rather than
+          buried.</p>
+        <p class="small"><b>Friction.</b> MODEL rows use the locked backtest's published 1.25% in / 2.5% out. CHAIN rows
+          use f=0.16 of the spread actually quoted on that contract at that moment, which is the same assumption applied
+          to a measured number instead of a typical one. Either way <i>f</i> itself is assumed, never observed - see the
+          friction-sensitivity block above for what the assumption is worth.</p>
+        <p class="small"><b>Sizing.</b> $100,000 sleeve, 6 slots &times; 15% = $15,000 a slot, floored at one contract
+          so the most expensive - and most leveraged - names cannot quietly drop out of the record. Not compounded: each
+          slot is sized off the fixed sleeve, so the dollar column reads as a per-trade impact rather than a growth
+          curve.</p>
+        <p class="small"><b>What the ratios need.</b> Profit factor, Sortino, CAGR and max drawdown are all shown greyed
+          until the book reaches 20 closed trades. At n=12 they describe this sample, not the strategy; the CAGR tile in
+          particular annualises 22 days and should be read as arithmetic, not as a forecast.</p>
+      </details>
+      <!-- ROBSHADOW:END -->
+      <div class="card warnbox" id="csp-overlay">
+        <h3>CSP overlay study - research only</h3>
+        <p class="small">Added 2026-09-05. This is a <b>synthetic cash-secured-put overlay</b>, not a live or historical
+          option-chain backtest. It uses the underlying trade entry/exit paths, Black-Scholes marks, a 4% risk-free
+          rate, and a 25-delta put. ROBERT uses its recorded 30-50 DTE and entry IV; the broader RSI2 ledger uses a
+          45-DTE / 35% IV proxy. No put NBBOs, commissions, bid/ask slippage, early assignment, or expiration settlement
+          are modeled.</p>
+        <div class="tablewrap">
+          <table>
+            <tr>
+              <th>Overlay</th>
+              <th>Trades</th>
+              <th>Modeled win rate</th>
+              <th>Avg collateral return</th>
+              <th>PF</th>
+              <th>5th percentile</th>
+              <th>Worst trade</th>
+            </tr>
+            <tr>
+              <td><b>ROBERT</b></td>
+              <td>287</td>
+              <td class="pos">87.5%</td>
+              <td class="pos">+0.578%</td>
+              <td class="pos">11.08</td>
+              <td>&minus;0.63%</td>
+              <td>&minus;4.31%</td>
+            </tr>
+            <tr>
+              <td>ROBERT scored-window subset</td>
+              <td>120</td>
+              <td class="pos">90.0%</td>
+              <td class="pos">+0.516%</td>
+              <td class="pos">4.81</td>
+              <td>-</td>
+              <td>-</td>
+            </tr>
+            <tr>
+              <td><b>Broad RSI2 ledger</b></td>
+              <td>1,762</td>
+              <td class="pos">80.0%</td>
+              <td class="pos">+0.205%</td>
+              <td>2.47</td>
+              <td>&minus;1.87%</td>
+              <td class="neg">&minus;37.68%</td>
+            </tr>
+          </table>
+        </div>
+        <p><b>Read-through:</b> ROBERT is the better CSP candidate because its RS252, SMA200, IV, and earnings gates
+          reduce weak-leader assignments. The broad RSI2 overlay has a high modeled win rate but materially worse tails;
+          its 2020 subset was <b>&minus;0.929% average return / PF 0.47</b>, and its worst modeled trade lost 37.68% of
+          strike collateral.</p>
+        <p><b>Candidate rules for paper testing:</b> keep every ROBERT gate; sell only a 20-25 delta put at 30-45 DTE;
+          choose a strike you genuinely accept owning; avoid earnings inside the holding period; close on the ROBERT
+          SMA5/time-stop exit; cap assignment by ticker, sector, and total sleeve. For RSI2, do not use an unrestricted
+          CSP overlay—require historical put-chain validation first.</p>
+        <p class="small"><b>Important:</b> win rate is modeled, not realized. A CSP can win frequently and still lose
+          money when a few assignments are large. The canonical inputs and assumptions are committed in
+          <code>data/robert_csp_overlay.json</code>.</p>
+      </div>
+      <!-- ROBGATE:START -->
+      <h3>Chain gate - pending adds</h3>
+      <p class="small">2026-09-04 21:21 ET (OFF-HOURS TEST - quotes may be stale or empty) - first monthly &ge;30 DTE,
+        ~0.80&Delta; call. PASS = OI &ge; 10 and quoted spread &le; 25% of mid (gate amended 2026-08-17); volume column
+        is the fillability read. 7/14 pass. A FAIL here means the name generates signals it cannot fill at viable cost -
+        cull before first trade.</p>
+      <div class="tablewrap">
+        <table class="small">
+          <tr>
+            <th>Ticker</th>
+            <th>Expiry</th>
+            <th>Strike</th>
+            <th>Delta</th>
+            <th>OI</th>
+            <th>Bid / Ask</th>
+            <th>Spread</th>
+            <th>Verdict</th>
+          </tr>
+          <tr>
+            <td>SPOT</td>
+            <td>2026-10-16</td>
+            <td>490.0</td>
+            <td>0.81</td>
+            <td>51</td>
+            <td>60.05 / 63.75</td>
+            <td>6.0%</td>
+            <td>PASS</td>
+          </tr>
+          <tr>
+            <td>XPO</td>
+            <td>2026-10-16</td>
+            <td>175.0</td>
+            <td>0.78</td>
+            <td>0</td>
+            <td>20.20 / 23.80</td>
+            <td>16.4%</td>
+            <td>FAIL</td>
+          </tr>
+          <tr>
+            <td>RRX</td>
+            <td>2026-10-16</td>
+            <td>145.0</td>
+            <td>0.81</td>
+            <td>5</td>
+            <td>19.00 / 22.60</td>
+            <td>17.3%</td>
+            <td>FAIL</td>
+          </tr>
+          <tr>
+            <td>MKSI</td>
+            <td>2026-10-16</td>
+            <td>230.0</td>
+            <td>0.77</td>
+            <td>4</td>
+            <td>36.70 / 40.60</td>
+            <td>10.1%</td>
+            <td>FAIL</td>
+          </tr>
+          <tr>
+            <td>BURL</td>
+            <td>2026-10-16</td>
+            <td>240.0</td>
+            <td>0.82</td>
+            <td>13</td>
+            <td>29.30 / 31.80</td>
+            <td>8.2%</td>
+            <td>PASS</td>
+          </tr>
+          <tr>
+            <td>SNX</td>
+            <td>2026-10-16</td>
+            <td>240.0</td>
+            <td>0.77</td>
+            <td>106</td>
+            <td>27.90 / 30.50</td>
+            <td>8.9%</td>
+            <td>PASS</td>
+          </tr>
+          <tr>
+            <td>MOD</td>
+            <td>2026-10-16</td>
+            <td>165.0</td>
+            <td>0.8</td>
+            <td>6</td>
+            <td>34.00 / 38.20</td>
+            <td>11.6%</td>
+            <td>FAIL</td>
+          </tr>
+          <tr>
+            <td>EVR</td>
+            <td>2026-10-16</td>
+            <td>270.0</td>
+            <td>0.77</td>
+            <td>1</td>
+            <td>32.30 / 35.40</td>
+            <td>9.2%</td>
+            <td>FAIL</td>
+          </tr>
+          <tr>
+            <td>PAAS</td>
+            <td>2026-10-16</td>
+            <td>45.0</td>
+            <td>0.82</td>
+            <td>3307</td>
+            <td>7.30 / 8.00</td>
+            <td>9.2%</td>
+            <td>PASS</td>
+          </tr>
+          <tr>
+            <td>SGI</td>
+            <td>2026-10-16</td>
+            <td>62.5</td>
+            <td>0.79</td>
+            <td>6</td>
+            <td>6.70 / 10.10</td>
+            <td>40.5%</td>
+            <td>FAIL</td>
+          </tr>
+          <tr>
+            <td>AMKR</td>
+            <td>2026-10-16</td>
+            <td>41.0</td>
+            <td>0.81</td>
+            <td>1</td>
+            <td>6.90 / 8.80</td>
+            <td>24.2%</td>
+            <td>FAIL</td>
+          </tr>
+          <tr>
+            <td>ATI</td>
+            <td>2026-10-16</td>
+            <td>190.0</td>
+            <td>0.78</td>
+            <td>105</td>
+            <td>24.40 / 26.70</td>
+            <td>9.0%</td>
+            <td>PASS</td>
+          </tr>
+          <tr>
+            <td>FORM</td>
+            <td>2026-10-16</td>
+            <td>90.0</td>
+            <td>0.77</td>
+            <td>10</td>
+            <td>16.40 / 19.80</td>
+            <td>18.8%</td>
+            <td>PASS</td>
+          </tr>
+          <tr>
+            <td>SOXX</td>
+            <td>2026-10-16</td>
+            <td>465.0</td>
+            <td>0.81</td>
+            <td>43</td>
+            <td>60.50 / 66.60</td>
+            <td>9.6%</td>
+            <td>PASS</td>
+          </tr>
+        </table>
+      </div>
+      <!-- ROBGATE:END -->
+    </div>
 
-  <p><b>What real data still settles.</b> Everything except the fill. Signals are generated on
-  real daily bars, the RS252 / earnings / IV gates are applied as specced, the contract is chosen
-  off the real listed strike set, and open positions are marked against real quoted chains. The
-  shadow forward book above accumulates that record with no discretion in it - it cannot be
-  talked out of a trade, and it cannot quietly drop the ones that went badly. Given enough time
-  it answers whether the signal keeps firing, whether the gates keep doing work out of sample,
-  and whether the names in the basket can be filled at viable cost.</p>
+    <h3 style="font-size:14px;margin:16px 0 6px">Backtest results - locked production spec (all layers: RS gate + event
+      IV + filters + honest friction)</h3>
+    <div class="tablewrap">
+      <table>
+        <tr>
+          <th>Window</th>
+          <th>Trades</th>
+          <th>Win rate</th>
+          <th>Avg/trade</th>
+          <th>PF</th>
+          <th>CAGR</th>
+          <th>Max DD</th>
+          <th>Sharpe</th>
+        </tr>
+        <tr>
+          <td>In-sample 08/2023-08/2026</td>
+          <td>167</td>
+          <td>68.3%</td>
+          <td>+9.97%</td>
+          <td>4.140</td>
+          <td>108%</td>
+          <td>&minus;29.5%</td>
+          <td>1.71</td>
+        </tr>
+        <tr>
+          <td>Out-of-sample 08/2020-08/2023</td>
+          <td>120</td>
+          <td>70.8%</td>
+          <td>+8.63%</td>
+          <td>2.396</td>
+          <td>59%</td>
+          <td>&minus;21.9%</td>
+          <td>1.33</td>
+        </tr>
+      </table>
+    </div>
+    <div class="card warnbox" style="margin-top:10px">
+      <h3>Corrected 2026-08-19 &mdash; the OOS row above is not out-of-sample</h3>
+      <p>This label was wrong. The 89-name universe's own admission rule requires n&ge;3 trades <b>and a positive
+          average return</b> in each of two scoring windows, and 08/2020-08/2023 is one of them - the same window
+        labeled "Out-of-sample" above. A name could only be in this universe today because it already performed
+        well in that window. That is a second selection window, not a held-out test.</p>
+      <p>Measured genuinely out of era - 2010-2020, entirely before either admission window, where a name's
+        presence in the universe could not have depended on how it did there - the universe's edge over a matched
+        control is <b>+0.43pp/trade, t=1.14</b>. That is not statistically significant. Inside the two scored
+        windows the same comparison reads +1.32pp/trade. The gap between those two numbers is roughly what
+        selecting the universe on its own outcome is worth.</p>
+      <p>The IS-vs-OOS PF gap (4.140 vs 2.396) is not edge decay either: it is dollar-weighted over a sleeve that
+        compounded 9.15x across IS and 4.03x across OOS, while Avg/trade beside it is trade-weighted. Equal-weighted,
+        the two windows are 2.934 and 2.896 - a 1.3% difference where the table above shows 42%. The "in-sample is
+        regime-flattered" reasoning below measured the order position sizes grew, not any change in edge.</p>
+      <p class="small">None of this means the strategy has no edge - the RS252 gate does appear to do real work
+        inside its scored windows. It means the OOS row cannot be read as confirmation, and the honest edge estimate
+        for sizing purposes is closer to the pre-admission number than to either row in the table above.</p>
+    </div>
+    <h3 style="font-size:14px;margin:16px 0 6px">Universe expansion check - 77 vs 90 names, paired runs both windows
+    </h3>
+    <div class="tablewrap">
+      <table>
+        <tr>
+          <th>Run</th>
+          <th>Trades</th>
+          <th>Win rate</th>
+          <th>Avg/trade</th>
+          <th>PF</th>
+          <th>CAGR</th>
+          <th>Max DD</th>
+          <th>Sharpe</th>
+          <th>2022 P&amp;L</th>
+        </tr>
+        <tr>
+          <td>IS - 77 names</td>
+          <td>193</td>
+          <td>69.9%</td>
+          <td>+10.74%</td>
+          <td>4.127</td>
+          <td>149%</td>
+          <td>&minus;36.7%</td>
+          <td>1.91</td>
+          <td>-</td>
+        </tr>
+        <tr>
+          <td>IS - 90 names</td>
+          <td>227</td>
+          <td>70%</td>
+          <td>+10.57%</td>
+          <td>3.794</td>
+          <td>183%</td>
+          <td>&minus;38.4%</td>
+          <td>1.91</td>
+          <td>-</td>
+        </tr>
+        <tr>
+          <td>OOS - 77 names</td>
+          <td>145</td>
+          <td>68.3%</td>
+          <td>+9.39%</td>
+          <td>2.806</td>
+          <td>84.7%</td>
+          <td>&minus;22%</td>
+          <td>1.39</td>
+          <td>+$28.3k</td>
+        </tr>
+        <tr>
+          <td>OOS - 90 names</td>
+          <td>176</td>
+          <td>67.6%</td>
+          <td>+8.49%</td>
+          <td>2.423</td>
+          <td>93%</td>
+          <td>&minus;32.9%</td>
+          <td>1.42</td>
+          <td>+$37.3k</td>
+        </tr>
+      </table>
+    </div>
+    <p class="small">The paired expansion runs use identical wiring on both sides but mark exits slightly richer than
+      the locked-spec prints above - read the 77&rarr;90 deltas, not the absolute levels. Verdict: +18-21% trades, CAGR
+      up both windows, Sharpe flat, 2022 improved; cost = OOS max DD deepens &minus;22% &rarr; &minus;33%. Plan-around:
+      PF 2.0-2.4, +7-9% per trade, DD &minus;25 to &minus;35%, 50-85 trades/yr, bear years &asymp; flat. The 13 adds ran
+      +11.19%/trade IS (43 trades) and +7.02% OOS (38 trades).</p>
 
-  <p><b>What it cannot settle, and will not while it stays paper.</b> Realized fill friction -
-  the fraction <i>f</i> of the quoted half-spread actually paid. The retired D11 bar asked for
-  sampled PF &ge; 1.25 at measured NBBO fills with median realized <i>f</i> &le; 0.65. That
-  measurement requires orders that rest in a book. Paper orders do not produce it at any sample
-  size or over any length of time, so D11 is not "not passed yet" - under this posture it is
-  <b>unrunnable</b>, and saying so is the honest version. Every P&amp;L figure on this page
-  therefore stays contingent on an <i>assumed</i> <i>f</i>, and no amount of forward paper
-  evidence will discharge that assumption.</p>
+    <div class="card">
+      <h3>What the name means</h3>
+      <p><b>Relentless Outperformers</b> - the gate: RS252 &gt; +40% vs SPY at the signal. Only names that beat the
+        market for the past year qualify; the ungated version is nearly a coin flip through the cycle (OOS PF 1.157).
+        <b>Briefly Embarrassed</b> - the trigger: RSI(2) &lt; 10 above the 200-day SMA. A two-day oversold print in a
+        leader is a lapse of dignity, not a breakdown. <b>Rapidly Traded</b> - in at the next open, out at the close
+        over the SMA5; median hold 2.6 bars.</p>
+      <p class="small">On the fills, call him Bob - all he does is bounce.</p>
+    </div>
 
-  <p><b>So the contingency is priced instead of hidden.</b> Breakeven sits near <i>f</i> &asymp;
-  0.85-0.90 and typical market prints land near 0.16. Contract-level P&amp;L was repriced on real
-  OPRA NBBO (EXP-001, closed 08/16/2026), lifting the out-of-sample print to PF 2.73 / +8.21% per
-  trade - but every one of those marks is a quoted mid, so it bounds the question rather than
-  answering it. The forward book reports the same way: results across a range of <i>f</i> rather
-  than one number at a flattering one. The width of that band is the size of what staying paper
-  leaves unmeasured.</p>
+    <div class="card">
+      <h3>Locked spec</h3>
+      <ul>
+        <li><b>Signal:</b> RSI(2) &lt; 10 AND close &gt; SMA200 on the completed daily bar</li>
+        <li><b>Gates:</b> RS252 vs SPY &gt; +40% at signal (40-60 band acceptable, never higher) &middot; no earnings
+          within 7 days &middot; ATM IV &le; 60%</li>
+        <li><b>Entry:</b> next open, ~09:45 ET limit at mid; skip if the open is already above the prior SMA5</li>
+        <li><b>Contract:</b> shallowest strike with extrinsic &lt; 20% of premium (delta lands 0.78-0.80 as an outcome),
+          first monthly 30-50 DTE, <b>OI &ge; 10, quoted spread &le; 25% of mid</b> (amended 08/17/2026 from OI &ge; 250
+          / 5%; quoted width overstates realistic cost 2-3x - work the mid, and read contract volume rather than OI for
+          fillability)</li>
+        <li><b>Exit:</b> sell at the close when close &gt; SMA5, or 10-bar time stop. No stop-loss - path-simulated
+          stops collapse PF to 0.90</li>
+        <li><b>Sizing:</b> 6 slots &times; 15% (5-8 slot plateau; concentrated 40/40/20 reliably worst)</li>
+        <li><b>Universe:</b> 89 names screened under pre-stated two-window bars (13 full-market adds 08/07/2026 - SPOT,
+          XPO, RRX, MKSI, BURL, SNX, MOD, EVR, PAAS, SGI, AMKR, ATI, FORM - chain-gated nightly, see the chain-gate
+          block above; <a href="robert_universe.txt" style="color:#56B4E9">full 89-ticker list</a>); a live chain check
+          remains mandatory before any name's first trade; re-screen semiannually, no re-ranking on live results</li>
+      </ul>
+    </div>
 
-  <p>The Paper-Fill Log was retired 2026-09-02 (it had sat empty since creation - no real order was
-  ever placed against it). If capital is ever deployed again, measuring <i>f</i> requires rebuilding
-  that instrument; nothing today is positioned to capture a real fill.</p>
-</div>
+    <div class="card warnbox">
+      <h3>Chain gate - thresholds amended 08/17/2026</h3>
+      <p>The order-time liquidity gate moved from <b>OI &ge; 250 / spread &le; 5%</b> to <b>OI &ge; 10 / spread &le; 25%
+          of mid</b>, with <b>contract volume</b> reported alongside as the fillability read - resting OI is a stock of
+        old positions, prints are flow. The OI floor now exists only for size feasibility (OI 7 cannot fill 11
+        contracts) and to kill dead books; scale it to roughly 10x the intended contract count.</p>
+      <p><b>The reason, stated precisely.</b> The 250/5% floor was never isolated in a backtest: the model-marks run
+        priced options off Black-Scholes, which cannot produce open interest at all, so that gate never bound on
+        anything. It was an inherited assumption that excluded roughly 90% of the basket for no measured reason - and
+        that is the whole case for loosening it. The <i>weaker</i> argument, which this page deliberately does not lean
+        on, is that OI and quoted spread barely correlate with trade quality (+0.11 / +0.17) in the real-OPRA reprice:
+        that study measured entry-mid to exit-mid P&amp;L, which never pays the spread, so it structurally cannot detect
+        what a spread gate exists to control.</p>
+      <p>Scored across the 89 names on the 08/15 chains, the change is close to a reversal:</p>
+      <div class="tablewrap">
+        <table>
+          <tr>
+            <th>Gate</th>
+            <th>Pass</th>
+            <th>Marginal</th>
+            <th>Fail</th>
+          </tr>
+          <tr>
+            <td>Former - OI &ge; 250, spread &le; 5%</td>
+            <td>8</td>
+            <td>-</td>
+            <td>81</td>
+          </tr>
+          <tr>
+            <td>Amended - OI &ge; 10, spread &le; 25%</td>
+            <td><b>69</b></td>
+            <td>8</td>
+            <td>12</td>
+          </tr>
+        </table>
+      </div>
+      <p class="small"><b>The cull is suspended, 08/27/2026.</b> The chain-gate block above still says
+        a FAIL means "cull before first trade". There is no first trade - capital is deferred
+        indefinitely - and the OI floor's own stated purpose is size feasibility, scaled to about 10x the
+        intended contract count. With no intended contract count that purpose cannot bind, so culling ten
+        names on it now would discard forward evidence to satisfy a constraint that is not operating.
+        Note what is actually failing: all ten fail on <b>open interest alone</b>, at spreads of 6-19%
+        (EVR 6.3%, MOD 7.7%, BURL 8.7%) - not on the cost measure. They stay in the basket, keep
+        generating signals, and accumulate measured spreads like every other name. Whether they can be
+        filled is then answered per name by the friction band in the shadow book, which measures the
+        thing the OI floor was standing in for, rather than being settled in advance by a proxy. The
+        threshold itself is deliberately unchanged so the measurement stays comparable across the whole
+        history. Trimming a basket to its liquid names on a proxy is how a hand-picked universe gets
+        built by accident.</p>
 
-<div class="footer">
-  Research and education only. Not financial advice. Spec locked 08/06/2026; options-vs-shares comparison run 08/07/2026; chain-gate threshold revision, benchmark-status verification and go-live-gate update 08/16/2026; capital deferred indefinitely and the 09/01 pilot withdrawn 08/26/2026. Headline backtest tables are model-marks prints; the real-OPRA reprice (EXP-001) is quoted in the go-live gate card. This page is hand-maintained alongside the pipeline-emitted dashboard.
-</div>
+      <p class="small">Twelve names fail under either gate: DD, EME, EVR, HUBB, IBKR, MKSI, MSCI, ROP, RRX, SGI, SPGI,
+        TPR. <b>Counter-evidence kept in view:</b> the friction work measured 0.80-delta half-spreads running 13.0% down
+        to 3.4% across liquidity quintiles, with only the most liquid tier breaking even - which points the other way
+        from a loose gate. That tension is not resolved here. The 09/01 pilot is the first thing that pays real spreads,
+        and it is what decides whether a loose gate survives contact with actual fills.</p>
+    </div>
 
-</main>
+    <div class="card">
+      <h3>The universe - all 89 names</h3>
+      <style>
+        .uwrap {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 6px;
+          margin: 6px 0 12px
+        }
+
+        .uchip {
+          font-size: 12px;
+          padding: 3px 9px;
+          border-radius: 12px;
+          border: 1px solid #333330;
+          color: #c0bfb9;
+          background: #121212;
+          white-space: nowrap
+        }
+
+        .uchip.new {
+          border-color: #009E73;
+          color: #009E73;
+          font-weight: 600
+        }
+
+        .uchip.silent {
+          color: #8d8c85;
+          border-style: dashed;
+          opacity: .8
+        }
+
+        .uchip.flag {
+          border-color: #E69F00;
+          color: #E69F00;
+          font-weight: 600
+        }
+
+        .uhead {
+          font-size: 12px;
+          color: #8d8c85;
+          margin: 10px 0 2px;
+          text-transform: uppercase;
+          letter-spacing: .04em
+        }
+      </style>
+      <div class="uhead">New full-market adds (13) - added 08/07/2026; chain-gated nightly, see the chain-gate block
+      </div>
+      <div class="uwrap"><span class="uchip new">SPOT</span><span class="uchip new">XPO</span><span
+          class="uchip new">RRX</span><span class="uchip new">MKSI</span><span class="uchip new">BURL</span><span
+          class="uchip new">SNX</span><span class="uchip new">MOD</span><span class="uchip new">EVR</span><span
+          class="uchip new">PAAS</span><span class="uchip new">SGI</span><span class="uchip new">AMKR</span><span
+          class="uchip new">ATI</span><span class="uchip new">FORM</span></div>
+      <div class="uhead">Active incumbents (65)</div>
+      <div class="uwrap"><span class="uchip">AAPL</span><span class="uchip">ADBE</span><span
+          class="uchip">AMAT</span><span class="uchip">AMD</span><span class="uchip">ANET</span><span
+          class="uchip">APH</span><span class="uchip">ARES</span><span class="uchip">ASML</span><span
+          class="uchip">AVGO</span><span class="uchip">BLDR</span><span class="uchip">BNY</span><span
+          class="uchip">COHR</span><span class="uchip">CVNA</span><span class="uchip">DD</span><span
+          class="uchip">DHI</span><span class="uchip">DRI</span><span class="uchip">DVN</span><span
+          class="uchip">EBAY</span><span class="uchip">ECHO</span><span class="uchip">EME</span><span
+          class="uchip">ETR</span><span class="uchip">EWT</span><span class="uchip">EXPE</span><span
+          class="uchip">FIS</span><span class="uchip">FITB</span><span class="uchip">FLEX</span><span
+          class="uchip">GE</span><span class="uchip">GLW</span><span class="uchip">GM</span><span
+          class="uchip">GOOGL</span><span class="uchip">HUBB</span><span class="uchip">HWM</span><span
+          class="uchip flag">IBKR</span><span class="uchip">IVZ</span><span class="uchip">JCI</span><span
+          class="uchip">KLAC</span><span class="uchip">KMI</span><span class="uchip">LITE</span><span
+          class="uchip">LNG</span><span class="uchip">LRCX</span><span class="uchip">LYV</span><span
+          class="uchip">META</span><span class="uchip">MSCI</span><span class="uchip">MSFT</span><span
+          class="uchip">MU</span><span class="uchip">NOW</span><span class="uchip">NRG</span><span
+          class="uchip">NVDA</span><span class="uchip">NXPI</span><span class="uchip">PANW</span><span
+          class="uchip">PDD</span><span class="uchip">PHM</span><span class="uchip">PWR</span><span
+          class="uchip">SYF</span><span class="uchip">TER</span><span class="uchip">TMUS</span><span
+          class="uchip">TPR</span><span class="uchip">TRGP</span><span class="uchip">TROW</span><span
+          class="uchip">TSM</span><span class="uchip">TTWO</span><span class="uchip">ULTA</span><span
+          class="uchip">URI</span><span class="uchip">VRT</span><span class="uchip">WDC</span></div>
+      <p class="small" style="margin:6px 0 0"><b>FFIV was cut 08/17/2026</b> on a negative pooled stock-leg average in
+        both windows (n=6); the basket is now 89 names. <span style="color:#E69F00;font-weight:600">IBKR</span> carries
+        the same defect on a larger sample (n=14) and also fails the chain gate under either threshold set, but is
+        <b>deliberately retained</b> by owner decision - it stays flagged rather than cut.</p>
+      <div class="uhead">Structurally silent under the RS gate (10) - kept at zero cost</div>
+      <div class="uwrap"><span class="uchip silent">SPY</span><span class="uchip silent">QQQ</span><span
+          class="uchip silent">XLK</span><span class="uchip silent">CHD</span><span
+          class="uchip silent">EXPD</span><span class="uchip silent">HLT</span><span class="uchip silent">J</span><span
+          class="uchip silent">ROP</span><span class="uchip silent">SPGI</span><span class="uchip silent">V</span></div>
+      <p class="small">The seven dashed stocks have never produced a gated signal in either window. <b>SOXX was
+          removed from this list 08/19</b> - "index ETFs cannot be +40% vs SPY by definition" was wrong: SOXX's RS252
+        as of 2026-08-18 measures <b>+79.4%</b> (114.0% raw return vs SPY's 19.3%), clearing the gate with room to
+        spare, and it contributed $50,881 of the $802,720 IS total (6.34%, 4th of 42 tickers) in the backtest above.
+        SPY/QQQ/XLK are broad-market trackers with no leverage tilt and stay silent on the merits. Because SOXX will
+        fire as a live entry, it needs the same mandatory pre-trade chain check as any other name, and until
+        08/26 it did not get one - the nightly sweep list was built from the 13 new adds and SOXX was not among
+        them. <b>Added to the sweep 08/26/2026</b>, so the Monday run now covers 14 names; SOXX is also an open
+        position in the shadow book below, which is what made the omission worth closing rather than noting. Full list:
+        <a href="robert_universe.txt" style="color:#56B4E9">robert_universe.txt</a></p>
+    </div>
+
+    <p class="small" style="margin:0 0 14px">Plan-around line: PF 2.0-2.4, +7-9% per trade, drawdowns &minus;22 to
+      &minus;30%, bear years roughly flat.
+      <b>Correction 08/19:</b> the OOS row does not earn special trust - see the warnbox above. The honest edge
+      estimate is the pre-admission (2010-2020) figure, +0.43pp/trade, not significant at this sample size.
+    </p>
+
+    <h3 style="font-size:14px;margin:16px 0 6px">Options vs shares - ROBERT vs the Agentic leveraged-ETF config, each
+      as-specced</h3>
+    <p class="small" style="margin:0 0 8px">Both columns are simulations. The leveraged-ETF config was <b>retired
+        07/06/2026 having never placed a trade</b> - verified 08/16 against account 680183373, whose fill history
+      contains no SOXL, UPRO, TQQQ or TECL, with the engine left in dry-run and its scheduler removed. Read this as
+      backtest versus backtest, not challenger versus incumbent.</p>
+    <div class="tablewrap">
+      <table>
+        <tr>
+          <th>Metric</th>
+          <th>Shares (sim) IS</th>
+          <th>ROBERT IS</th>
+          <th>Shares (sim) OOS</th>
+          <th>ROBERT OOS</th>
+        </tr>
+        <tr>
+          <td>Trades</td>
+          <td>54</td>
+          <td>167</td>
+          <td>44</td>
+          <td>120</td>
+        </tr>
+        <tr>
+          <td>Win rate</td>
+          <td>68.5%</td>
+          <td>68.3%</td>
+          <td>72.7%</td>
+          <td>70.8%</td>
+        </tr>
+        <tr>
+          <td>Avg/trade</td>
+          <td>+1.36%</td>
+          <td>+9.97%</td>
+          <td>+1.87%</td>
+          <td>+8.63%</td>
+        </tr>
+        <tr>
+          <td>Profit factor</td>
+          <td>2.034</td>
+          <td>4.140</td>
+          <td>2.563</td>
+          <td>2.396</td>
+        </tr>
+        <tr>
+          <td>CAGR</td>
+          <td>6.8%</td>
+          <td>108%</td>
+          <td>7.6%</td>
+          <td>59%</td>
+        </tr>
+        <tr>
+          <td>Max drawdown</td>
+          <td>&minus;6%</td>
+          <td>&minus;29.5%</td>
+          <td>&minus;10.2%</td>
+          <td>&minus;21.9%</td>
+        </tr>
+        <tr>
+          <td>Sharpe</td>
+          <td>0.73</td>
+          <td>1.71</td>
+          <td>0.77</td>
+          <td>1.33</td>
+        </tr>
+        <tr>
+          <td>Avg capital deployed</td>
+          <td>4.5%</td>
+          <td>~25-30%</td>
+          <td>4.2%</td>
+          <td>~25-30%</td>
+        </tr>
+      </table>
+    </div>
+
+    <details class="gloss">
+      <summary>Reading the comparison - same signal, different vehicle, different throughput</summary>
+      <p>Win rates are nearly identical in both vehicles (68-73%) - the vehicle doesn't change whether trades win. The
+        calls pay 5-7x per trade (single names move more than indexes on a bounce, and DITM calls carry more effective
+        leverage than a 3x fund) and fire 2.5-3x as often (77 gated names vs four correlated index sources whose signals
+        mostly overlap and collapse to one position). The shares config would keep ~95% of capital in cash at &minus;6
+        to &minus;10% simulated drawdowns, with far lower execution uncertainty - share orders in liquid index ETFs,
+        though never actually filled either; ROBERT compounds 59-108% at &minus;22 to &minus;30% drawdowns with option
+        friction still to be proven live. Normalised for capital at risk the gap narrows sharply: ~215% per unit
+        deployed for ROBERT against ~180% for the shares config, so most of the headline CAGR advantage is deploying 6x
+        more capital rather than converting it better. What survives normalisation is Sharpe (1.33-1.71 vs 0.73-0.77)
+        and sample (120-176 OOS trades vs 44). Shares config sim: SMH&rarr;SOXL, SPY&rarr;UPRO, QQQ&rarr;TQQQ,
+        XLK&rarr;TECL; 2 slots &times; 27.5%; one index ETF at a time; SOXL never alongside TQQQ/TECL.</p>
+    </details>
+
+    <div class="card warnbox">
+      <h3>Capital is deferred indefinitely - what this test can and cannot settle</h3>
+      <p><b>Posture, set 08/26/2026.</b> ROBERT runs as a forward paper test on real data for an
+        indefinite period. No allocation, no x-number, no staging ladder in progress. The
+        <b>09/01/2026 pilot this card used to schedule is withdrawn</b> - not moved to a later date.
+        Nothing on this page should be read as a plan to trade it on a timetable.
+      </p>
+
+      <p><b>What real data still settles.</b> Everything except the fill. Signals are generated on
+        real daily bars, the RS252 / earnings / IV gates are applied as specced, the contract is chosen
+        off the real listed strike set, and open positions are marked against real quoted chains. The
+        shadow forward book above accumulates that record with no discretion in it - it cannot be
+        talked out of a trade, and it cannot quietly drop the ones that went badly. Given enough time
+        it answers whether the signal keeps firing, whether the gates keep doing work out of sample,
+        and whether the names in the basket can be filled at viable cost.</p>
+
+      <p><b>What it cannot settle, and will not while it stays paper.</b> Realized fill friction -
+        the fraction <i>f</i> of the quoted half-spread actually paid. The retired D11 bar asked for
+        sampled PF &ge; 1.25 at measured NBBO fills with median realized <i>f</i> &le; 0.65. That
+        measurement requires orders that rest in a book. Paper orders do not produce it at any sample
+        size or over any length of time, so D11 is not "not passed yet" - under this posture it is
+        <b>unrunnable</b>, and saying so is the honest version. Every P&amp;L figure on this page
+        therefore stays contingent on an <i>assumed</i> <i>f</i>, and no amount of forward paper
+        evidence will discharge that assumption.
+      </p>
+
+      <p><b>So the contingency is priced instead of hidden.</b> Breakeven sits near <i>f</i> &asymp;
+        0.85-0.90 and typical market prints land near 0.16. Contract-level P&amp;L was repriced on real
+        OPRA NBBO (EXP-001, closed 08/16/2026), lifting the out-of-sample print to PF 2.73 / +8.21% per
+        trade - but every one of those marks is a quoted mid, so it bounds the question rather than
+        answering it. The forward book reports the same way: results across a range of <i>f</i> rather
+        than one number at a flattering one. The width of that band is the size of what staying paper
+        leaves unmeasured.</p>
+
+      <p>The Paper-Fill Log was retired 2026-09-02 (it had sat empty since creation - no real order was
+        ever placed against it). If capital is ever deployed again, measuring <i>f</i> requires rebuilding
+        that instrument; nothing today is positioned to capture a real fill.</p>
+    </div>
+
+    <div class="footer">
+      Research and education only. Not financial advice. Spec locked 08/06/2026; options-vs-shares comparison run
+      08/07/2026; chain-gate threshold revision, benchmark-status verification and go-live-gate update 08/16/2026;
+      capital deferred indefinitely and the 09/01 pilot withdrawn 08/26/2026. Headline backtest tables are model-marks
+      prints; the real-OPRA reprice (EXP-001) is quoted in the go-live gate card. This page is hand-maintained alongside
+      the pipeline-emitted dashboard.
+    </div>
+
+  </main>
 </body>
+
 </html>
