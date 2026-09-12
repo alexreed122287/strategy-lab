@@ -273,3 +273,47 @@ Both the Mac's launchd job and this workflow can run. They cannot double-publish
 whichever lands second finds no changes to commit and stops, and the digest keeps
 its own dedupe state keyed on the signal date, so nobody gets the same table
 twice.
+
+# ROBERT entry/exit mail
+
+Added 2026-09-11. Until then **nothing mailed a ROBERT signal** — `notify_buys.py`
+reads six blobs from `index.html` and never ROBSIG, so the ATI TAKE on the 09-10
+bar (the first live entry since the entry-snap workflow was re-enabled) reached
+nobody. `scripts/notify_robert.py` closes that gap.
+
+## What it sends
+
+The shadow ledger's **`queued`** rows — what the book will actually enter at the
+next open after the one-per-name and busy rules — each decorated with the gate
+readings the scan printed (RSI(2), RS252, IV proxy, earnings), plus the rows the
+book **closed on the bar** with reason, stock and option return, and pricing
+basis (MODEL / CHAIN). It mails the ledger, not the TAKE chips, so the mail and
+the page cannot disagree about what a buy is. Every mail restates the posture:
+paper only, no capital, nothing here is an order.
+
+## Recipients
+
+`to_robert` in `~/.strategy_lab_notify.json` if present, otherwise `to`. It never
+uses `to_digest` — the subscriber list gets the ranked digest, not paper-test
+entries. Optional `robert_url` overrides the page link (default: `dashboard_url`
+with `robert.html` in place of `index.html`).
+
+## When, and how it dedupes
+
+Same step as the alert, on both writers: `scripts/daily_build.sh` step 7r and the
+"Send alert and digest" step of `daily-build.yml`, after a successful push.
+Gated fail-closed on its own shape tests (`scripts/notify_robert_test.py`), not
+on the rank-consistency gate — that gate is about the ranked digest.
+
+Freshness: refuses unless the ledger's bar is the last completed session
+(`--session YYYY-MM-DD` / `--allow-stale`, exactly as `notify_buys`). Dedupe on
+the Mac: `~/.strategy_lab_robert_state.json`, keyed on a content hash. On the
+cloud runner that file never survives; the workflow's `new_session` gate is what
+prevents a re-send there, same as for the two mails beside it.
+
+```
+# see exactly what tonight's ROBERT mail looks like, sending nothing:
+python3 scripts/notify_robert.py --page robert.html --ledger data/robert_shadow.json --dry-run
+# wiring test through the configured channels:
+python3 scripts/notify_robert.py --page robert.html --ledger data/robert_shadow.json --test
+```
