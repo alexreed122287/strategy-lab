@@ -253,6 +253,14 @@ jobs:
             --page robert.html --earnings /tmp/earnings.json \
             --universe robert_universe.txt \
             --ledger data/robert_shadow.json --splice
+          # JASON paper ledger (2026-09-12): its own state, sleeve and signal.
+          # Fail-closed on its rule tests before it is allowed to splice.
+          python3 scripts/jason_shadow_test.py
+          python3 scripts/jason_shadow.py --bars /tmp/bars.json \
+            --page jason.html --earnings /tmp/earnings.json \
+            --universe jason_universe.txt \
+            --ledger data/jason_shadow.json \
+            --snaps data/jason_chain_snaps.json --splice
 
       # ---- step 4d: health stamp, marked so its origin is visible on the page
       - name: Health stamp
@@ -309,6 +317,8 @@ jobs:
           h2 = open("robert.html").read()
           assert "ROBSIG:START" in h2 and "ROBSIG:END" in h2, "robert.html ROBSIG markers missing"
           assert "ROBSHADOW:START" in h2 and "ROBSHADOW:END" in h2, "robert.html ROBSHADOW markers missing"
+          h3 = open("jason.html").read()
+          assert "JASSHADOW:START" in h3 and "JASSHADOW:END" in h3, "jason.html JASSHADOW markers missing"
           PY
 
       # ---- step 6: publish
@@ -326,7 +336,8 @@ jobs:
           # its thresholds: a number you cannot re-derive is a number you
           # cannot defend.
           git add index.html data/shadow_book.json robert.html \
-            data/robert_shadow.json data/robert_chain_snaps.json
+            data/robert_shadow.json data/robert_chain_snaps.json \
+            jason.html data/jason_shadow.json data/jason_chain_snaps.json
           if git diff --cached --quiet; then
             echo "no changes to publish"
             echo "published=false" >> "$GITHUB_OUTPUT"

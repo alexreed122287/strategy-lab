@@ -1,0 +1,38 @@
+{
+ "arm": "JASON",
+ "started": "2026-09-12",
+ "sleeve": 250000.0,
+ "slots": 5,
+ "slot_dollars": 12500.0,
+ "open": [],
+ "queued": [
+  {
+   "t": "AMAT",
+   "signal_date": "2026-09-11",
+   "close": 456.49,
+   "vap50": 522.1067,
+   "atr14": 15.4193,
+   "threshold": 498.9777,
+   "rs252": 1.6215,
+   "iv_proxy": 0.5826
+  },
+  {
+   "t": "CAT",
+   "signal_date": "2026-09-11",
+   "close": 818.57,
+   "vap50": 856.8589,
+   "atr14": 20.4906,
+   "threshold": 826.1229,
+   "rs252": 0.7637,
+   "iv_proxy": 0.3294
+  }
+ ],
+ "closed": [],
+ "skipped": [],
+ "closed_total": 0,
+ "last_signal": {
+  "AMAT": "2026-09-11",
+  "CAT": "2026-09-11"
+ },
+ "last_as_of": "2026-09-11"
+}

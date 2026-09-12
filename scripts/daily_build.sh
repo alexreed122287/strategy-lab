@@ -124,6 +124,14 @@ python3 "$REPO/scripts/robert_shadow.py" --bars "$TMP/bars.json" \
   --earnings "$TMP/earnings.json" --page "$REPO/robert.html" \
   --universe "$REPO/robert_universe.txt" \
   --ledger "$REPO/data/robert_shadow.json" --splice
+# 4c3) JASON paper ledger (2026-09-12): its own state, sleeve and signal;
+#      rule tests fail closed before it may splice.
+python3 "$REPO/scripts/jason_shadow_test.py"
+python3 "$REPO/scripts/jason_shadow.py" --bars "$TMP/bars.json" \
+  --earnings "$TMP/earnings.json" --page "$REPO/jason.html" \
+  --universe "$REPO/jason_universe.txt" \
+  --ledger "$REPO/data/jason_shadow.json" \
+  --snaps "$REPO/data/jason_chain_snaps.json" --splice
 
 # 4d) Pipeline health stamp shown in the page header.
 python3 - "$REPO/index.html" "$TMP/bars.json" "$TMP/earnings.json" <<'PYEOF'
@@ -167,6 +175,8 @@ import sys
 h = open(sys.argv[1]).read()
 assert "ROBSIG:START" in h and "ROBSIG:END" in h, "robert.html ROBSIG markers missing"
 assert "ROBSHADOW:START" in h and "ROBSHADOW:END" in h, "robert.html ROBSHADOW markers missing"
+h3 = open(sys.argv[1].replace("robert.html", "jason.html")).read()
+assert "JASSHADOW:START" in h3 and "JASSHADOW:END" in h3, "jason.html JASSHADOW markers missing"
 PYCHK
 
 # 5b) RENDER GATE. smoke_test.js has been a hand-run script since it was
@@ -210,7 +220,8 @@ cd "$REPO"
 # it stored a verdict without its thresholds: a number you cannot re-derive
 # is a number you cannot defend.
 git add index.html data/shadow_book.json robert.html \
-  data/robert_shadow.json data/robert_chain_snaps.json
+  data/robert_shadow.json data/robert_chain_snaps.json \
+  jason.html data/jason_shadow.json data/jason_chain_snaps.json
 if git diff --cached --quiet; then
   echo "no changes to publish"
 else

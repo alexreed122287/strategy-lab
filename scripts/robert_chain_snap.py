@@ -242,10 +242,14 @@ def main():
     tok = token()
     if not tok:
         sys.exit("no Tradier token (TRADIER_TOKEN or ~/.tradier_token)")
-    store = load()
-
     def opt(n, d=None):
         return a[a.index(n) + 1] if n in a else d
+
+    # --ledger / --snaps (2026-09-12): the JASON arm runs the SAME capture
+    # against its own ledger and store. Defaults are ROBERT's, unchanged.
+    ledger_p = opt("--ledger", LEDGER)
+    snaps_p = opt("--snaps", SNAPS)
+    store = load(snaps_p)
 
     if "--ticker" in a:
         sym = opt("--ticker").upper()
@@ -255,7 +259,7 @@ def main():
         changed = snap_one(tok, store, sym, side, day, exp,
                            float(k) if k else None)
         if changed:
-            save(store)
+            save(store, snaps_p)
         return
 
     now = dt.datetime.now(ZoneInfo("America/New_York"))
@@ -266,9 +270,9 @@ def main():
         print(f"outside the entry window ({now:%a %H:%M ET}) - nothing snapped")
         return
 
-    if not os.path.exists(LEDGER):
-        sys.exit(f"no ledger at {LEDGER}")
-    led = json.load(open(LEDGER))
+    if not os.path.exists(ledger_p):
+        sys.exit(f"no ledger at {ledger_p}")
+    led = json.load(open(ledger_p))
     queued = led.get("queued") or []
     if not queued:
         print("nothing queued for this open - nothing to snap")
@@ -279,7 +283,7 @@ def main():
         if snap_one(tok, store, row["t"], "E", day):
             changed += 1
     if changed:
-        save(store)
+        save(store, snaps_p)
     print(f"{changed} entry snapshot(s) taken; store holds {len(store['snaps'])}")
 
 
