@@ -351,6 +351,15 @@ jobs:
         run: |
           python3 scripts/notify_buys.py --page index.html || echo "alert failed (non-fatal)"
           python3 scripts/notify_buys.py --page index.html --simple || echo "digest failed (non-fatal)"
+          # ROBERT entry/exit mail - personal list only, gated on its own shape
+          # tests (fail-closed). Same new_session gate as the two lines above
+          # is what dedupes it on this stateless runner.
+          if python3 scripts/notify_robert_test.py >/dev/null; then
+            python3 scripts/notify_robert.py --page robert.html --ledger data/robert_shadow.json \
+              || echo "ROBERT notify failed (non-fatal)"
+          else
+            echo "ROBERT MAILER SHAPE TESTS FAILED - ROBERT mail held."
+          fi
 
       - name: Wipe credentials
         if: always()

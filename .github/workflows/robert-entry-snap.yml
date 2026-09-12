@@ -17,9 +17,19 @@ name: robert-entry-snap
 
 on:
   schedule:
-    # 13:45 UTC = 09:45 EDT, 14:45 UTC = 09:45 EST. The script keeps whichever
-    # lands inside its 09:30-11:30 ET window, and a frozen key kills the
-    # duplicate the other one would write.
+    # 13:45 UTC = 09:45 EDT, 14:45 UTC = 09:45 EST - the intended moment. The
+    # two earlier firings exist because GitHub's scheduler ran BOTH of those
+    # crons at 17:11-17:55 UTC on 2026-09-10 and 09-11 (3.5 h late; the
+    # earlier measured drift was +78 min), and the script's old 09:30-11:30 ET
+    # window rejected every one of them while the run reported success. The
+    # first live TAKE since the re-enable (ATI, 09-10 bar) was never snapped.
+    # An 11:45/12:45 UTC cron that drifts by the same amount lands near the
+    # open; one that fires on time is 07:45/08:45 ET, outside the window, and
+    # skips harmlessly. The window is now the whole session; the frozen key
+    # means the EARLIEST in-window firing wins and later ones are no-ops, and
+    # each row's `captured` stamp records how far from 09:45 it actually was.
+    - cron: "45 11 * * 1-5"
+    - cron: "45 12 * * 1-5"
     - cron: "45 13 * * 1-5"
     - cron: "45 14 * * 1-5"
   workflow_dispatch:

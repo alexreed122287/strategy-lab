@@ -238,6 +238,17 @@ else
   #    ~/.strategy_lab_notify.json, see docs/notifications.md. First harvest
   #    any self-service signups from the page's card. Never fails the build.
   python3 "$REPO/scripts/notify_signups.py" || echo "signup harvest failed (non-fatal)"
+  # 7r) ROBERT entry/exit mail. Independent of the rank-consistency gate below
+  #     (that gate is about index.html's ranked digest); gated on its OWN shape
+  #     tests instead, fail-closed the same way. Personal list only - never the
+  #     subscriber digest list. Until 2026-09-11 nothing mailed a ROBERT signal.
+  if python3 "$REPO/scripts/notify_robert_test.py" >/dev/null; then
+    python3 "$REPO/scripts/notify_robert.py" --page "$REPO/robert.html" \
+      --ledger "$REPO/data/robert_shadow.json" \
+      || echo "ROBERT notify failed (non-fatal)"
+  else
+    echo "ROBERT MAILER SHAPE TESTS FAILED - ROBERT mail held."
+  fi
   # 7a) Gate the mail on rank consistency. The three surfaces that print a rank
   #     disagreed on 2026-08-18 - the digest sent a 16-trade row to the
   #     subscriber list as the day's #1 buy while the dashboard showed it

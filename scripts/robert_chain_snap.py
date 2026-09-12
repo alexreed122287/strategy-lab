@@ -166,7 +166,8 @@ def snap_one(tok, store, sym, side, day, expiry=None, strike=None):
     if key in store["snaps"]:
         print(f"already snapped: {key}", file=sys.stderr)
         return False
-    stamp = dt.datetime.now(ZoneInfo("America/New_York")).strftime("%Y-%m-%d %H:%M ET")
+    now_et = dt.datetime.now(ZoneInfo("America/New_York"))
+    stamp = now_et.strftime("%Y-%m-%d %H:%M ET")
     try:
         if expiry and strike is not None:
             # Exit path: the contract is already known, so quote exactly it
@@ -202,11 +203,38 @@ def snap_one(tok, store, sym, side, day, expiry=None, strike=None):
     if status != "ok" or not row:
         print(f"{key}: {status}", file=sys.stderr)
         return False
-    row.update({"ticker": sym, "side": side, "date": day, "captured": stamp})
+    row.update({"ticker": sym, "side": side, "date": day, "captured": stamp,
+                **({"late_min": late_minutes(now_et)} if side == "E" else {})})
     store["snaps"][key] = row
     print(f"snapped {key}: {row['expiry']} {row['strike']}C "
           f"{row['bid']}/{row['ask']} mid {row['mid']} spread {row['spread_pct']}%")
     return True
+
+
+OPEN = (9, 30)
+CLOSE = (16, 0)
+ENTRY_MOMENT = (9, 45)
+
+
+def in_entry_window(now):
+    """Weekday, between the open and the close ET, inclusive.
+
+    The whole session, not 09:30-11:30 (widened 2026-09-11). The crons are
+    09:45 ET, but GitHub ran them at 13:11-13:55 ET on 09-10 and 09-11 and the
+    two-hour window rejected every firing while the run reported success -
+    the first live TAKE since the re-enable (ATI) was never snapped. A late
+    quote is still a real two-sided market for the frozen contract; no quote
+    leaves the row on MODEL marks for good. The frozen key, not the clock,
+    prevents a duplicate, so the earliest in-window firing wins; `late_min`
+    on the row says how far from 09:45 it was.
+    """
+    return now.weekday() < 5 and OPEN <= (now.hour, now.minute) <= CLOSE
+
+
+def late_minutes(now):
+    """Minutes after the 09:45 ET entry moment, clamped at zero."""
+    return max(0, (now.hour * 60 + now.minute)
+               - (ENTRY_MOMENT[0] * 60 + ENTRY_MOMENT[1]))
 
 
 def main():
@@ -231,13 +259,10 @@ def main():
         return
 
     now = dt.datetime.now(ZoneInfo("America/New_York"))
-    # A window, not an hour. Same lesson robert_chain_gate.py records: GitHub's
-    # scheduler drifted to 10:03 and 10:56 ET on 2026-08-17 and an `hour == 9`
-    # guard rejected both firings while the workflow still reported success.
-    # The frozen-key check below, not the clock, is what prevents a duplicate.
-    ok_window = (now.weekday() < 5
-                 and (9, 30) <= (now.hour, now.minute) <= (11, 30))
-    if not ok_window and "--force" not in a:
+    # A window, not an hour - and since 2026-09-11 the whole session, not two
+    # hours of it. See in_entry_window for the two drift incidents that set
+    # each bound. The frozen-key check in snap_one is what prevents a duplicate.
+    if not in_entry_window(now) and "--force" not in a:
         print(f"outside the entry window ({now:%a %H:%M ET}) - nothing snapped")
         return
 
