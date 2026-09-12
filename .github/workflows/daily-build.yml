@@ -337,7 +337,8 @@ jobs:
           # cannot defend.
           git add index.html data/shadow_book.json robert.html \
             data/robert_shadow.json data/robert_chain_snaps.json \
-            jason.html data/jason_shadow.json data/jason_chain_snaps.json
+            jason.html data/jason_shadow.json data/jason_chain_snaps.json \
+            data/jason_earnings.json
           if git diff --cached --quiet; then
             echo "no changes to publish"
             echo "published=false" >> "$GITHUB_OUTPUT"

@@ -126,6 +126,10 @@ python3 "$REPO/scripts/robert_shadow.py" --bars "$TMP/bars.json" \
   --ledger "$REPO/data/robert_shadow.json" --splice
 # 4c3) JASON paper ledger (2026-09-12): its own state, sleeve and signal;
 #      rule tests fail closed before it may splice.
+#      Earnings seed for the whole JASON universe (FMP key from the engine's
+#      env on this Mac; fail-quiet, the cloud uses the committed file).
+python3 "$REPO/scripts/jason_earnings_seed.py" --universe "$REPO/jason_universe.txt" \
+  --out "$REPO/data/jason_earnings.json" || echo "jason earnings seed refresh failed (non-fatal)"
 python3 "$REPO/scripts/jason_shadow_test.py"
 python3 "$REPO/scripts/jason_shadow.py" --bars "$TMP/bars.json" \
   --earnings "$TMP/earnings.json" --page "$REPO/jason.html" \
@@ -221,7 +225,8 @@ cd "$REPO"
 # is a number you cannot defend.
 git add index.html data/shadow_book.json robert.html \
   data/robert_shadow.json data/robert_chain_snaps.json \
-  jason.html data/jason_shadow.json data/jason_chain_snaps.json
+  jason.html data/jason_shadow.json data/jason_chain_snaps.json \
+  data/jason_earnings.json
 if git diff --cached --quiet; then
   echo "no changes to publish"
 else

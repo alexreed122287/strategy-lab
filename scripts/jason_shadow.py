@@ -192,15 +192,25 @@ def main():
     uni = [t.strip() for t in open(uni_p).read().replace("\n", ",").split(",") if t.strip()]
     if len(uni) < 300:
         sys.exit(f"fail-closed: universe has {len(uni)} names")
+    # Earnings dates: the UNION of every source, not the first that answers.
+    # data/jason_earnings.json (jason_earnings_seed.py, whole universe from
+    # FMP) is the one that matters; the build's earnings.json and the ROBERT
+    # seed add what they have.
     earn = {}
+    repo = os.path.dirname(os.path.abspath(page_p))
     for src in ([earn_p] if earn_p else []) + [
-            os.path.join(os.path.dirname(os.path.abspath(page_p)), "data", "robert_earnings.json")]:
-        if src and os.path.exists(src) and not earn:
-            try:
-                for k, v in json.load(open(src)).items():
-                    earn[k] = [str(x)[:10] for x in (v if isinstance(v, list) else [v])]
-            except Exception:
-                earn = {}
+            os.path.join(repo, "data", "jason_earnings.json"),
+            os.path.join(repo, "data", "robert_earnings.json")]:
+        if not src or not os.path.exists(src):
+            continue
+        try:
+            d = json.load(open(src))
+            names = d.get("names") if isinstance(d, dict) and isinstance(d.get("names"), dict) else d
+            for k, v in names.items():
+                ds = [str(x)[:10] for x in (v if isinstance(v, list) else [v])]
+                earn[k] = sorted(set(earn.get(k, [])) | set(ds))
+        except Exception as e:
+            print(f"WARNING: earnings source {src} unreadable ({e})", file=sys.stderr)
     tok = RS.token()
     need = [s for s in uni + ["SPY"] if s not in bars]
     if need and tok:
@@ -247,7 +257,13 @@ def main():
         except Exception:
             sys.exit("fail-closed: ledger unreadable, refusing to overwrite")
     if st.get("last_as_of") == as_of:
-        print(f"jason_shadow: bar {as_of} already processed", file=sys.stderr)
+        # Re-running the same bar (a second build, a refreshed earnings seed):
+        # tonight's queue is re-derived from scratch so a gate that now sees a
+        # date it did not see an hour ago can still refuse. Fills and exits
+        # below are idempotent on their own.
+        print(f"jason_shadow: bar {as_of} already processed - re-deriving tonight's queue", file=sys.stderr)
+        st["queued"] = [q for q in st["queued"] if q.get("signal_date") != as_of]
+        st["last_signal"] = {t: d for t, d in st["last_signal"].items() if d != as_of}
     busy = {p["t"] for p in st["open"]} | {q["t"] for q in st["queued"]}
     unchecked = []
 
