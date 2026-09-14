@@ -1,1 +1,48 @@
-{"schema": 1, "note": "JASON entry/exit chain snapshots, keyed TICKER|DATE|E or |X; a key is never rewritten", "snaps": {}, "count": 0}
+{
+ "schema": 1,
+ "note": "JASON entry/exit chain snapshots, keyed TICKER|DATE|E or |X; a key is never rewritten",
+ "snaps": {
+  "AMAT|2026-09-14|E": {
+   "strike": 380.0,
+   "bid": 55.4,
+   "ask": 59.35,
+   "mid": 57.375,
+   "spread_pct": 6.88,
+   "delta": 0.809,
+   "iv": 0.5688,
+   "oi": 40,
+   "volume": 12,
+   "extrinsic_pct": 15.4,
+   "expiry": "2026-10-16",
+   "spot": 428.56,
+   "dte": 32,
+   "ticker": "AMAT",
+   "side": "E",
+   "date": "2026-09-14",
+   "captured": "2026-09-14 13:02 ET",
+   "late_min": 197
+  },
+  "CAT|2026-09-14|E": {
+   "strike": 720.0,
+   "bid": 77.0,
+   "ask": 81.9,
+   "mid": 79.45,
+   "spread_pct": 6.17,
+   "delta": 0.813,
+   "iv": 0.3801,
+   "oi": 16,
+   "volume": 2,
+   "extrinsic_pct": 16.3,
+   "expiry": "2026-10-16",
+   "spot": 786.495,
+   "dte": 32,
+   "ticker": "CAT",
+   "side": "E",
+   "date": "2026-09-14",
+   "captured": "2026-09-14 13:02 ET",
+   "late_min": 197
+  }
+ },
+ "count": 2,
+ "updated": "2026-09-14 17:02 UTC"
+}
