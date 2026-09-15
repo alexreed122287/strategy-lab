@@ -1,7 +1,48 @@
 {
  "schema": 1,
  "note": "Real option quotes captured AT ROBERT decision moments. Keys are TICKER|DATE|E (entry, 09:45 ET workflow) or |X (exit, nightly build after the close). A key is frozen once written - robert_shadow.py prices off these in preference to its Black-Scholes fallback, so rewriting one would restate a closed trade.",
- "snaps": {},
- "updated": "2026-08-27 04:23 UTC",
- "count": 0
+ "snaps": {
+  "ASML|2026-09-15|E": {
+   "strike": 1450.0,
+   "bid": 168.3,
+   "ask": 179.8,
+   "mid": 174.05,
+   "spread_pct": 6.61,
+   "delta": 0.769,
+   "iv": 0.4556,
+   "oi": 33,
+   "volume": 0,
+   "extrinsic_pct": 18.7,
+   "expiry": "2026-10-16",
+   "spot": 1591.55,
+   "dte": 31,
+   "ticker": "ASML",
+   "side": "E",
+   "date": "2026-09-15",
+   "captured": "2026-09-15 11:41 ET",
+   "late_min": 116
+  },
+  "TRGP|2026-09-15|E": {
+   "strike": 260.0,
+   "bid": 29.1,
+   "ask": 31.7,
+   "mid": 30.4,
+   "spread_pct": 8.55,
+   "delta": 0.854,
+   "iv": 0.3143,
+   "oi": 28,
+   "volume": 0,
+   "extrinsic_pct": 9.8,
+   "expiry": "2026-10-16",
+   "spot": 287.4275,
+   "dte": 31,
+   "ticker": "TRGP",
+   "side": "E",
+   "date": "2026-09-15",
+   "captured": "2026-09-15 11:41 ET",
+   "late_min": 116
+  }
+ },
+ "updated": "2026-09-15 15:41 UTC",
+ "count": 2
 }
