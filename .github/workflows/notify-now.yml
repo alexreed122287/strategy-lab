@@ -1,0 +1,80 @@
+name: notify-now
+
+# Send the combined daily mail on demand, from whatever is already published.
+#
+# Written 2026-09-15. The combined mailer (notify_daily.py) merged AFTER that
+# night's build had already gone out in the old three-mail format, and the
+# owner wanted the new one the same day. A plain re-dispatch of daily-build
+# cannot do that: its notify step is gated on `new_session`, which only goes
+# true when the BOOKSIG bar ADVANCES. Re-running before the next close finds
+# the same bar, so the gate correctly refuses - that gate exists to stop a
+# re-publish re-alerting a session, and it should not be weakened for this.
+#
+# So this is a separate, manual-only path that does ONE thing: compose and
+# send from the repo as it already stands. It deliberately does NOT
+#   * fetch bars (no Tradier call, no quota, no race with a running build)
+#   * rebuild or splice anything
+#   * commit (no "daily build <today>" commit carrying yesterday's bars - the
+#     trap the daily guard's own comment describes from 2026-08-07)
+#   * touch the nightly gating logic in daily-build.yml
+#
+# It reads index.html, robert.html and the two ledgers at HEAD and mails what
+# they say. --force bypasses notify_daily's content-hash dedupe, because a
+# deliberate manual resend is the one case that should ignore "already sent".
+#
+# The SUBSCRIBER DIGEST is never sent here. That list gets the ranked digest
+# once per session on the natural schedule; a manual resend must not duplicate
+# into other people's inboxes.
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Compose and print to the log, send nothing"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: notify-now
+  cancel-in-progress: false
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Credentials
+        env:
+          NOTIFY_CONFIG: ${{ secrets.NOTIFY_CONFIG }}
+        run: |
+          if [ -z "$NOTIFY_CONFIG" ]; then
+            echo "::error::NOTIFY_CONFIG secret is not set - there is nothing to send with"
+            exit 1
+          fi
+          printf '%s' "$NOTIFY_CONFIG" > "$HOME/.strategy_lab_notify.json"
+          chmod 600 "$HOME/.strategy_lab_notify.json"
+          python3 -c "import json,os;json.load(open(os.path.expanduser('~/.strategy_lab_notify.json')))" \
+            || { echo "::error::NOTIFY_CONFIG is not valid JSON"; exit 1; }
+
+      - name: Send the combined mail
+        env:
+          DRY: ${{ inputs.dry_run }}
+        run: |
+          # Fail-closed on the same shape tests the nightly path gates on: a
+          # manual send is not an excuse to skip them.
+          python3 scripts/notify_daily_test.py
+          python3 scripts/notify_robert_test.py
+          python3 scripts/notify_jason_test.py
+          ARGS="--page index.html --robert-page robert.html \
+                --robert-ledger data/robert_shadow.json \
+                --jason-ledger data/jason_shadow.json --force"
+          if [ "$DRY" = "true" ]; then ARGS="$ARGS --dry-run"; fi
+          python3 scripts/notify_daily.py $ARGS
+
+      - name: Wipe credentials
+        if: always()
+        run: rm -f "$HOME/.strategy_lab_notify.json"
