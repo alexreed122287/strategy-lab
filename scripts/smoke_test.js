@@ -396,24 +396,46 @@ const PAGE = 'file://' + path.resolve(__dirname, '..', 'index.html');
   t(`signals: stale killbox fires iff the FEED is behind (behind=${staleGate.feedBehind})`,
     staleGate.banner === staleGate.feedBehind);
 
-  // F10. Two harnesses emit two different "zero losses" sentinels (99, 999).
-  // Neither is a profit factor; the largest genuine PF in this data is 69.98.
+  /* F10. Two harnesses emit two different "zero losses" sentinels (99, 999).
+     Neither is a profit factor; the largest genuine PF in this data is 69.98.
+     SCOPED TO RATIO COLUMNS 2026-09-15. The original scanned every td on every
+     tab, so it fired the day GAPW_RSI14's skip counter reached exactly 99 -
+     a legitimate count under a "Skipped" header, on a page that was correct.
+     That is not cosmetic: smoke_test.js is the fail-closed render gate in
+     daily_build.sh 5b, so a false positive here refuses to publish, and this
+     one would have cleared itself when the counter ticked to 100 - the exact
+     signature of an assertion pinned to a VALUE instead of a BEHAVIOUR (same
+     defect class as the rank-tile and dropdown checks). A count reaching 99 is
+     data movement; a PF cell reading 99 is the bug, so match the column.
+     `seen` guards the other failure mode: if the page stops labelling PF
+     columns, this check must go red rather than silently pass on nothing. */
   const pfRaw = await page.evaluate(() => {
+    const RATIO = /\b(pf|profit factor|calmar|sharpe|sortino|ratio)\b/i;
+    const SENTINEL = new Set(['99', '99.0', '999', '999.0']);
     const hits = [];
+    let seen = 0;
     for (const tab of TABS.map(t2 => t2[0])) {
       const el2 = document.getElementById(tab + '-body');
       if (!el2) continue;
       el2.querySelectorAll('details').forEach(d => d.open = true);
-      // a sentinel that reached a CELL renders as its own td text
-      el2.querySelectorAll('td').forEach(td => {
-        const v = td.textContent.trim();
-        if (v === '999' || v === '999.0' || v === '99.0' || v === '99') hits.push(tab + ':' + v);
+      el2.querySelectorAll('table').forEach(tbl => {
+        const hs = [...tbl.querySelectorAll('th')].map(th => th.textContent.trim());
+        tbl.querySelectorAll('tr').forEach(tr => {
+          [...tr.querySelectorAll('td')].forEach((td, i) => {
+            if (!RATIO.test(hs[i] || '')) return;
+            seen++;
+            const v = td.textContent.trim();
+            if (SENTINEL.has(v)) hits.push(`${tab}:${hs[i]}=${v}`);
+          });
+        });
       });
     }
-    return [...new Set(hits)];
+    return { hits: [...new Set(hits)], seen };
   });
-  t(`no raw PF sentinel renders as a number (${pfRaw.join(', ') || 'none'})`,
-    pfRaw.length === 0);
+  t(`no raw PF sentinel in a ratio cell (${pfRaw.hits.join(', ') || 'none'})`,
+    pfRaw.hits.length === 0);
+  t(`PF sentinel check still has ratio cells to inspect (${pfRaw.seen})`,
+    pfRaw.seen > 0);
 
   /* ---- MATURITY BIAS (audit round 3, 2026-08-18) ----------------------
      The exit rules fire on strength, so a winner closes in 1-2 bars while a
