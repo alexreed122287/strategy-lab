@@ -361,29 +361,31 @@ jobs:
       - name: Send alert and digest
         if: steps.guard.outputs.proceed == 'true' && steps.publish.outputs.published == 'true' && steps.publish.outputs.new_session == 'true'
         run: |
-          python3 scripts/notify_buys.py --page index.html || echo "alert failed (non-fatal)"
+          # ONE combined mail, three sections (owner's ask 2026-09-15). This
+          # replaced three separate sends - notify_buys' alert, notify_robert's
+          # and notify_jason's - which all went to the same list by default:
+          # three subjects a morning for one decision. Each section is rendered
+          # by that book's OWN compose(), so a section reads exactly as its
+          # standalone mail would and there is no second renderer to drift.
+          # Per-section freshness and failure: a stale or broken book is named
+          # and suppressed, never printed beside fresh rows, and never
+          # suppresses the others. Gated fail-closed on all three books' shape
+          # tests; the new_session gate above dedupes it on this stateless
+          # runner. The per-book mailers remain runnable standalone.
+          if python3 scripts/notify_daily_test.py >/dev/null \
+             && python3 scripts/notify_robert_test.py >/dev/null \
+             && python3 scripts/notify_jason_test.py >/dev/null; then
+            python3 scripts/notify_daily.py --page index.html \
+              --robert-page robert.html --robert-ledger data/robert_shadow.json \
+              --jason-ledger data/jason_shadow.json \
+              || echo "daily notify failed (non-fatal)"
+          else
+            echo "MAILER SHAPE TESTS FAILED - combined daily mail held."
+          fi
+          # The subscriber digest is a DIFFERENT audience (to_digest) and a
+          # different job: ranked plain-language picks, never paper-book
+          # entries. It stays its own send.
           python3 scripts/notify_buys.py --page index.html --simple || echo "digest failed (non-fatal)"
-          # ROBERT entry/exit mail - personal list only, gated on its own shape
-          # tests (fail-closed). Same new_session gate as the two lines above
-          # is what dedupes it on this stateless runner.
-          if python3 scripts/notify_robert_test.py >/dev/null; then
-            python3 scripts/notify_robert.py --page robert.html --ledger data/robert_shadow.json \
-              || echo "ROBERT notify failed (non-fatal)"
-          else
-            echo "ROBERT MAILER SHAPE TESTS FAILED - ROBERT mail held."
-          fi
-          # JASON entry/exit mail (2026-09-15). Its ledger opened 09/12 and
-          # filled AMAT and CAT on the 09-14 bar with nothing mailing any of
-          # it - the same gap ROBERT had. Same list as the RSI2 alert by
-          # default (`to`), same fail-closed shape-test gate, same new_session
-          # dedupe. Reads only data/jason_shadow.json: the queued rows carry
-          # their own gate readings, so there is no page blob to disagree with.
-          if python3 scripts/notify_jason_test.py >/dev/null; then
-            python3 scripts/notify_jason.py --ledger data/jason_shadow.json \
-              || echo "JASON notify failed (non-fatal)"
-          else
-            echo "JASON MAILER SHAPE TESTS FAILED - JASON mail held."
-          fi
 
       - name: Wipe credentials
         if: always()
