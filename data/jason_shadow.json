@@ -4,27 +4,76 @@
  "sleeve": 250000.0,
  "slots": 5,
  "slot_dollars": 12500.0,
- "open": [],
- "queued": [
+ "open": [
   {
    "t": "AMAT",
    "signal_date": "2026-09-11",
-   "close": 456.49,
-   "vap50": 522.1067,
-   "atr14": 15.4193,
-   "threshold": 498.9777,
-   "rs252": 1.6215,
-   "iv_proxy": 0.5826
+   "entry_date": "2026-09-14",
+   "entry_px": 422.2,
+   "opt": {
+    "expiry": "2026-10-16",
+    "strike": 380.0,
+    "dte": 32,
+    "delta": 0.809,
+    "iv": 0.5688,
+    "sigma": 0.5688,
+    "prem_mid": 57.375,
+    "prem_paid": 57.6908,
+    "spread_e": 6.88,
+    "bid_e": 55.4,
+    "ask_e": 59.35,
+    "oi_e": 40,
+    "vol_e": 12,
+    "extrinsic_pct": 15.4,
+    "captured_e": "2026-09-14 13:02 ET",
+    "basis": "CHAIN",
+    "strike_src": "chain",
+    "f": 0.16,
+    "contracts": 2,
+    "cost": 11538.16,
+    "slot": 12500.0
+   }
   },
   {
    "t": "CAT",
    "signal_date": "2026-09-11",
-   "close": 818.57,
-   "vap50": 856.8589,
-   "atr14": 20.4906,
-   "threshold": 826.1229,
-   "rs252": 0.7637,
-   "iv_proxy": 0.3294
+   "entry_date": "2026-09-14",
+   "entry_px": 783.045,
+   "opt": {
+    "expiry": "2026-10-16",
+    "strike": 720.0,
+    "dte": 32,
+    "delta": 0.813,
+    "iv": 0.3801,
+    "sigma": 0.3801,
+    "prem_mid": 79.45,
+    "prem_paid": 79.8422,
+    "spread_e": 6.17,
+    "bid_e": 77.0,
+    "ask_e": 81.9,
+    "oi_e": 16,
+    "vol_e": 2,
+    "extrinsic_pct": 16.3,
+    "captured_e": "2026-09-14 13:02 ET",
+    "basis": "CHAIN",
+    "strike_src": "chain",
+    "f": 0.16,
+    "contracts": 1,
+    "cost": 7984.22,
+    "slot": 12500.0
+   }
+  }
+ ],
+ "queued": [
+  {
+   "t": "CSCO",
+   "signal_date": "2026-09-14",
+   "close": 110.06,
+   "vap50": 114.2324,
+   "atr14": 2.1435,
+   "threshold": 111.0171,
+   "rs252": 0.4689,
+   "iv_proxy": 0.3141
   }
  ],
  "closed": [],
@@ -32,7 +81,8 @@
  "closed_total": 0,
  "last_signal": {
   "AMAT": "2026-09-11",
-  "CAT": "2026-09-11"
+  "CAT": "2026-09-11",
+  "CSCO": "2026-09-14"
  },
- "last_as_of": "2026-09-11"
+ "last_as_of": "2026-09-14"
 }
