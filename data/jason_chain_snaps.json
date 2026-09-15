@@ -41,8 +41,28 @@
    "date": "2026-09-14",
    "captured": "2026-09-14 13:02 ET",
    "late_min": 197
+  },
+  "CSCO|2026-09-15|E": {
+   "strike": 100.0,
+   "bid": 11.35,
+   "ask": 11.95,
+   "mid": 11.65,
+   "spread_pct": 5.15,
+   "delta": 0.861,
+   "iv": 0.3704,
+   "oi": 1089,
+   "volume": 1,
+   "extrinsic_pct": 7.3,
+   "expiry": "2026-10-16",
+   "spot": 110.8,
+   "dte": 31,
+   "ticker": "CSCO",
+   "side": "E",
+   "date": "2026-09-15",
+   "captured": "2026-09-15 11:40 ET",
+   "late_min": 115
   }
  },
- "count": 2,
- "updated": "2026-09-14 17:02 UTC"
+ "count": 3,
+ "updated": "2026-09-15 15:40 UTC"
 }
