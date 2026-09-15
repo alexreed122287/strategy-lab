@@ -43,8 +43,35 @@ const path=require('path');
 const fs=require('fs');
 const {execSync}=require('child_process');
 let chromium;
-try{ chromium=require(execSync('npm root -g',{encoding:'utf8'}).trim()+'/playwright-core').chromium; }
-catch(e){ try{ chromium=require('playwright-core').chromium; }catch(e2){ process.exit(3); } }
+/* Resolve the browser MODULE exactly the way smoke_test.js does. The comment
+   below has said "same probe as smoke_test.js" since this was written, and it
+   stopped being true: smoke_test.js was later widened to try several install
+   roots AND both package names, while this copy kept probing only
+   `playwright-core` under `npm root -g`. The drift had teeth - on a host where
+   the installed package is `playwright`, or where it lives under ~/.local
+   because Homebrew's node shadows it on PATH, this exited 3, reported SKIPPED,
+   and took the mail down with it (exactly the 2026-08-17 failure the comment
+   below warns about, in the file meant to prevent it). Keep the two resolvers
+   identical. */
+{
+  const roots=[];
+  try{ roots.push(execSync('npm root -g',{encoding:'utf8'}).trim()); }catch(e){}
+  const home=process.env.HOME||'';
+  for(const r of [path.join(home,'.local','lib','node_modules'),
+                  '/opt/homebrew/lib/node_modules',
+                  '/usr/local/lib/node_modules']){
+    if(!roots.includes(r)) roots.push(r);
+  }
+  for(const name of ['playwright-core','playwright']){
+    if(chromium) break;
+    try{ chromium=require(name).chromium; }catch(e){}
+    for(const r of roots){
+      if(chromium) break;
+      try{ chromium=require(path.join(r,name)).chromium; }catch(e){}
+    }
+  }
+}
+if(!chromium){ process.exit(3); }
 /* Same probe as smoke_test.js, and the same reason. This check GATES the buy
    mail: when it cannot find a browser it reports a FAIL and exits 1, and both
    the build's mail step and digest_backstop.sh then decline. So a missing
