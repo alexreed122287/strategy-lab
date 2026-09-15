@@ -440,6 +440,80 @@
   </nav>
   <main>
 
+    <div class="card warnbox">
+      <h3>The forward book is live - and far too young to read</h3>
+      <p>The paper ledger opened on <b>09/12/2026</b> and runs nightly: signals on the close, fills at the next
+        session's open, the contract priced from a real chain snapshot where the workflow caught one. Current
+        holdings, counts and marks are in the <a href="#paper-log">paper-fill log below</a> - this card does not
+        restate them, because a count written here by hand is wrong by the next morning.</p>
+      <p><b>None of it is evidence yet.</b> The ratio tiles stay grey until 20 closed trades, and a paper result on
+        an open book is a mark, not a record. Everything else on this page is backtest:
+        <code>data/jason_trades.csv</code> (824 rows, 2013-2026, reproduced below) and the two research notes it
+        came out of; the sizing section is a <b>calculator against that backtest</b>, not the running ledger. No
+        capital at any phase - no order is placed, and nothing in this repo holds a trading credential.</p>
+    </div>
+
+
+    <div class="card" id="paper-log">
+      <h3>Paper-fill log - started 09/12/2026</h3>
+      <p class="small">The forward paper ledger the research named as the next step. Signals on the close,
+        fills at the next session's open, exits at the close on VAP(50) reversion or at the contract's
+        expiry; the jason-entry-snap workflow targets a 09:45 ET quote and every row is stamped with the
+        time its chain was actually captured (GitHub's scheduler has fired it hours late), and is priced by
+        Black-Scholes where no quote was caught. Sized on JASON's own sleeve, five slots at $12,500.
+        No capital, no order, no fill: every dollar is contingent on the assumed fill fraction f.</p>
+      <!-- JASSHADOW:START -->
+<p class="small">Automatic paper ledger as of the 2026-09-14 bar. Signals on the close, fills at the next open, exits at the close on VAP(50) reversion or at expiry. Contract priced from the chain snapshot the workflow caught (CHAIN - hover the badge for the capture time; 09:45 ET is the target, not a guarantee), Black-Scholes otherwise (MODEL). Sized on JASON's own sleeve: five slots at $12,500. Earnings dates known for 494 of 503 names.</p>
+<div class="tiles compact"><div class="tile"><div class="k">Started</div><div class="v ">2026-09-12</div><div class="d">no capital, no order, no fill</div></div><div class="tile"><div class="k">Closed trades</div><div class="v ">0 / 20</div><div class="d">ratios grey until 20</div></div><div class="tile"><div class="k">Paper result</div><div class="v ">&minus;$1,280</div><div class="d">on a $250,000 sleeve at f = 0.16</div></div><div class="tile"><div class="k">Open</div><div class="v ">2</div><div class="d">1 queued for the next open</div></div></div>
+<details class="gloss" open><summary>Open positions</summary><div class="tablewrap"><table><tr><th>Ticker</th><th>Contract</th><th>Entered</th><th>Days</th><th>Stock</th><th>Prem paid</th><th>Mark</th><th>Ctr</th><th>Option</th><th>P&amp;L</th></tr><tr><td><b>AMAT</b></td><td>Oct 16 380C <span class="tag" title="chain captured 2026-09-14 13:02 ET">CHAIN</span></td><td>2026-09-14</td><td>0</td><td class="pos">+0.48%</td><td>57.69</td><td>55.35</td><td>2</td><td class="neg">&minus;6.5%</td><td class="neg">&minus;$745</td></tr><tr><td><b>CAT</b></td><td>Oct 16 720C <span class="tag" title="chain captured 2026-09-14 13:02 ET">CHAIN</span></td><td>2026-09-14</td><td>0</td><td class="pos">+0.12%</td><td>79.84</td><td>76.39</td><td>1</td><td class="neg">&minus;6.7%</td><td class="neg">&minus;$536</td></tr></table></div></details>
+<p class="small"><b>Queued for the next open:</b> CSCO (close 110.06 vs 111.02). The 09:45 ET snapshot workflow quotes each contract; the next build fills at the open.</p>
+<p class="small"><b>These are not fills.</b> No order has ever rested in a book for any row here. Every dollar figure is contingent on the assumed fill fraction f; rows measured at both ends carry the f = 0.16 / 0.50 / 1.00 band in the ledger file.</p>
+<!-- JASSHADOW:END -->
+    </div>
+
+    <div class="card">
+      <h3>How a JASON trade is decided - entry, exit, and when to buy</h3>
+      <p class="small">Tonight's candidates are the <b>Queued for the next open</b> line in the log above.
+        That list is written by the ledger, never typed here, so it is current or it is absent. The rules
+        below are the locked spec (09/09/2026), reproduced from <code>scripts/jason_shadow.py</code>.</p>
+      <div class="tablewrap"><table>
+        <tr><th class="l">Stage</th><th class="l">Rule</th></tr>
+        <tr><td class="l"><b>Signal</b></td><td class="l">On the <b>close</b>, with every condition true on
+          the same bar:
+          <br>&bull; close &le; VAP(50) &minus; 1.5 &times; ATR(14) &mdash; the dislocation
+          <br>&bull; close &gt; SMA(200) &mdash; leader
+          <br>&bull; RS252 vs SPY &gt; +40% &mdash; relative-strength leader
+          <br>&bull; 50-day average volume &ge; 500,000 &mdash; liquid enough to size
+          <br>&bull; rv-blend IV proxy &le; 60% &mdash; contract IV gate
+          <br>&bull; no earnings inside the next 21 days &mdash; the expected hold
+          <br>&bull; &ge; 5 bars since this name's last signal; one open or queued per name</td></tr>
+        <tr><td class="l"><b>Buy</b></td><td class="l"><b>The next session's open - 09:30 ET.</b> There is no
+          gap-skip rule: JASON has none, and the ledger will not invent one. The contract is quoted by the
+          jason-entry-snap workflow, which <i>targets</i> <b>09:45 ET</b>; every row is stamped with the time
+          its chain was actually caught, because GitHub's scheduler has fired it hours late.</td></tr>
+        <tr><td class="l"><b>Contract</b></td><td class="l">First monthly &ge; 30 DTE, shallowest strike whose
+          extrinsic is under 20% - deep ITM. A real chain quote where the workflow caught one (CHAIN);
+          Black-Scholes at the rv-blend proxy otherwise (MODEL).</td></tr>
+        <tr><td class="l"><b>Exit</b></td><td class="l">At the <b>close</b> of the first bar where the stock
+          closes back at or above <b>VAP(50)</b> - the reversion the trade was for - or at the contract's
+          <b>expiry</b>, whichever comes first. No DTE cap, no time stop, no profit target, no stop: the spec
+          holds to expiration.</td></tr>
+        <tr><td class="l"><b>Size</b></td><td class="l">Five slots at 5% of a $250,000 sleeve - $12,500 a slot,
+          contracts rounded down. Never ROBERT's 6 &times; 15%: the source research puts that sizing on this
+          line at a bootstrap 5th percentile of &minus;94.5%, effectively ruin.</td></tr>
+      </table></div>
+      <p class="small">Nothing here places an order. Every dollar in the ledger is contingent on the assumed
+        fill fraction f.</p>
+    </div>
+
+    <div class="card">
+      <h3>Backtest - the record the spec was built on</h3>
+      <p class="small">Everything from here down is the 2011-09/2026 backtest and the research behind it, not
+        the live book above. In-sample 2011-2019, out-of-sample 2020-09/2026; the row-level log is
+        <code>data/jason_trades.csv</code> (824 rows). These numbers are what the strategy was chosen ON -
+        the forward book above is what it has actually done since 09/12/2026.</p>
+    </div>
+
     <div class="tiles">
       <div class="tile">
         <div class="k">OOS profit factor</div>
@@ -466,19 +540,6 @@
         <div class="v">~61/yr</div>
         <div class="d">496-name universe - frequency count still unreconciled, see below</div>
       </div>
-    </div>
-
-    <div class="card warnbox">
-      <h3>The forward book is live - and far too young to read</h3>
-      <p>The paper ledger opened on <b>09/12/2026</b> and runs nightly: signals on the close, fills at the next
-        session's open, the contract priced from a real chain snapshot where the workflow caught one. Current
-        holdings, counts and marks are in the <a href="#paper-log">paper-fill log below</a> - this card does not
-        restate them, because a count written here by hand is wrong by the next morning.</p>
-      <p><b>None of it is evidence yet.</b> The ratio tiles stay grey until 20 closed trades, and a paper result on
-        an open book is a mark, not a record. Everything else on this page is backtest:
-        <code>data/jason_trades.csv</code> (824 rows, 2013-2026, reproduced below) and the two research notes it
-        came out of; the sizing section is a <b>calculator against that backtest</b>, not the running ledger. No
-        capital at any phase - no order is placed, and nothing in this repo holds a trading credential.</p>
     </div>
 
     <div class="card">
@@ -774,22 +835,6 @@
         (ticker, entry date, exit date, return, bars held, near-earnings flags).</p>
     </details>
 
-    <div class="card" id="paper-log">
-      <h3>Paper-fill log - started 09/12/2026</h3>
-      <p class="small">The forward paper ledger the research named as the next step. Signals on the close,
-        fills at the next session's open, exits at the close on VAP(50) reversion or at the contract's
-        expiry; the jason-entry-snap workflow targets a 09:45 ET quote and every row is stamped with the
-        time its chain was actually captured (GitHub's scheduler has fired it hours late), and is priced by
-        Black-Scholes where no quote was caught. Sized on JASON's own sleeve, five slots at $12,500.
-        No capital, no order, no fill: every dollar is contingent on the assumed fill fraction f.</p>
-      <!-- JASSHADOW:START -->
-<p class="small">Automatic paper ledger as of the 2026-09-14 bar. Signals on the close, fills at the next open, exits at the close on VAP(50) reversion or at expiry. Contract priced from the chain snapshot the workflow caught (CHAIN - hover the badge for the capture time; 09:45 ET is the target, not a guarantee), Black-Scholes otherwise (MODEL). Sized on JASON's own sleeve: five slots at $12,500. Earnings dates known for 494 of 503 names.</p>
-<div class="tiles compact"><div class="tile"><div class="k">Started</div><div class="v ">2026-09-12</div><div class="d">no capital, no order, no fill</div></div><div class="tile"><div class="k">Closed trades</div><div class="v ">0 / 20</div><div class="d">ratios grey until 20</div></div><div class="tile"><div class="k">Paper result</div><div class="v ">&minus;$1,280</div><div class="d">on a $250,000 sleeve at f = 0.16</div></div><div class="tile"><div class="k">Open</div><div class="v ">2</div><div class="d">1 queued for the next open</div></div></div>
-<details class="gloss" open><summary>Open positions</summary><div class="tablewrap"><table><tr><th>Ticker</th><th>Contract</th><th>Entered</th><th>Days</th><th>Stock</th><th>Prem paid</th><th>Mark</th><th>Ctr</th><th>Option</th><th>P&amp;L</th></tr><tr><td><b>AMAT</b></td><td>Oct 16 380C <span class="tag" title="chain captured 2026-09-14 13:02 ET">CHAIN</span></td><td>2026-09-14</td><td>0</td><td class="pos">+0.48%</td><td>57.69</td><td>55.35</td><td>2</td><td class="neg">&minus;6.5%</td><td class="neg">&minus;$745</td></tr><tr><td><b>CAT</b></td><td>Oct 16 720C <span class="tag" title="chain captured 2026-09-14 13:02 ET">CHAIN</span></td><td>2026-09-14</td><td>0</td><td class="pos">+0.12%</td><td>79.84</td><td>76.39</td><td>1</td><td class="neg">&minus;6.7%</td><td class="neg">&minus;$536</td></tr></table></div></details>
-<p class="small"><b>Queued for the next open:</b> CSCO (close 110.06 vs 111.02). The 09:45 ET snapshot workflow quotes each contract; the next build fills at the open.</p>
-<p class="small"><b>These are not fills.</b> No order has ever rested in a book for any row here. Every dollar figure is contingent on the assumed fill fraction f; rows measured at both ends carry the f = 0.16 / 0.50 / 1.00 band in the ledger file.</p>
-<!-- JASSHADOW:END -->
-    </div>
 
     <div class="card">
       <h3>The universe - 496 names with at least one qualifying signal, 2011-09/2026</h3>

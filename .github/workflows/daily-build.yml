@@ -372,6 +372,18 @@ jobs:
           else
             echo "ROBERT MAILER SHAPE TESTS FAILED - ROBERT mail held."
           fi
+          # JASON entry/exit mail (2026-09-15). Its ledger opened 09/12 and
+          # filled AMAT and CAT on the 09-14 bar with nothing mailing any of
+          # it - the same gap ROBERT had. Same list as the RSI2 alert by
+          # default (`to`), same fail-closed shape-test gate, same new_session
+          # dedupe. Reads only data/jason_shadow.json: the queued rows carry
+          # their own gate readings, so there is no page blob to disagree with.
+          if python3 scripts/notify_jason_test.py >/dev/null; then
+            python3 scripts/notify_jason.py --ledger data/jason_shadow.json \
+              || echo "JASON notify failed (non-fatal)"
+          else
+            echo "JASON MAILER SHAPE TESTS FAILED - JASON mail held."
+          fi
 
       - name: Wipe credentials
         if: always()
