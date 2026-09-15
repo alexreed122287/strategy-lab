@@ -413,7 +413,14 @@ def sgn(v):
 def contract(o):
     y, m, d = o["expiry"].split("-")
     mon = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][int(m) - 1]
-    return f'{mon} {int(d)} {("%g" % o["strike"])}C <span class="tag">{o.get("basis", "MODEL")}</span>'
+    basis = o.get("basis", "MODEL")
+    # A bare CHAIN badge reads as "quoted at the entry moment". Often it is not:
+    # GitHub's scheduler has fired the snapshot workflow hours late (197 minutes
+    # on the first two fills, 13:02 ET against a 09:45 target), so the badge
+    # states when its chain was actually caught rather than implying the open.
+    cap = o.get("captured_e") or o.get("captured_x")
+    tip = f' title="chain captured {cap}"' if basis == "CHAIN" and cap else ""
+    return f'{mon} {int(d)} {("%g" % o["strike"])}C <span class="tag"{tip}>{basis}</span>'
 
 
 def tile(k, v, d="", cls=""):
@@ -434,8 +441,9 @@ def render(st, bk, marks, as_of, new_q, covered, n_uni):
         tiles += tile("Avg / trade", pct(bk["avg_ret"]), "on premium, model or chain basis per row", grey)
     out = [f'<p class="small">Automatic paper ledger as of the {as_of} bar. Signals on the close, '
            f'fills at the next open, exits at the close on VAP(50) reversion or at expiry. '
-           f'Contract quoted at 09:45 ET where the snapshot workflow caught it (CHAIN), '
-           f'Black-Scholes otherwise (MODEL). Sized on JASON\'s own sleeve: five slots at '
+           f'Contract priced from the chain snapshot the workflow caught (CHAIN - hover the '
+           f'badge for the capture time; 09:45 ET is the target, not a guarantee), Black-Scholes '
+           f'otherwise (MODEL). Sized on JASON\'s own sleeve: five slots at '
            f'${SLOT_DOLLARS:,.0f}. Earnings dates known for {covered} of {n_uni} names.</p>',
            f'<div class="tiles compact">{tiles}</div>']
     if marks:

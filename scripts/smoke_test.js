@@ -741,6 +741,35 @@ const PAGE = 'file://' + path.resolve(__dirname, '..', 'index.html');
     booksHtml.includes('this count moved from 1 to'));
   t('books: correction states no rule changed', booksHtml.includes('No rule changed'));
 
+  /* --- JASON page vs its own ledger ---------------------------------------
+     jason.html shipped "never priced a real chain ... no position has ever been
+     opened ... a forward paper-fill log, which has not begun" for three days
+     AFTER its ledger opened real-chain positions (started 09-12; AMAT and CAT
+     filled 09-14 off captured quotes). The same page rendered those positions
+     further down, so it contradicted itself in public. A page that denies its
+     own running book is the honesty defect this suite exists for.
+     Pinned as an iff against the ledger file, not against today's positions, so
+     it stays correct whichever state the book is in - including back to empty.
+     File-level, not a browser probe: the ledger region is spliced in as static
+     HTML, so reading the file tests exactly what ships. */
+  const jHtml = fs.readFileSync(path.resolve(__dirname, '..', 'jason.html'), 'utf8');
+  const jLed = JSON.parse(fs.readFileSync(
+    path.resolve(__dirname, '..', 'data', 'jason_shadow.json'), 'utf8'));
+  const jLive = !!jLed.started && ['open', 'closed', 'queued']
+    .reduce((n, k) => n + ((jLed[k] || []).length), 0) > 0;
+  const denies = /BACKTEST ONLY|no forward paper book|never priced a real chain|no position has ever been opened|not a live signal or a paper book yet|which has not begun/i.test(jHtml);
+  t(`jason: page does not deny its book while one is running (live=${jLive})`,
+    jLive ? !denies : true);
+  const jStart = jLed.started
+    ? (([y, m, d]) => `${m}/${d}/${y}`)(jLed.started.split('-')) : '';
+  t(`jason: page states the ledger's own start date when live (${jStart})`,
+    !jLive || jHtml.includes(jStart) || jHtml.includes(jLed.started));
+  // "CHAIN" alone reads as quoted-at-entry. The first two fills were captured
+  // 197 min late (13:02 ET vs a 09:45 target) because GitHub's scheduler
+  // drifted, so every badge must say when its chain was actually caught.
+  t('jason: no CHAIN badge without its capture time',
+    !/<span class="tag">CHAIN<\/span>/.test(jHtml));
+
   if (errors.length) process.exitCode = 1;
   console.log(errors.length ? 'ERRORS:\n' + errors.join('\n') : 'NO PAGE ERRORS');
   await browser.close();
