@@ -19,18 +19,69 @@
     "contracts": 7,
     "cost": 14480.55
    }
-  }
- ],
- "queued": [
+  },
   {
    "t": "ASML",
    "signal_date": "2026-09-14",
-   "rsi2": 7.24
+   "entry_date": "2026-09-15",
+   "entry_px": 1615.61,
+   "opt": {
+    "expiry": "2026-10-16",
+    "strike": 1450.0,
+    "dte": 31,
+    "delta": 0.769,
+    "iv": 0.4556,
+    "sigma": 0.4556,
+    "prem_mid": 174.05,
+    "prem_paid": 174.9704,
+    "spread_e": 6.61,
+    "bid_e": 168.3,
+    "ask_e": 179.8,
+    "oi_e": 33,
+    "vol_e": 0,
+    "extrinsic_pct": 18.7,
+    "captured_e": "2026-09-15 11:41 ET",
+    "basis": "CHAIN",
+    "strike_src": "chain",
+    "f": 0.16,
+    "contracts": 1,
+    "cost": 17497.04
+   }
   },
   {
    "t": "TRGP",
    "signal_date": "2026-09-14",
-   "rsi2": 8.87
+   "entry_date": "2026-09-15",
+   "entry_px": 288.92,
+   "opt": {
+    "expiry": "2026-10-16",
+    "strike": 260.0,
+    "dte": 31,
+    "delta": 0.854,
+    "iv": 0.3143,
+    "sigma": 0.3143,
+    "prem_mid": 30.4,
+    "prem_paid": 30.6079,
+    "spread_e": 8.55,
+    "bid_e": 29.1,
+    "ask_e": 31.7,
+    "oi_e": 28,
+    "vol_e": 0,
+    "extrinsic_pct": 9.8,
+    "captured_e": "2026-09-15 11:41 ET",
+    "basis": "CHAIN",
+    "strike_src": "chain",
+    "f": 0.16,
+    "contracts": 4,
+    "cost": 12243.16
+   }
+  }
+ ],
+ "queued": [
+  {
+   "t": "AMAT",
+   "signal_date": "2026-09-15",
+   "rsi2": 6.48
   }
  ],
  "closed": [
@@ -373,5 +424,5 @@
  ],
  "skipped": [],
  "closed_total": 12,
- "last_as_of": "2026-09-14"
+ "last_as_of": "2026-09-15"
 }
