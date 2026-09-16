@@ -61,8 +61,28 @@
    "date": "2026-09-15",
    "captured": "2026-09-15 11:40 ET",
    "late_min": 115
+  },
+  "STX|2026-09-16|E": {
+   "strike": 690.0,
+   "bid": 118.2,
+   "ask": 128.3,
+   "mid": 123.25,
+   "spread_pct": 8.19,
+   "delta": 0.79,
+   "iv": 0.6953,
+   "oi": 29,
+   "volume": 0,
+   "extrinsic_pct": 19.8,
+   "expiry": "2026-10-16",
+   "spot": 788.825,
+   "dte": 30,
+   "ticker": "STX",
+   "side": "E",
+   "date": "2026-09-16",
+   "captured": "2026-09-16 11:32 ET",
+   "late_min": 107
   }
  },
- "count": 3,
- "updated": "2026-09-15 15:40 UTC"
+ "count": 4,
+ "updated": "2026-09-16 15:32 UTC"
 }
