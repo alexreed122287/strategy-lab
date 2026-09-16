@@ -41,8 +41,28 @@
    "date": "2026-09-15",
    "captured": "2026-09-15 11:41 ET",
    "late_min": 116
+  },
+  "AMAT|2026-09-16|E": {
+   "strike": 380.0,
+   "bid": 50.7,
+   "ask": 55.55,
+   "mid": 53.125,
+   "spread_pct": 9.13,
+   "delta": 0.798,
+   "iv": 0.5218,
+   "oi": 62,
+   "volume": 0,
+   "extrinsic_pct": 18.7,
+   "expiry": "2026-10-16",
+   "spot": 423.2,
+   "dte": 30,
+   "ticker": "AMAT",
+   "side": "E",
+   "date": "2026-09-16",
+   "captured": "2026-09-16 11:32 ET",
+   "late_min": 107
   }
  },
- "updated": "2026-09-15 15:41 UTC",
- "count": 2
+ "updated": "2026-09-16 15:32 UTC",
+ "count": 3
 }
