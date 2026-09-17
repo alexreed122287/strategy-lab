@@ -53,6 +53,58 @@ import notify_jason as nj       # noqa: E402
 
 RULE = "=" * 68
 
+# How many completed sessions of local silence before the mail says so. One or
+# two is a closed laptop; three is a pipeline that has stopped. Deliberately
+# short, because what goes stale while the Mac sleeps is SCAN, BASKETS and
+# DAILY - blobs NO cloud build regenerates - and the last outage ran 12 days
+# before anyone looked.
+MAC_QUIET_SESSIONS = 3
+
+
+def _weekdays_between(a, b):
+    """Completed sessions from a (exclusive) to b (inclusive). Holidays are
+    not modelled, the same call every other date helper here makes: over-
+    counting by a holiday delays nothing and under-counting hides an outage."""
+    try:
+        d, end, n = dt.date.fromisoformat(a), dt.date.fromisoformat(b), 0
+    except Exception:
+        return None
+    while d < end:
+        d += dt.timedelta(days=1)
+        if d.weekday() < 5:
+            n += 1
+    return n
+
+
+def pipeline_note(page_path, expected):
+    """One line when the LOCAL half of the pipeline has stopped publishing.
+
+    The cloud build and this mail both run whether or not the Mac is awake, so
+    every other detector in this repo - the render gate, the push retry, the
+    build log - is blind exactly when the Mac is. This is the one check that
+    runs on the other machine.
+
+    HEALTH.local_build is stamped by daily_build.sh and carried forward
+    untouched by the cloud stamp, so it holds the date the Mac last published.
+    An absent field is reported as absent rather than treated as fine: it means
+    no stamped local build has landed yet, which is itself worth one line.
+    """
+    try:
+        health = nb.blob(open(page_path).read(), "HEALTH") or {}
+    except Exception:
+        return ""
+    lb = health.get("local_build") or ""
+    if not lb:
+        return ("PIPELINE: no local build date recorded on the page - the Mac "
+                "half has not stamped one yet.")
+    n = _weekdays_between(lb, expected)
+    if n is None or n < MAC_QUIET_SESSIONS:
+        return ""
+    return ("PIPELINE: the Mac has not published since %s - %d session%s quiet. "
+            "SCAN, BASKETS and DAILY are frozen at whatever it last produced; "
+            "no cloud build regenerates them. Check with: python3 "
+            "scripts/build_log_triage.py" % (lb, n, "" if n == 1 else "s"))
+
 
 def _sect(title, state, body=""):
     """One section: a banner, a one-word state, and the book's own text."""
@@ -107,8 +159,12 @@ def jason_section(ledger_path, expected, allow_stale, url):
     return "OK", n, body, nj.payload_hash(as_of, entries, exits)
 
 
-def build(sections, expected):
-    """sections: [(title, state, count, body, key)] -> (subject, body, key)."""
+def build(sections, expected, pipe_note):
+    """sections: [(title, state, count, body, key)] -> (subject, body, key).
+
+    pipe_note is REQUIRED, not defaulted: a caller that forgets it would send a
+    mail that silently omits the one warning the Mac cannot send for itself,
+    and "" is a legitimate value meaning the local half is healthy."""
     live = [(t, c) for t, s, c, _, _ in sections if s == "OK" and c]
     bad = [t for t, s, _, _, _ in sections if s in ("STALE", "FAILED")]
     if live:
@@ -121,8 +177,10 @@ def build(sections, expected):
                                    ", ".join(b.split()[0] for b in bad))
     L = ["Strategy Lab - daily, session %s" % expected,
          "Sections: " + ", ".join("%s %s" % (t.split()[0], s)
-                                  for t, s, _, _, _ in sections),
-         "Nothing in this mail places an order.", ""]
+                                  for t, s, _, _, _ in sections)]
+    if pipe_note:
+        L.append(pipe_note)
+    L += ["Nothing in this mail places an order.", ""]
     for title, state, _c, body, _k in sections:
         L.append(_sect(title, state, body))
     return subject, "\n".join(L).rstrip() + "\n", hashlib.sha256(
@@ -198,7 +256,7 @@ def main():
             print("daily-notify: no live section on the %s bar - nothing sent" % expected)
             return
 
-        subject, body, key = build(sections, expected)
+        subject, body, key = build(sections, expected, pipeline_note(page_p, expected))
         state = {}
         if os.path.exists(state_path):
             try:

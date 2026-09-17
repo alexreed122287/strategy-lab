@@ -47,7 +47,7 @@ check(nd._sect("X", "NOTHING", "").count("[NOTHING]") == 1,
 LIVE = [("RSI2 / SHARED BOOKS", "OK", 3, "rsi2 body", "k1"),
         ("ROBERT - RSI(2) DITM calls", "OK", 2, "robert body", "k2"),
         ("JASON - VAP dislocation reversion", "OK", 1, "jason body", "k3")]
-subj, body, key = nd.build(LIVE, "2026-09-14")
+subj, body, key = nd.build(LIVE, "2026-09-14", "")
 check(subj.startswith("Strategy Lab 2026-09-14"), "build: subject leads with the session")
 check("RSI2 3" in subj and "ROBERT 2" in subj and "JASON 1" in subj,
       "build: subject counts every live section")
@@ -62,7 +62,7 @@ check("Nothing in this mail places an order." in body, "build: posture line pres
 MIXED = [("RSI2 / SHARED BOOKS", "OK", 3, "rsi2 body", "k1"),
          ("ROBERT - RSI(2) DITM calls", "STALE", 0, "Suppressed: ledger holds bar X.", ""),
          ("JASON - VAP dislocation reversion", "FAILED", 0, "could not be built: Boom", "")]
-subj2, body2, _ = nd.build(MIXED, "2026-09-14")
+subj2, body2, _ = nd.build(MIXED, "2026-09-14", "")
 check("RSI2 3" in subj2, "build: live section still summarised alongside broken ones")
 check("ROBERT" not in subj2.split("[check:")[0],
       "build: a suppressed section is NOT advertised as delivering rows")
@@ -77,14 +77,56 @@ check("could not be built: Boom" in body2,
 NONE = [("RSI2 / SHARED BOOKS", "NOTHING", 0, "No new buys.", ""),
         ("ROBERT - RSI(2) DITM calls", "NOTHING", 0, "No entries.", ""),
         ("JASON - VAP dislocation reversion", "NOTHING", 0, "No entries.", "")]
-subj3, _, _ = nd.build(NONE, "2026-09-14")
+subj3, _, _ = nd.build(NONE, "2026-09-14", "")
 check("no signals" in subj3, "build: an empty day says so in the subject")
 
 # ---- dedupe key ------------------------------------------------------------
-k_a = nd.build(LIVE, "2026-09-14")[2]
-check(k_a == nd.build(LIVE, "2026-09-14")[2], "key: stable for identical input")
-check(k_a != nd.build(LIVE, "2026-09-15")[2], "key: changes with the session")
-check(k_a != nd.build(MIXED, "2026-09-14")[2], "key: changes when a section changes")
+k_a = nd.build(LIVE, "2026-09-14", "")[2]
+check(k_a == nd.build(LIVE, "2026-09-14", "")[2], "key: stable for identical input")
+check(k_a != nd.build(LIVE, "2026-09-15", "")[2], "key: changes with the session")
+check(k_a != nd.build(MIXED, "2026-09-14", "")[2], "key: changes when a section changes")
+
+# ---- the Mac watchdog: the one check that runs on the other machine --------
+# Every other detector in this repo - render gate, push retry, build log - runs
+# ON the Mac and is blind exactly when the Mac is. This mail is sent by the
+# cloud whether or not that machine ever woke, so it is the only place the
+# local half going quiet can be noticed. It went unnoticed for 12 days.
+check(nd._weekdays_between("2026-09-04", "2026-09-17") == 9,
+      "_weekdays_between: counts sessions, skipping weekends")
+check(nd._weekdays_between("2026-09-16", "2026-09-17") == 1,
+      "_weekdays_between: one session is one session")
+check(nd._weekdays_between("", "2026-09-17") is None
+      and nd._weekdays_between("2026-09-04", "nope") is None,
+      "_weekdays_between: unparseable dates yield None, never a raise")
+
+tmp2 = tempfile.mkdtemp()
+
+
+def _page(health):
+    q = os.path.join(tmp2, "p%d.html" % abs(hash(json.dumps(health, sort_keys=True))))
+    open(q, "w").write("const HEALTH = " + json.dumps(health) + ";\n")
+    return q
+
+
+quiet = nd.pipeline_note(_page({"local_build": "2026-09-04"}), "2026-09-17")
+check("has not published since 2026-09-04" in quiet and "9 sessions quiet" in quiet,
+      "pipeline_note: names the last local build and counts the silence")
+check("SCAN" in quiet and "no cloud build regenerates them" in quiet,
+      "pipeline_note: says WHAT goes stale, not just that something did")
+check("build_log_triage" in quiet, "pipeline_note: points at the tool that answers why")
+check(nd.pipeline_note(_page({"local_build": "2026-09-16"}), "2026-09-17") == "",
+      "pipeline_note: one session behind is a closed laptop, not an outage")
+check(nd.pipeline_note(_page({"local_build": "2026-09-17"}), "2026-09-17") == "",
+      "pipeline_note: a Mac that published today is silent in the mail")
+check("not stamped one yet" in nd.pipeline_note(_page({"build": "x"}), "2026-09-17"),
+      "pipeline_note: an ABSENT field is reported, never read as healthy")
+check(nd.pipeline_note(os.path.join(tmp2, "nope.html"), "2026-09-17") == "",
+      "pipeline_note: an unreadable page degrades to silence, never a traceback")
+
+_s, _b, _ = nd.build(LIVE, "2026-09-14", "PIPELINE: mac is quiet")
+check("PIPELINE: mac is quiet" in _b, "build: the pipeline note reaches the body")
+check("PIPELINE" not in nd.build(LIVE, "2026-09-14", "")[1],
+      "build: a healthy pipeline adds no line at all")
 
 # ---- section helpers: freshness and emptiness ------------------------------
 tmp = tempfile.mkdtemp()
