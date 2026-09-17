@@ -91,20 +91,38 @@
     "cost": 11698.0,
     "slot": 12500.0
    }
-  }
- ],
- "queued": [
+  },
   {
    "t": "STX",
    "signal_date": "2026-09-15",
-   "close": 771.81,
-   "vap50": 843.3498,
-   "atr14": 45.1529,
-   "threshold": 775.6204,
-   "rs252": 2.7859,
-   "iv_proxy": 0.5935
+   "entry_date": "2026-09-16",
+   "entry_px": 784.8,
+   "opt": {
+    "expiry": "2026-10-16",
+    "strike": 690.0,
+    "dte": 30,
+    "delta": 0.79,
+    "iv": 0.6953,
+    "sigma": 0.6953,
+    "prem_mid": 123.25,
+    "prem_paid": 124.0575,
+    "spread_e": 8.19,
+    "bid_e": 118.2,
+    "ask_e": 128.3,
+    "oi_e": 29,
+    "vol_e": 0,
+    "extrinsic_pct": 19.8,
+    "captured_e": "2026-09-16 11:32 ET",
+    "basis": "CHAIN",
+    "strike_src": "chain",
+    "f": 0.16,
+    "contracts": 1,
+    "cost": 12405.75,
+    "slot": 12500.0
+   }
   }
  ],
+ "queued": [],
  "closed": [],
  "skipped": [],
  "closed_total": 0,
@@ -114,5 +132,5 @@
   "CSCO": "2026-09-14",
   "STX": "2026-09-15"
  },
- "last_as_of": "2026-09-15"
+ "last_as_of": "2026-09-16"
 }

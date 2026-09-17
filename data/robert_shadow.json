@@ -75,15 +75,37 @@
     "contracts": 4,
     "cost": 12243.16
    }
-  }
- ],
- "queued": [
+  },
   {
    "t": "AMAT",
    "signal_date": "2026-09-15",
-   "rsi2": 6.48
+   "entry_date": "2026-09-16",
+   "entry_px": 429.73,
+   "opt": {
+    "expiry": "2026-10-16",
+    "strike": 380.0,
+    "dte": 30,
+    "delta": 0.798,
+    "iv": 0.5218,
+    "sigma": 0.5218,
+    "prem_mid": 53.125,
+    "prem_paid": 53.513,
+    "spread_e": 9.13,
+    "bid_e": 50.7,
+    "ask_e": 55.55,
+    "oi_e": 62,
+    "vol_e": 0,
+    "extrinsic_pct": 18.7,
+    "captured_e": "2026-09-16 11:32 ET",
+    "basis": "CHAIN",
+    "strike_src": "chain",
+    "f": 0.16,
+    "contracts": 2,
+    "cost": 10702.6
+   }
   }
  ],
+ "queued": [],
  "closed": [
   {
    "t": "GOOGL",
@@ -424,5 +446,5 @@
  ],
  "skipped": [],
  "closed_total": 12,
- "last_as_of": "2026-09-15"
+ "last_as_of": "2026-09-16"
 }
