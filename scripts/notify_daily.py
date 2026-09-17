@@ -62,7 +62,7 @@ def _sect(title, state, body=""):
 
 def rsi2_section(page_path, expected, allow_stale, url_hint=None):
     """(state, count, body, key) for the shared-book alert."""
-    as_of, ranked, gw_book, paper, exits = nb.collect(page_path)
+    as_of, ranked, gw_book, paper, exits, scan_as_of = nb.collect(page_path)
     n = len(ranked) + len(gw_book) + len(paper) + len(exits)
     if not n:
         return "NOTHING", 0, "No new buys or sells on the %s bar." % (as_of or "latest"), ""
@@ -70,7 +70,11 @@ def rsi2_section(page_path, expected, allow_stale, url_hint=None):
         return ("STALE", 0,
                 "Suppressed: page holds bar %s, last completed session is %s."
                 % (as_of or "(none)", expected), "")
-    _, body = nb.compose(as_of, ranked, gw_book, paper, exits, url_hint)
+    # scan_as_of rides through to compose so the combined mail dates its
+    # evidence exactly as the standalone alert does. Section text comes from
+    # the book's own compose() precisely so the two cannot say different
+    # things about where a number came from.
+    _, body = nb.compose(as_of, ranked, gw_book, paper, exits, url_hint, scan_as_of)
     return "OK", n, body, nb.payload_hash(as_of, ranked, gw_book, paper, exits)
 
 
