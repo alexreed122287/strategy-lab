@@ -273,13 +273,27 @@ jobs:
           earn = json.load(open("/tmp/earnings.json"))
           g = lambda n: json.loads(re.search(r"const %s = (.*?);\n" % n, html, re.S).group(1))
           booksig, shadow, track = g("BOOKSIG"), g("SHADOW"), g("TRACK")
-          signals = g("SIGNALS")
+          signals, scan = g("SIGNALS"), g("SCAN")
           sig_bar = max([r.get("as_of") or "" for r in signals.get("signals") or []] or [""])
+          # SCAN's age, stamped since 2026-09-17. No build on either path
+          # recomputes SCAN - it is copied in from the local sweep - so its bar
+          # can sit still for weeks while everything around it advances, and
+          # until now nothing recorded that anywhere a check could read. It
+          # went unnoticed from 08/19 to 09/17. Stamp it so the freeze is a
+          # number in HEALTH, not something you find by diffing the page.
+          def _age(a, b):
+              try:
+                  return (datetime.date.fromisoformat(b) - datetime.date.fromisoformat(a)).days
+              except Exception:
+                  return None
+          scan_bar = scan.get("as_of") or ""
           now = datetime.datetime.now(zoneinfo.ZoneInfo("America/Chicago"))
           h = {"build": now.strftime("%Y-%m-%d %H:%M"), "built_by": "github-actions",
                "bars_ok": len(bars), "universe": max(len(track.get("tickers") or {}), len(bars)),
                "signals_as_of": sig_bar,
                "signals_stale": bool(sig_bar and sig_bar != track.get("as_of")),
+               "scan_as_of": scan_bar,
+               "scan_age_days": _age(scan_bar, track.get("as_of") or "") if scan_bar else None,
                "earnings": len(earn), "booksig_rows": len(booksig.get("rows") or []),
                "shadow_open": sum(1 for p in shadow.get("open") or [] if p.get("state") == "open"),
                "shadow_closed": shadow.get("closed_total") or 0}

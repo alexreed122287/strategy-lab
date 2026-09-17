@@ -147,9 +147,25 @@ earn = json.load(open(earn_path))
 scan = json.loads(re.search(r"const SCAN = (.*?);\n", html, re.S).group(1))
 booksig = json.loads(re.search(r"const BOOKSIG = (.*?);\n", html, re.S).group(1))
 shadow = json.loads(re.search(r"const SHADOW = (.*?);\n", html, re.S).group(1))
-uni = len(json.loads(re.search(r"const TRACK = (.*?);\n", html, re.S).group(1)).get("tickers") or {}) or len(bars)
+track = json.loads(re.search(r"const TRACK = (.*?);\n", html, re.S).group(1))
+uni = len(track.get("tickers") or {}) or len(bars)
+# SCAN's age, stamped since 2026-09-17 - same field the cloud stamps, so the
+# two paths describe the page the same way. SCAN was already parsed here and
+# never used: this build does not produce it either. refresh_blobs.py copies
+# it from the local sweep's output, so it holds whatever bar that sweep last
+# ran, and the daily BUILD_CMD advancing SIGNALS and REGIME says nothing about
+# whether SCAN moved. It sat at 2026-08-19 for 29 days with nothing recording
+# it. A number in HEALTH is how that gets noticed next time.
+def _age(a, b):
+    try:
+        return (datetime.date.fromisoformat(b) - datetime.date.fromisoformat(a)).days
+    except Exception:
+        return None
+scan_bar = scan.get("as_of") or ""
 h = {"build": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
      "bars_ok": len(bars), "universe": max(uni, len(bars)),
+     "scan_as_of": scan_bar,
+     "scan_age_days": _age(scan_bar, track.get("as_of") or "") if scan_bar else None,
      "earnings": len(earn), "booksig_rows": len(booksig.get("rows") or []),
      "shadow_open": sum(1 for p in shadow.get("open") or [] if p.get("state") == "open"),
      "shadow_closed": shadow.get("closed_total") or 0}
