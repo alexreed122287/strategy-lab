@@ -2,7 +2,14 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!-- Harvest self-service alert signups 4x daily (ntfy.sh only retains messages
      ~12h, so a single nightly pull would miss weekend signups).
-     Install:
+
+     The path was hardcoded to /Users/alexreed until 2026-09-17. The account is
+     /Users/alex, so this agent could never have run: launchd would have failed
+     to exec a file that does not exist, on a machine where it was never
+     installed either, so nothing ever surfaced it. Now $HOME via `bash -lc`,
+     the same shape the daily and digest plists use.
+
+     Install (see docs/notifications.md for all three at once):
        cp scripts/com.alex.strategylab.signups.plist ~/Library/LaunchAgents/
        launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.alex.strategylab.signups.plist
 -->
@@ -11,8 +18,9 @@
   <key>Label</key><string>com.alex.strategylab.signups</string>
   <key>ProgramArguments</key>
   <array>
-    <string>/usr/bin/python3</string>
-    <string>/Users/alexreed/repos/strategy-lab-site/scripts/notify_signups.py</string>
+    <string>/bin/bash</string>
+    <string>-lc</string>
+    <string>python3 $HOME/repos/strategy-lab-site/scripts/notify_signups.py</string>
   </array>
   <key>StartCalendarInterval</key>
   <array>
