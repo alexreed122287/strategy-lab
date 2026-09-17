@@ -287,11 +287,19 @@ jobs:
               except Exception:
                   return None
           scan_bar = scan.get("as_of") or ""
+          # local_build belongs to the MAC and is carried forward here
+          # untouched - the same read-only treatment SCAN gets. A cloud build
+          # must never stamp it, or the field would read "the local pipeline
+          # ran today" on a night the Mac never woke up, which is the exact
+          # lie it exists to prevent.
+          prev = json.loads(re.search(r"const HEALTH = (.*?);\n", html, re.S).group(1))
+          local_build = prev.get("local_build") or ""
           now = datetime.datetime.now(zoneinfo.ZoneInfo("America/Chicago"))
           h = {"build": now.strftime("%Y-%m-%d %H:%M"), "built_by": "github-actions",
                "bars_ok": len(bars), "universe": max(len(track.get("tickers") or {}), len(bars)),
                "signals_as_of": sig_bar,
                "signals_stale": bool(sig_bar and sig_bar != track.get("as_of")),
+               "local_build": local_build,
                "scan_as_of": scan_bar,
                "scan_age_days": _age(scan_bar, track.get("as_of") or "") if scan_bar else None,
                "earnings": len(earn), "booksig_rows": len(booksig.get("rows") or []),

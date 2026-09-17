@@ -213,8 +213,15 @@ def _age(a, b):
     except Exception:
         return None
 scan_bar = scan.get("as_of") or ""
+# local_build: the date THIS machine last published, stamped here and carried
+# forward untouched by the cloud stamp. Added 2026-09-17 because nothing
+# recorded it and nothing could: the Mac went quiet after 09/04 and the only
+# way to notice was to diff SIGNALS.generated across commits by hand. The
+# cloud sends the daily mail whether or not this machine is awake, so this is
+# the one fact that lets the mail say the local half has stopped.
 h = {"build": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
      "bars_ok": len(bars), "universe": max(uni, len(bars)),
+     "local_build": datetime.date.today().isoformat(),
      "scan_as_of": scan_bar,
      "scan_age_days": _age(scan_bar, track.get("as_of") or "") if scan_bar else None,
      "earnings": len(earn), "booksig_rows": len(booksig.get("rows") or []),
