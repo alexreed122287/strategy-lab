@@ -697,6 +697,35 @@ const PAGE = 'file://' + path.resolve(__dirname, '..', 'index.html');
   t('header: does not advertise the stale date as the page date',
     dates.gen === dates.newest || !hdr.includes('Price data through ' + dates.gen));
 
+  // SCAN is the one blob NO build recomputes. refresh_blobs.py copies it in
+  // wholesale from the local sweep's output; the cloud build only parses it to
+  // prove it is not broken. So it can sit at an old bar indefinitely while
+  // prices, TRACK and SIGNALS all advance around it - and it did, freezing at
+  // 2026-08-19 and running 29 days before anyone looked. It went unseen
+  // because the header printed SCAN.window_start, where the stats START, and
+  // never SCAN.as_of, where they STOP - and the stopping end is the one that
+  // goes stale. Every grade, PF and VETTED chip on this page is cut as of that
+  // bar, and notify_buys.collect() gates a buy email on the same numbers, so
+  // its age is an input to a decision, not decoration.
+  // Asserted BOTH ways, same rule as the banner above: the loud flag must
+  // appear exactly when the lag passes a week. A page whose sweep is current
+  // must not carry it, or the flag stops meaning anything.
+  const scanAge = await page.evaluate(() => {
+    const bar = [TRACK && TRACK.as_of, BOOKSIG && BOOKSIG.as_of,
+      SIGNALS.signals.reduce((m, x) => x.as_of > m ? x.as_of : m, '')]
+      .filter(Boolean).reduce((m, d) => d > m ? d : m, '');
+    const s = (typeof SCAN !== 'undefined' && SCAN && SCAN.as_of) || '';
+    return { s, bar, lag: (s && bar)
+      ? Math.round((new Date(bar + 'T00:00:00') - new Date(s + 'T00:00:00')) / 86400000)
+      : 0 };
+  });
+  t('header: names the bar the backtest stats were cut on' + ` (SCAN ${scanAge.s})`,
+    !!scanAge.s && hdr.includes('backtest stats as of ' + scanAge.s));
+  t('header: backtest-lag flag iff SCAN is over a week behind the price bar'
+    + ` (lag ${scanAge.lag}d vs bar ${scanAge.bar})`,
+    scanAge.lag > 7 ? hdr.includes('days behind the price bar')
+                    : !hdr.includes('days behind the price bar'));
+
   // --- TODAY: the account model must be the ONLY denominator on this card ---
   await page.evaluate(() => { document.querySelector('[data-tab="today"]').click(); });
   await page.waitForTimeout(400);

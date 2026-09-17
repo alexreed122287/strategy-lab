@@ -126,7 +126,7 @@ def t(name, cond):
 
 
 def main():
-    as_of, ranked, gw_book, paper, exits = nb.collect(PAGE)
+    as_of, ranked, gw_book, paper, exits, scan_as_of = nb.collect(PAGE)
 
     # --- rank_block is the single answer ------------------------------------
     t("ranked pool is exactly the rows nothing blocks",
@@ -147,7 +147,7 @@ def main():
       not [b for b in ranked if nb.rank_block(b)])
 
     # --- the full alert marks what it does not rank -------------------------
-    subject, body = nb.compose(as_of, ranked, gw_book, paper, exits, "http://x")
+    subject, body = nb.compose(as_of, ranked, gw_book, paper, exits, "http://x", scan_as_of)
     for b in gw_book:
         why = nb.rank_block(b)
         if not why:
@@ -159,8 +159,61 @@ def main():
     t("alert's RANKED heading is not contradicted by an unmarked book row",
       body.count("[NOT RANKED") == len([b for b in gw_book if nb.rank_block(b)]))
 
+    # --- every number in this mail is dated to the sweep that produced it ----
+    # SCAN is the sole source of win / avg / n / PF here AND of the vetted +
+    # GEN_MIN_N floor that decides what may be ranked. No build recomputes it,
+    # so it can hold a bar from weeks ago - it held 2026-08-19 for 29 days -
+    # while this mail went out every session quoting it undated, reading as
+    # though the figures were cut on the session in the subject line.
+    # Synthetic dates below on purpose: these must still hold on the day the
+    # sweep is current, which is the day the live page cannot exercise them.
+    t("evidence_lag counts days from the sweep to the session",
+      nb.evidence_lag("2026-08-19", "2026-09-16") == 28
+      and nb.evidence_lag("2026-09-16", "2026-09-16") == 0)
+    t("evidence_lag returns None rather than raising on an unparseable date",
+      nb.evidence_lag("", "2026-09-16") is None
+      and nb.evidence_lag("2026-08-19", "not-a-date") is None)
+
+    fresh = nb.evidence_basis("2026-09-16", "2026-09-16")
+    t("evidence line names the sweep's bar even when it is current",
+      "2026-09-16" in fresh)
+    t("a current sweep carries no lag clause",
+      "behind this session" not in fresh)
+
+    stale = nb.evidence_basis("2026-08-19", "2026-09-16")
+    t("a stopped sweep is named, measured, and dated",
+      "2026-08-19" in stale and "28 days behind this session" in stale)
+    t("a stopped sweep says a name it never saw is ABSENT, not merely unranked",
+      "does not appear here at all" in stale)
+    t("the lag flag fires on the far side of the threshold and not the near side",
+      "behind this session" in nb.evidence_basis("2026-09-08", "2026-09-16")
+      and "behind this session" not in nb.evidence_basis("2026-09-09", "2026-09-16"))
+    t("an unrecorded sweep date says so instead of inventing one",
+      "does not record" in nb.evidence_basis("", "2026-09-16"))
+
+    t("the alert body carries the evidence basis",
+      nb.evidence_basis(scan_as_of, as_of) in body)
+    t("even an empty RANKED section names the sweep its verdict came from",
+      bool(ranked) or ("sweep)" in body))
+
+    # Fail-closed, not defaulted: a caller that forgets the sweep date must
+    # raise here rather than mail undated numbers. This is the whole defect.
+    def _needs_bar(fn, *a):
+        try:
+            fn(*a)
+            return False
+        except TypeError:
+            return True
+    t("compose refuses to run without the sweep's bar",
+      _needs_bar(nb.compose, as_of, ranked, gw_book, paper, exits, "http://x"))
+    t("compose_simple refuses to run without the sweep's bar",
+      _needs_bar(nb.compose_simple, as_of, ranked, gw_book, paper, "http://x"))
+
     # --- the digest numbers only what the dashboard would number ------------
-    _, text, dhtml = nb.compose_simple(as_of, ranked, gw_book, paper, "http://x")
+    _, text, dhtml = nb.compose_simple(as_of, ranked, gw_book, paper, "http://x", scan_as_of)
+    t("the digest carries the evidence basis in BOTH parts",
+      nb.evidence_basis(scan_as_of, as_of) in text
+      and nb.evidence_basis(scan_as_of, as_of) in dhtml)
     numbered = [r for r in ranked + gw_book + paper if r.get("_rank") is not None]
     blocked = [r for r in ranked + gw_book + paper
                if r.get("_rank") is None and r.get("rankable")]

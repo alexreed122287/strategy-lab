@@ -338,15 +338,66 @@ def collect(page_path):
     # shadow-book exits that hit their rule at today's close (sell side)
     shadow = blob(html, "SHADOW") or {}
     exits = list(shadow.get("exits_today") or []) if shadow.get("as_of") == (as_of or shadow.get("as_of")) else []
-    return as_of, ranked, gw_book, paper, exits
+    return as_of, ranked, gw_book, paper, exits, (scan.get("as_of") or "")
 
 
 def fmt(v, suffix=""):
     return ("-" if v is None else str(v) + suffix)
 
 
-def compose(as_of, ranked, gw_book, paper, exits, url):
-    lines = ["Strategy Lab - new buys for " + (as_of or "latest scan"), ""]
+# The sweep may lag this session by a few days without being worth a warning;
+# past a week it has stopped, not lagged. Same threshold and same reasoning as
+# index.html's header flag, so the page and the mail cannot call the same lag
+# fresh and stale.
+EVIDENCE_LAG_DAYS = 7
+
+
+def evidence_lag(scan_as_of, as_of):
+    """Days the backtest sweep is behind this session, or None if unknowable."""
+    try:
+        return (_dt.date.fromisoformat(as_of) - _dt.date.fromisoformat(scan_as_of)).days
+    except Exception:
+        return None
+
+
+def evidence_basis(scan_as_of, as_of):
+    """One line naming the sweep every per-name number in this mail came from.
+
+    SCAN is the sole source of win / avg / n / PF / PF-by-era here AND of the
+    `vetted` + GEN_MIN_N floor in collect() that decides what may be ranked at
+    all. No build recomputes it - refresh_blobs.py copies it in wholesale from
+    the local full sweep - so it holds whatever bar that sweep last ran. It sat
+    at 2026-08-19 for 29 days while this mail went out every session quoting
+    its figures with no date on them, which reads as though they were cut on
+    the session in the subject line. They were not.
+
+    Past a week behind, say how far AND say what the floor does with a name the
+    sweep has never seen: such a name has no SCAN row, so it cannot clear
+    `vetted`, and it is not merely unranked here - it is absent. A reader
+    cannot infer that from a list of the names that did make it.
+    """
+    if not scan_as_of:
+        return ("Evidence basis: win / avg / n / PF come from the backtest sweep, "
+                "whose date this page does not record.")
+    base = "Evidence basis: win / avg / n / PF are the %s sweep" % scan_as_of
+    lag = evidence_lag(scan_as_of, as_of)
+    if lag is None or lag <= EVIDENCE_LAG_DAYS:
+        return base + "."
+    return (base + " - %d days behind this session. The sweep is not re-run daily, "
+            "so these figures and the vetted floor under them describe %s, not %s; "
+            "a name that first qualified since then has no record in the sweep and "
+            "does not appear here at all."
+            % (lag, scan_as_of, as_of or "this session"))
+
+
+def compose(as_of, ranked, gw_book, paper, exits, url, scan_as_of):
+    # scan_as_of is REQUIRED, not defaulted. A default would let a caller added
+    # later mail undated numbers and never fail - which is the whole defect
+    # being fixed here, and exactly the "unreachable today" drift rank_block's
+    # own comment warns about. A missing bar should be a TypeError at the call
+    # site, not a quietly dateless mail in someone's inbox.
+    lines = ["Strategy Lab - new buys for " + (as_of or "latest scan"), "",
+             evidence_basis(scan_as_of, as_of), ""]
     if ranked:
         lines.append("RANKED (vetted arms, 30+ trades, one best arm per ticker - the Top-4 pool):")
         for i, b in enumerate(ranked, 1):
@@ -355,7 +406,11 @@ def compose(as_of, ranked, gw_book, paper, exits, url):
                 f" | close {fmt(b['close'])} | strength {fmt(b['score'])}"
                 f" | win {fmt(b['win'],'%')} | avg {fmt(b['avg'],'%')} | n {fmt(b['n'])}")
     else:
-        lines.append("RANKED: none today (no new vetted 30+ trade signals).")
+        # "None today" is a verdict of the same floor, on the same evidence.
+        # Undated it reads as "nothing qualified today"; what it means is
+        # "nothing qualified under the sweep named above".
+        lines.append("RANKED: none today (no new vetted 30+ trade signals "
+                     "under the %s sweep)." % (scan_as_of or "backtest"))
     if gw_book:
         lines.append("")
         lines.append("GAP WIDEN BOOK (book-level validated at MOO; per-name samples are small "
@@ -399,7 +454,7 @@ def compose(as_of, ranked, gw_book, paper, exits, url):
     return subject, "\n".join(lines)
 
 
-def compose_simple(as_of, ranked, gw_book, paper, url):
+def compose_simple(as_of, ranked, gw_book, paper, url, scan_as_of):
     """The daily ranked digest: every new signal, in the dashboard Signals tab's
     own columns and its own top-to-bottom order (Strength descending).
 
@@ -439,6 +494,10 @@ def compose_simple(as_of, ranked, gw_book, paper, url):
             nxt += 1
             r["_rank"] = nxt
     unranked = [r for r in rows if r.get("rank_block")]
+
+    _ev_basis = evidence_basis(scan_as_of, as_of)
+    _ev_lag = evidence_lag(scan_as_of, as_of)
+    _ev_stale = _ev_lag is not None and _ev_lag > EVIDENCE_LAG_DAYS
 
     NAME = {"GAPW_RSI2": "Gap Widen RSI2", "GAPW_RSI14": "Gap Widen RSI14",
             "ZSCORE": "Z-Score", "RSI2": "RSI2", "MFI": "MFI"}
@@ -493,7 +552,8 @@ def compose_simple(as_of, ranked, gw_book, paper, url):
                                   esc(r["rank_block"])) for r in unranked) + ".</p>")
     html = """<div style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;color:#111">
 <h2 style="margin:0 0 2px 0;font-size:17px">Strategy Lab &mdash; new buys</h2>
-<p style="margin:0 0 14px 0;color:#555;font-size:13px">Signals confirmed at the close of %s &middot; sorted by Strength, exactly as the dashboard's Signals tab. A dash in Rank means the row is shown but not ranked &mdash; see below the table.</p>
+<p style="margin:0 0 6px 0;color:#555;font-size:13px">Signals confirmed at the close of %s &middot; sorted by Strength, exactly as the dashboard's Signals tab. A dash in Rank means the row is shown but not ranked &mdash; see below the table.</p>
+<p style="margin:0 0 14px 0;font-size:13px;color:%s">%s</p>
 <div style="overflow-x:auto"><table cellspacing="0" cellpadding="0" style="border-collapse:collapse;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">
 <thead><tr>%s</tr></thead><tbody>%s</tbody></table></div>
 <p style="margin:14px 0 4px 0;font-size:12px;color:#555">
@@ -507,7 +567,9 @@ Every strategy here has failed at least one historical era test: both Gap Widen 
 earns nothing over simply owning the same stocks in that period. The recent results describe one favourable regime, not a forecast, and the
 per-name figures above are idealised fills that read better than reality.</p>
 <p style="margin:10px 0 0 0;font-size:13px">Full evidence, including what failed: <a href="%s">%s</a></p>
-</div>""" % (esc(as_of or "the last session"), th, "".join(trs), unranked_html,
+</div>""" % (esc(as_of or "the last session"),
+             "#8a5a00" if _ev_stale else "#555", esc(_ev_basis),
+             th, "".join(trs), unranked_html,
              esc(url or "#"), esc(url or "(dashboard)"))
 
     # ---------- plain-text fallback ----------
@@ -518,6 +580,7 @@ per-name figures above are idealised fills that read better than reality.</p>
             for i, c in enumerate(cells))
     T = ["STRATEGY LAB - new buys",
          "Signals confirmed at the close of %s" % (as_of or "the last session"),
+         _ev_basis,
          "Sorted by Strength, exactly as the dashboard's Signals tab.",
          "A dash in Rank means shown but not ranked - reasons below the table.",
          "(View in HTML for the aligned table.)", "",
@@ -659,7 +722,7 @@ def main():
                          "Wiring works. Daily new-buy alerts will arrive after "
                          "each green build.")
     else:
-        as_of, ranked, gw_book, paper, exits = collect(page)
+        as_of, ranked, gw_book, paper, exits, scan_as_of = collect(page)
         if not ranked and not gw_book and not paper and not exits:
             print("notify: no new buys or sells for", as_of or "latest scan", "- nothing sent")
             return
@@ -686,6 +749,14 @@ def main():
         # IDEMPOTENCY KEY. Content hash, not the session date: a rerun that
         # recovers a stale generator and adds signals must still be able to
         # send, while a re-publish that changes nothing must not.
+        #
+        # scan_as_of is deliberately NOT in this key, though the mail now
+        # prints it. Within one session a re-send is exactly what the key
+        # should suppress, sweep date included; across sessions as_of differs
+        # and it sends regardless. So adding it would change no outcome, and
+        # would invalidate every stored hash once - buying one duplicate mail
+        # in every inbox for nothing. The rows already carry n / win / pf, so
+        # a sweep that actually moved those numbers still changes this key.
         digest_key = payload_hash(as_of, ranked, gw_book, paper, exits)
         if not force and state.get("last_hash") == digest_key:
             print("notify: identical payload already sent (key %s) - skipping "
@@ -704,10 +775,11 @@ def main():
             return
         if simple:
             subject, body, html = compose_simple(as_of, ranked, gw_book, paper,
-                                                 cfg.get("dashboard_url"))
+                                                 cfg.get("dashboard_url"),
+                                                 scan_as_of)
         else:
             subject, body = compose(as_of, ranked, gw_book, paper, exits,
-                                    cfg.get("dashboard_url"))
+                                    cfg.get("dashboard_url"), scan_as_of)
 
     # STAMP. Every payload carries the session it describes and the key that
     # deduped it, so a mail found in an inbox can be dated without guessing.
