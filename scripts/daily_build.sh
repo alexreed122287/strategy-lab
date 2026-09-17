@@ -163,8 +163,24 @@ python3 "$REPO/scripts/robert_shadow.py" --bars "$TMP/bars.json" \
 #      rule tests fail closed before it may splice.
 #      Earnings seed for the whole JASON universe (FMP key from the engine's
 #      env on this Mac; fail-quiet, the cloud uses the committed file).
-python3 "$REPO/scripts/jason_earnings_seed.py" --universe "$REPO/jason_universe.txt" \
-  --out "$REPO/data/jason_earnings.json" || echo "jason earnings seed refresh failed (non-fatal)"
+#      This fetch is the AUTHORITY for JASON's earnings-inside-hold gate
+#      (owner's call 2026-09-17), and the cloud consumes whatever it commits.
+#      So a skipped refresh is not a shrug: the gate then runs on whatever is
+#      on disk, which is how 2026-09-15 ended with the Mac admitting FDX while
+#      the cloud blocked it on earnings two days out. Still non-fatal - a FMP
+#      outage must not stop RSI2 and ROBERT publishing - but never quiet, and
+#      it names what it costs.
+if python3 "$REPO/scripts/jason_earnings_seed.py" --universe "$REPO/jason_universe.txt" \
+     --out "$REPO/data/jason_earnings.json"; then
+  :
+else
+  echo "WARNING: JASON earnings seed NOT refreshed (rc=$?) - non-fatal, the"
+  echo "  other books are unaffected. But JASON's hold gate runs tonight on the"
+  echo "  seed already on disk, and the cloud will inherit that same seed. Any"
+  echo "  name the stale seed does not cover is entered with the earnings rule"
+  echo "  UNENFORCED - jason_shadow prints the coverage and the ledger records"
+  echo "  it per entry."
+fi
 python3 "$REPO/scripts/jason_shadow_test.py"
 python3 "$REPO/scripts/jason_shadow.py" --bars "$TMP/bars.json" \
   --earnings "$TMP/earnings.json" --page "$REPO/jason.html" \

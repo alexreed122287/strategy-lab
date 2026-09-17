@@ -8,9 +8,19 @@ filtered to the universe. The key comes from FMP_API_KEY or the LevelCheck
 engine's env file on the Mac. The cloud build has no key and uses the
 committed seed; the Mac build refreshes and commits it.
 
-Fail-quiet by design: no key, no network, or an empty answer leaves the old
-seed in place and exits 0. A stale seed means some gates go inert - which
-the ledger prints - never a wrong date.
+Never a wrong date: no key, no network, a failed window or an empty answer
+leaves the old seed in place rather than writing a thinner one. A partial
+fetch is data loss, not a truth update, so any window failure abandons the
+whole refresh.
+
+But no longer QUIET about it. Owner's call 2026-09-17: this live fetch is the
+authority for the earnings-inside-hold gate, and an authority that can skip
+silently is a ghost - the gate then runs on whatever happens to be on disk and
+nothing says so. Every leave-as-is path now exits NON-ZERO so the caller can
+react; daily_build.sh keeps it non-fatal for the other books but says loudly
+what it costs JASON. The failure that prompted this: on 2026-09-15 the Mac
+admitted FDX while the cloud, reading the committed seed, blocked it on
+earnings two days out - one bar, one rule, two answers.
 
 Usage: jason_earnings_seed.py [--universe jason_universe.txt] [--out data/jason_earnings.json] [--days 90]
 """
@@ -62,7 +72,7 @@ def main():
     key = fmp_key()
     if not key:
         print("jason_earnings_seed: no FMP key - seed left as is", file=sys.stderr)
-        return
+        return 1
     today = dt.date.today()
     found = {}
     start = today
@@ -72,7 +82,7 @@ def main():
             rows = fetch_window(key, start, end)
         except Exception as e:
             print(f"jason_earnings_seed: window {start}..{end} failed ({e}) - seed left as is", file=sys.stderr)
-            return
+            return 1
         for r in rows:
             s = str(r.get("symbol") or "").upper()
             d = str(r.get("date") or "")[:10]
@@ -81,14 +91,15 @@ def main():
         start = end + dt.timedelta(days=1)
     if not found:
         print("jason_earnings_seed: empty answer - seed left as is", file=sys.stderr)
-        return
+        return 1
     out = {t: sorted(ds) for t, ds in sorted(found.items())}
     os.makedirs(os.path.dirname(out_p) or ".", exist_ok=True)
     json.dump({"as_of": today.isoformat(), "source": "fmp earnings-calendar", "days": days,
                "names": out}, open(out_p, "w"), indent=1)
     print(f"jason_earnings_seed: {len(out)}/{len(uni)} names with a date inside {days} days, "
           f"written to {out_p}", file=sys.stderr)
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

@@ -197,6 +197,7 @@ def main():
     # FMP) is the one that matters; the build's earnings.json and the ROBERT
     # seed add what they have.
     earn = {}
+    seed_as_of = ""
     repo = os.path.dirname(os.path.abspath(page_p))
     for src in ([earn_p] if earn_p else []) + [
             os.path.join(repo, "data", "jason_earnings.json"),
@@ -205,6 +206,12 @@ def main():
             continue
         try:
             d = json.load(open(src))
+            # The whole-universe seed is the authority (owner's call
+            # 2026-09-17: the Mac's live fetch wins). Keep its own bar so the
+            # ledger can record how old the gate's evidence was - the cloud
+            # never refreshes this file and can run it for weeks.
+            if src.endswith("jason_earnings.json") and isinstance(d, dict):
+                seed_as_of = str(d.get("as_of") or "")
             names = d.get("names") if isinstance(d, dict) and isinstance(d.get("names"), dict) else d
             for k, v in names.items():
                 ds = [str(x)[:10] for x in (v if isinstance(v, list) else [v])]
@@ -234,8 +241,14 @@ def main():
         sys.exit("fail-closed: SPY short")
     spy_r = spy_c[-1] / spy_c[-253] - 1
     covered = sum(1 for t in uni if t in earn)
-    print(f"jason_shadow: earnings dates for {covered}/{len(uni)} names - the "
-          f"earnings-inside-hold gate is inert for the rest", file=sys.stderr)
+    age = ""
+    if seed_as_of:
+        try:
+            age = f", seed {seed_as_of} ({(dt.date.fromisoformat(as_of) - dt.date.fromisoformat(seed_as_of)).days}d old)"
+        except Exception:
+            age = f", seed {seed_as_of}"
+    print(f"jason_shadow: earnings dates for {covered}/{len(uni)} names{age} - "
+          f"the earnings-inside-hold gate is inert for the rest", file=sys.stderr)
 
     # Point the shared freeze machinery at JASON's own snapshot store and sleeve.
     RS.SNAPS_PATH = snaps_p
@@ -345,7 +358,12 @@ def main():
         reasons[why] = reasons.get(why, 0) + 1
         if not take:
             continue
-        st["queued"].append({"t": t, "signal_date": as_of, **det})
+        # Stamp the gate's own state on the row. "No earnings date" and "no
+        # earnings due" are different facts that produced the same TAKE, and
+        # once the row is in the ledger nothing else can tell them apart -
+        # 53 of 503 names have no date at all, so this is 11% of the book.
+        st["queued"].append({"t": t, "signal_date": as_of, **det,
+                             "earn_armed": t in earn, "earn_seed": seed_as_of})
         st["last_signal"][t] = as_of
         new_q.append(t)
         busy.add(t)
