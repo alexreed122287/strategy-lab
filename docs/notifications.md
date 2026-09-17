@@ -108,10 +108,9 @@ git add index.html && git commit -m "enable alert signups" && git push origin ma
 3. Install the harvester schedule (ntfy only retains messages ~12h, so it
    polls 4x daily; the nightly build also harvests right before sending):
 
-```bash
-cp scripts/com.alex.strategylab.signups.plist ~/Library/LaunchAgents/
-launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.alex.strategylab.signups.plist
-```
+Installed with the other two — see **Scheduled agents on the Mac (launchd)**
+below. (Its plist hardcoded `/Users/alexreed` until 2026-09-17, so on an account
+named anything else it could never have run; `git pull` before installing.)
 
 4. (Optional) enable TEXTS for phone signups — needs a Twilio account
    (~$1/mo number + ~$0.01/text). Add to the config:
@@ -182,11 +181,9 @@ Add to `~/.strategy_lab_notify.json`. `to_digest` is optional and applies only t
 
 ## Schedule
 
-```bash
-cp ~/repos/strategy-lab-site/scripts/com.alex.strategylab.digest.plist ~/Library/LaunchAgents/
-launchctl load -w ~/Library/LaunchAgents/com.alex.strategylab.digest.plist
-launchctl list | grep strategylab      # expect BOTH daily and digest
-```
+Installed with the other two — see **Scheduled agents on the Mac (launchd)**
+below, which does all three in one loop and says how to check them. Fires
+weekdays 16:00 CT.
 
 Preview without sending anything:
 
@@ -216,6 +213,83 @@ An earlier draft scheduled this at 12:30, which would have been one full session
 late for every strategy — the build hadn't run, so 12:30 carried the *previous*
 close's signals whose fill window had already passed that morning. Recorded here
 because the mistake is easy to repeat.
+
+---
+
+# Scheduled agents on the Mac (launchd)
+
+Three agents. They run **headless** already — launchd starts them with no
+window, no terminal and no prompt, and the render gate's Chromium runs headless
+too (Playwright's `launch()` default). Nothing here ever draws on screen.
+
+"Headless" has a limit worth stating plainly, because it is not the same as
+"unattended": a **LaunchAgent runs inside your GUI login session**. It fires
+with the screen locked and the display asleep, but it does **not** fire when
+nobody is logged in, when the Mac is asleep, or when it is powered off.
+
+| agent | runs | when |
+|---|---|---|
+| `com.alex.strategylab.daily` | `daily_build.sh` — build, publish, mail | weekdays 15:30 CT |
+| `com.alex.strategylab.digest` | `notify_buys.py --simple` — digest **backstop** | weekdays 16:00 CT |
+| `com.alex.strategylab.signups` | `notify_signups.py` — harvest ntfy signups | 08:05, 13:05, 18:05, 22:05 daily |
+
+## The rule that makes them survive a reboot
+
+**The plist file must live in `~/Library/LaunchAgents/`.** launchd loads that
+directory at every login. A plist bootstrapped from anywhere else — say straight
+out of `~/repos/strategy-lab-site/scripts/` — works until the next reboot and
+then silently stops, with no error in any log.
+
+## Install or repair all three
+
+```bash
+cd ~/repos/strategy-lab-site
+chmod +x scripts/daily_build.sh
+for a in daily digest signups; do
+  cp scripts/com.alex.strategylab.$a.plist ~/Library/LaunchAgents/
+  launchctl bootout gui/$(id -u)/com.alex.strategylab.$a 2>/dev/null
+  launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.alex.strategylab.$a.plist
+done
+launchctl list | grep strategylab      # expect all THREE
+```
+
+The `bootout` makes this re-runnable — `bootstrap` fails on an already-loaded
+label. (`launchctl load -w` is the deprecated spelling and still works, but
+reports errors less clearly.)
+
+## Checking them
+
+```bash
+launchctl list | grep strategylab     # PID, last exit status, label. Absent = will not fire.
+python3 scripts/build_log_triage.py   # did the daily agent run, and what happened to each run
+tail -40 /tmp/strategylab.daily.err   # launchd's own stderr, for a job that never started
+tail -40 /tmp/strategylab.signups.log
+```
+
+A label missing from `launchctl list` is not loaded. A label present with a
+non-zero status column exited non-zero on its last run, and
+`build_log_triage.py` names the step.
+
+## Asleep and powered off
+
+`StartCalendarInterval` does not wake a sleeping Mac, and a powered-off one
+misses its slot leaving no trace anywhere — the script never reaches its own
+banner, so `.daily_build.log` has nothing to show. That is exactly what the
+12 missing weekdays across 2026-08-20..08-28 and 2026-09-07..09-11 were.
+
+To make the machine show up for its own build:
+
+```bash
+sudo pmset repeat wakeorpoweron MTWRF 15:25:00
+pmset -g sched                        # confirm
+```
+
+Even then the Mac is the optional half. The GitHub build refreshes the page
+whether or not this machine wakes, and since 2026-09-17 the daily mail names
+the gap once the local half has been quiet three sessions or more
+(`HEALTH.local_build`, `notify_daily.pipeline_note`). What the cloud **cannot**
+do is regenerate SCAN, BASKETS and DAILY — those are Mac-only and simply
+freeze, which is how SCAN sat at 2026-08-19 for 29 days.
 
 ---
 
