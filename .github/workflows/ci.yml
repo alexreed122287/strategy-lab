@@ -136,11 +136,22 @@ jobs:
       - name: Browser
         run: |
           set -euo pipefail
-          npm install --no-save playwright
+          # GLOBAL, not --no-save into the repo. Both suites resolve the
+          # playwright MODULE through the same probe - `npm root -g` first,
+          # then the usual global roots - and notify_test.py runs its JS from a
+          # TEMPFILE, so node resolves require() relative to /tmp where a
+          # repo-local node_modules is invisible. Run #1 of this workflow
+          # installed locally: smoke_test.js passed (it lives in scripts/ and
+          # resolves up to the repo root) and notify_test.py reported SKIPPED,
+          # which it correctly counts as a FAILURE. A global install is what
+          # those probes were written for, and what the Mac actually has.
+          npm install -g playwright
           npx playwright install chromium
-          node -e "console.log(require('playwright').chromium.executablePath())" > /tmp/chromium_path
-          echo "CHROMIUM_PATH=$(cat /tmp/chromium_path)" >> "$GITHUB_ENV"
-          test -x "$(cat /tmp/chromium_path)"
+          EXE="$(NODE_PATH="$(npm root -g)" node -e \
+            "console.log(require('playwright').chromium.executablePath())")"
+          test -x "$EXE"
+          echo "CHROMIUM_PATH=$EXE" >> "$GITHUB_ENV"
+          echo "browser: $EXE"
 
       - name: Render gate and rank consistency
         run: |

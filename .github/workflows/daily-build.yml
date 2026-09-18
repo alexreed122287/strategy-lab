@@ -367,9 +367,14 @@ jobs:
       - name: Render gate
         if: steps.guard.outputs.proceed == 'true'
         run: |
-          npm install --no-save playwright
+          # Global, for the reason ci.yml's Browser step spells out: both
+          # browser probes in this repo look for the module in the GLOBAL
+          # roots, and notify_test.py runs its JS from a tempfile where a
+          # repo-local node_modules cannot be seen.
+          npm install -g playwright
           npx playwright install chromium
-          CHROMIUM_PATH="$(node -e "console.log(require('playwright').chromium.executablePath())")"
+          CHROMIUM_PATH="$(NODE_PATH="$(npm root -g)" node -e \
+            "console.log(require('playwright').chromium.executablePath())")"
           export CHROMIUM_PATH
           test -x "$CHROMIUM_PATH"
           node scripts/smoke_test.js
