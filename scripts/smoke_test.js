@@ -697,6 +697,10 @@ const PAGE = 'file://' + path.resolve(__dirname, '..', 'index.html');
   t('header: does not advertise the stale date as the page date',
     dates.gen === dates.newest || !hdr.includes('Price data through ' + dates.gen));
 
+  // SCAN.as_of is the SWEEP'S RUN DATE, not the last bar its statistics cover -
+  // the sweep logs "staleness pass vs <prior close>" and stamps the run day.
+  // These checks said "backtest stats as of" until 2026-09-17, which reads as
+  // "the statistics run through that date" and is a day optimistic.
   // SCAN is the one blob NO build recomputes. refresh_blobs.py copies it in
   // wholesale from the local sweep's output; the cloud build only parses it to
   // prove it is not broken. So it can sit at an old bar indefinitely while
@@ -715,16 +719,19 @@ const PAGE = 'file://' + path.resolve(__dirname, '..', 'index.html');
       SIGNALS.signals.reduce((m, x) => x.as_of > m ? x.as_of : m, '')]
       .filter(Boolean).reduce((m, d) => d > m ? d : m, '');
     const s = (typeof SCAN !== 'undefined' && SCAN && SCAN.as_of) || '';
+    // Floored, mirroring the page: a sweep run after the close is newer than
+    // the bar, and negative staleness is not a thing.
     return { s, bar, lag: (s && bar)
-      ? Math.round((new Date(bar + 'T00:00:00') - new Date(s + 'T00:00:00')) / 86400000)
+      ? Math.max(0, Math.round(
+          (new Date(bar + 'T00:00:00') - new Date(s + 'T00:00:00')) / 86400000))
       : 0 };
   });
-  t('header: names the bar the backtest stats were cut on' + ` (SCAN ${scanAge.s})`,
-    !!scanAge.s && hdr.includes('backtest stats as of ' + scanAge.s));
-  t('header: backtest-lag flag iff SCAN is over a week behind the price bar'
-    + ` (lag ${scanAge.lag}d vs bar ${scanAge.bar})`,
-    scanAge.lag > 7 ? hdr.includes('days behind the price bar')
-                    : !hdr.includes('days behind the price bar'));
+  t('header: names the date the backtest sweep was run' + ` (SCAN ${scanAge.s})`,
+    !!scanAge.s && hdr.includes('backtest sweep run ' + scanAge.s));
+  t('header: sweep-gap flag iff the sweep ran over a week before the price bar'
+    + ` (gap ${scanAge.lag}d vs bar ${scanAge.bar})`,
+    scanAge.lag > 7 ? hdr.includes('days before the price bar')
+                    : !hdr.includes('days before the price bar'));
 
   // --- TODAY: the account model must be the ONLY denominator on this card ---
   await page.evaluate(() => { document.querySelector('[data-tab="today"]').click(); });

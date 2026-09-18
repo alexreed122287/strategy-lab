@@ -423,7 +423,7 @@ const barAsof = [genAsof,
 const genNote = (genAsof && genAsof < barAsof)
   ? " | <b>RSI2/MFI scan rows " + genAsof + "</b> (local generator, did not refresh)"
   : " | scan rows " + genAsof;
-/* SCAN's OWN BAR, said out loud. Added 2026-09-17.
+/* SCAN's OWN DATE, said out loud. Added 2026-09-17.
    SCAN carries every per-name grade, n, PF, win%, exposure, era split and the
    VETTED flag on this page - and NEITHER daily build recomputes it. It is
    produced by the local full sweep and copied in wholesale by
@@ -431,19 +431,29 @@ const genNote = (genAsof && genAsof < barAsof)
    So it holds whatever bar that sweep last ran, and on 2026-09-17 that was
    2026-08-19: a 29-day-old backtest rendered beside today's prices with
    nothing anywhere on the page saying so. The header printed
-   SCAN.window_start - where the stats START - and never SCAN.as_of, where they
-   STOP, which is the end that goes stale.
-   Name the bar always. Flag it loudly past a week, because a sweep re-run on
+   SCAN.window_start - where the stats START - and never SCAN.as_of, which is
+   the end that goes stale.
+   SCAN.as_of IS THE SWEEP'S RUN DATE, not the last bar its statistics cover.
+   Checked against the sweep itself on 2026-09-17: it logged "staleness pass vs
+   2026-09-16" and stamped as_of 2026-09-17, and the two prior sweeps did the
+   same (08-19 stamped at 05:05 on bars through 08-18; 08-15 stamped at 14:20
+   on bars through 08-14). The first version of this line said "backtest stats
+   as of <date>", which reads as "the statistics run through that date" and is
+   a day optimistic. Say "sweep run" - it is what the field holds.
+   Name the date always. Flag it loudly past a week, because a sweep re-run on
    its normal cadence should not nag, but one that has stopped must say so:
    these numbers gate the VETTED chips below AND the evidence floor in
-   notify_buys.collect(), so their age is an input to a buy decision. */
+   notify_buys.collect(), so their age is an input to a buy decision. A sweep
+   run AFTER the last close is the normal case and yields a negative gap, so
+   the gap is floored at zero rather than rendered as negative staleness. */
 const scanLag = (SCAN.as_of && barAsof)
-  ? Math.round((new Date(barAsof + "T00:00:00") - new Date(SCAN.as_of + "T00:00:00")) / 86400000)
+  ? Math.max(0, Math.round(
+      (new Date(barAsof + "T00:00:00") - new Date(SCAN.as_of + "T00:00:00")) / 86400000))
   : 0;
 const scanNote = (scanLag > 7)
-  ? " | <b>backtest stats as of " + SCAN.as_of + "</b> (" + scanLag +
-    " days behind the price bar - grades, PF and VETTED are NOT recomputed daily)"
-  : " | backtest stats as of " + SCAN.as_of;
+  ? " | <b>backtest sweep run " + SCAN.as_of + "</b> (" + scanLag +
+    " days before the price bar - grades, PF and VETTED are NOT recomputed daily)"
+  : " | backtest sweep run " + SCAN.as_of;
 document.getElementById("asof").innerHTML =
   "<b>Price data through " + barAsof + "</b>" + genNote +
   " | last generator run " + SIGNALS.generated + scanNote +
