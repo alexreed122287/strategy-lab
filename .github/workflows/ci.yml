@@ -1,0 +1,149 @@
+name: ci
+
+# Run every suite this repo has, on every pull request.
+#
+# Written 2026-09-18. Until now NOTHING ran on a pull request - `pages.yml` was
+# the only push-triggered workflow and it just deploys - so the ~280 assertions
+# in this repo gated a publish but never a merge. Six PRs went in on 09-17
+# verified only by a session running the suites by hand and saying they passed.
+# That is not a gate, it is a promise.
+#
+# The split was worse than "no PR CI", because the two publishing paths already
+# ran DIFFERENT subsets, and the gap was invisible:
+#
+#   suite                 Mac build   cloud build   here
+#   smoke_test.js (129)   fail-closed     -          yes
+#   notify_test.py (39)       yes         -          yes
+#   notify_daily_test (41)     -         yes         yes
+#   notify_jason_test (31)     -         yes         yes
+#   notify_robert_test (35)   yes        yes         yes
+#   jason_shadow_test         yes        yes         yes
+#
+# smoke_test.js is what daily_build.sh calls its RENDER GATE - the thing that
+# refused to publish an unverified page on 09/14 and 09/15, working exactly as
+# designed. The cloud never ran it. So across the twelve days the cloud was the
+# only publisher, the public page shipped with no render verification at all.
+# This workflow runs all six in one place so no path can quietly carry a
+# narrower standard than another.
+#
+# No secrets, no network beyond the browser install, nothing published. Every
+# suite reads index.html and data/ out of the checkout.
+
+on:
+  pull_request:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  suites:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # ---- cheap checks first: these catch a broken file before any suite
+      #      spends a minute proving the same thing more slowly.
+      - name: Syntax
+        run: |
+          set -euo pipefail
+          for f in scripts/*.sh; do bash -n "$f"; done
+          echo "shell: $(ls scripts/*.sh | wc -l) file(s) parse"
+          python3 - <<'PY'
+          import ast, glob, sys
+          bad = []
+          for f in sorted(glob.glob("scripts/*.py")):
+              try:
+                  ast.parse(open(f).read())
+              except SyntaxError as e:
+                  bad.append("%s:%s %s" % (f, e.lineno, e.msg))
+          print("python: %d file(s) parse" % len(glob.glob("scripts/*.py")))
+          if bad:
+              sys.exit("SYNTAX ERRORS:\n  " + "\n  ".join(bad))
+          PY
+          node --check scripts/smoke_test.js && echo "js: smoke_test.js parses"
+
+      - name: Workflows and plists parse
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import glob, json, plistlib, sys, re
+          try:
+              import yaml
+          except ImportError:
+              yaml = None
+          bad = []
+          for f in sorted(glob.glob(".github/workflows/*.yml")):
+              if yaml:
+                  try:
+                      yaml.safe_load(open(f))
+                  except Exception as e:
+                      bad.append("%s: %s" % (f, e))
+          print("workflows: %d checked" % len(glob.glob(".github/workflows/*.yml")))
+          # A plist that hardcodes someone's home directory can never run on
+          # another account. com.alex.strategylab.signups.plist pointed at
+          # /Users/alexreed for weeks on a machine at /Users/alex - launchd
+          # could only ever have failed to exec it, and because the agent was
+          # never installed either, nothing surfaced it. One assertion closes
+          # that whole class.
+          for f in sorted(glob.glob("scripts/*.plist")):
+              try:
+                  d = plistlib.load(open(f, "rb"))
+              except Exception as e:
+                  bad.append("%s: %s" % (f, e)); continue
+              pa = " ".join(d.get("ProgramArguments") or [])
+              if "/Users/" in pa:
+                  bad.append("%s: ProgramArguments hardcodes a home directory: %s" % (f, pa))
+          print("plists: %d parse, none hardcodes a home" % len(glob.glob("scripts/*.plist")))
+          # Every embedded blob must still be valid JSON - the same fail-closed
+          # check both builds run before publishing.
+          html = open("index.html").read()
+          for n in ["SCAN","BASKETS","SIGNALS","REGIME","DAILY","CALLS","TF","METHOD",
+                    "BOOKS","TRACK","BOOKSIG","NOTIFY","SHADOW","HEALTH"]:
+              m = re.search(r"const %s = (.*?);\n" % n, html, re.S)
+              if not m:
+                  bad.append("index.html: missing blob " + n); continue
+              try:
+                  json.loads(m.group(1))
+              except Exception as e:
+                  bad.append("index.html: blob %s is not valid JSON (%s)" % (n, e))
+          print("blobs: 14 checked")
+          if bad:
+              sys.exit("FAILURES:\n  " + "\n  ".join(bad))
+          PY
+
+      # ---- the four stdlib suites. No pip, matching the cloud build's rule
+      #      that every build script imports nothing beyond the stdlib.
+      - name: Rule and mailer suites
+        run: |
+          set -euo pipefail
+          python3 scripts/jason_shadow_test.py
+          python3 scripts/notify_daily_test.py
+          python3 scripts/notify_jason_test.py
+          python3 scripts/notify_robert_test.py
+
+      # ---- the two that need a browser. Installed rather than assumed: the
+      #      Mac spent 2026-08-19..08-26 refusing to publish because its
+      #      chromium path did not exist, and a CI that treats "no browser" as
+      #      a pass would reproduce exactly the defect smoke_test.js's own
+      #      header warns about.
+      - name: Browser
+        run: |
+          set -euo pipefail
+          npm install --no-save playwright
+          npx playwright install chromium
+          node -e "console.log(require('playwright').chromium.executablePath())" > /tmp/chromium_path
+          echo "CHROMIUM_PATH=$(cat /tmp/chromium_path)" >> "$GITHUB_ENV"
+          test -x "$(cat /tmp/chromium_path)"
+
+      - name: Render gate and rank consistency
+        run: |
+          set -euo pipefail
+          node scripts/smoke_test.js
+          python3 scripts/notify_test.py

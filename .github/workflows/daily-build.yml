@@ -347,6 +347,33 @@ jobs:
           assert "JASSHADOW:START" in h3 and "JASSHADOW:END" in h3, "jason.html JASSHADOW markers missing"
           PY
 
+      # ---- step 5b: RENDER GATE. The Mac has refused to publish an
+      #      unverified page since 2026-08-27; the cloud never has. Across the
+      #      twelve days from 09/04 to 09/16 the cloud was the ONLY publisher,
+      #      so the public page shipped with no render verification at all -
+      #      while daily_build.sh, running the same repo, was correctly
+      #      refusing on the same assertions (09/14 and 09/15, the PF sentinel).
+      #      Two paths, two standards, and the weaker one was the one running.
+      #
+      #      FAIL-CLOSED, deliberately, matching the Mac exactly. A browser
+      #      that will not install stops tonight's publish, and that IS the
+      #      trade-off: this is the backstop, so a red gate costs a stale day.
+      #      It is the cheaper failure. An unverified publish is silent and
+      #      indefinite; a red workflow run is loud and self-correcting, and
+      #      the page keeps serving last night's build either way. To reverse
+      #      it, make the last two lines `|| echo "::warning::..."` - but then
+      #      "could not check" reads as "checked and fine", which is the exact
+      #      defect smoke_test.js's own header was written about.
+      - name: Render gate
+        if: steps.guard.outputs.proceed == 'true'
+        run: |
+          npm install --no-save playwright
+          npx playwright install chromium
+          CHROMIUM_PATH="$(node -e "console.log(require('playwright').chromium.executablePath())")"
+          export CHROMIUM_PATH
+          test -x "$CHROMIUM_PATH"
+          node scripts/smoke_test.js
+
       # ---- step 6: publish
       - name: Commit and push
         if: steps.guard.outputs.proceed == 'true'
