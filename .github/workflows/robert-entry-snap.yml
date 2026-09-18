@@ -18,16 +18,29 @@ name: robert-entry-snap
 on:
   schedule:
     # 13:45 UTC = 09:45 EDT, 14:45 UTC = 09:45 EST - the intended moment. The
-    # two earlier firings exist because GitHub's scheduler ran BOTH of those
-    # crons at 17:11-17:55 UTC on 2026-09-10 and 09-11 (3.5 h late; the
-    # earlier measured drift was +78 min), and the script's old 09:30-11:30 ET
-    # window rejected every one of them while the run reported success. The
-    # first live TAKE since the re-enable (ATI, 09-10 bar) was never snapped.
-    # An 11:45/12:45 UTC cron that drifts by the same amount lands near the
-    # open; one that fires on time is 07:45/08:45 ET, outside the window, and
-    # skips harmlessly. The window is now the whole session; the frozen key
-    # means the EARLIEST in-window firing wins and later ones are no-ops, and
-    # each row's `captured` stamp records how far from 09:45 it actually was.
+    # earlier firings exist because GitHub's scheduler ran BOTH of those crons
+    # at 17:11-17:55 UTC on 2026-09-10 and 09-11 (3.5 h late; the earlier
+    # measured drift was +78 min), and the script's old 09:30-11:30 ET window
+    # rejected every one of them while the run reported success. The first
+    # live TAKE since the re-enable (ATI, 09-10 bar) was never snapped.
+    #
+    # This is a LADDER against that drift, not four tries at one time. A rung
+    # that fires on time is pre-open, fails in_entry_window(), and returns
+    # before the ledger is read or a single Tradier call is made - it costs a
+    # runner minute and nothing else. A rung that drifts lands near the open.
+    # The window is the whole session and the FROZEN KEY, not the clock, stops
+    # duplicates, so the earliest in-window firing wins and every later one is
+    # a no-op. An extra rung can therefore only ever improve a capture; it
+    # cannot spoil one.
+    #
+    # 10:45 added 2026-09-18, matching jason-entry-snap and for the same
+    # measured reason: ROBERT's own captures landed at 11:41 and 11:32 ET -
+    # late_min 116 and 107 - so even the 11:45 rung is arriving nearly two
+    # hours after the open, and every entry premium in the ROBERT book was
+    # quoted that far past the 09:45 basis. At the observed +180 drift, 10:45
+    # UTC lands at 09:45 EDT exactly; fired on time it is 06:45 EDT / 05:45
+    # EST, pre-open, and skips.
+    - cron: "45 10 * * 1-5"
     - cron: "45 11 * * 1-5"
     - cron: "45 12 * * 1-5"
     - cron: "45 13 * * 1-5"
