@@ -208,8 +208,12 @@ uni = len(track.get("tickers") or {}) or len(bars)
 # whether SCAN moved. It sat at 2026-08-19 for 29 days with nothing recording
 # it. A number in HEALTH is how that gets noticed next time.
 def _age(a, b):
+    # Floored at zero. SCAN.as_of is the sweep's RUN DATE, not the last bar its
+    # statistics cover, so a sweep run after the close - the normal case - is
+    # newer than the bar and would otherwise stamp a negative "age". Zero days
+    # stale is the honest reading of that; negative staleness is not a thing.
     try:
-        return (datetime.date.fromisoformat(b) - datetime.date.fromisoformat(a)).days
+        return max(0, (datetime.date.fromisoformat(b) - datetime.date.fromisoformat(a)).days)
     except Exception:
         return None
 scan_bar = scan.get("as_of") or ""

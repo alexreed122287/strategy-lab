@@ -167,29 +167,35 @@ def main():
     # though the figures were cut on the session in the subject line.
     # Synthetic dates below on purpose: these must still hold on the day the
     # sweep is current, which is the day the live page cannot exercise them.
-    t("evidence_lag counts days from the sweep to the session",
+    t("evidence_lag counts days from the sweep's RUN DATE to the session",
       nb.evidence_lag("2026-08-19", "2026-09-16") == 28
       and nb.evidence_lag("2026-09-16", "2026-09-16") == 0)
+    # SCAN.as_of is the run date, so a sweep run after the close is NEWER than
+    # the session. That is the normal case, not negative staleness.
+    t("evidence_lag floors at zero when the sweep ran after the session's close",
+      nb.evidence_lag("2026-09-17", "2026-09-16") == 0)
     t("evidence_lag returns None rather than raising on an unparseable date",
       nb.evidence_lag("", "2026-09-16") is None
       and nb.evidence_lag("2026-08-19", "not-a-date") is None)
 
     fresh = nb.evidence_basis("2026-09-16", "2026-09-16")
-    t("evidence line names the sweep's bar even when it is current",
-      "2026-09-16" in fresh)
-    t("a current sweep carries no lag clause",
-      "behind this session" not in fresh)
+    t("evidence line names the sweep's run date even when it is current",
+      "run 2026-09-16" in fresh)
+    t("a current sweep carries no gap clause",
+      "before this session" not in fresh)
 
     stale = nb.evidence_basis("2026-08-19", "2026-09-16")
     t("a stopped sweep is named, measured, and dated",
-      "2026-08-19" in stale and "28 days behind this session" in stale)
+      "run 2026-08-19" in stale and "28 days before this session" in stale)
     t("a stopped sweep says a name it never saw is ABSENT, not merely unranked",
       "does not appear here at all" in stale)
-    t("the lag flag fires on the far side of the threshold and not the near side",
-      "behind this session" in nb.evidence_basis("2026-09-08", "2026-09-16")
-      and "behind this session" not in nb.evidence_basis("2026-09-09", "2026-09-16"))
-    t("an unrecorded sweep date says so instead of inventing one",
-      "does not record" in nb.evidence_basis("", "2026-09-16"))
+    t("the gap flag fires on the far side of the threshold and not the near side",
+      "before this session" in nb.evidence_basis("2026-09-08", "2026-09-16")
+      and "before this session" not in nb.evidence_basis("2026-09-09", "2026-09-16"))
+    t("an unrecorded sweep run date says so instead of inventing one",
+      "run date this page does not record" in nb.evidence_basis("", "2026-09-16"))
+    t("the line never claims the stats run THROUGH the stamped date",
+      "stats as of" not in stale and "describe 2026-08-19" not in stale)
 
     t("the alert body carries the evidence basis",
       nb.evidence_basis(scan_as_of, as_of) in body)

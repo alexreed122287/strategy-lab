@@ -353,15 +353,27 @@ EVIDENCE_LAG_DAYS = 7
 
 
 def evidence_lag(scan_as_of, as_of):
-    """Days the backtest sweep is behind this session, or None if unknowable."""
+    """Days from the sweep's RUN DATE to this session, floored at zero.
+
+    SCAN.as_of is when the sweep ran, not the last bar its statistics cover -
+    it logs "staleness pass vs <prior close>" and stamps the run day. So a
+    sweep run after the close is newer than the session and would give a
+    negative number; zero is the honest reading, negative staleness is not a
+    thing. Returns None when either date is unparseable."""
     try:
-        return (_dt.date.fromisoformat(as_of) - _dt.date.fromisoformat(scan_as_of)).days
+        return max(0, (_dt.date.fromisoformat(as_of)
+                       - _dt.date.fromisoformat(scan_as_of)).days)
     except Exception:
         return None
 
 
 def evidence_basis(scan_as_of, as_of):
     """One line naming the sweep every per-name number in this mail came from.
+
+    SCAN.as_of is the sweep's RUN DATE, not the last bar its statistics cover.
+    The first version of this line said "are the <date> sweep ... describe
+    <date>", which reads as "the statistics run through that date" and is a day
+    optimistic; "run <date>" is what the field actually holds.
 
     SCAN is the sole source of win / avg / n / PF / PF-by-era here AND of the
     `vetted` + GEN_MIN_N floor in collect() that decides what may be ranked at
@@ -378,16 +390,17 @@ def evidence_basis(scan_as_of, as_of):
     """
     if not scan_as_of:
         return ("Evidence basis: win / avg / n / PF come from the backtest sweep, "
-                "whose date this page does not record.")
-    base = "Evidence basis: win / avg / n / PF are the %s sweep" % scan_as_of
+                "whose run date this page does not record.")
+    base = ("Evidence basis: win / avg / n / PF come from the backtest sweep "
+            "run %s" % scan_as_of)
     lag = evidence_lag(scan_as_of, as_of)
     if lag is None or lag <= EVIDENCE_LAG_DAYS:
         return base + "."
-    return (base + " - %d days behind this session. The sweep is not re-run daily, "
-            "so these figures and the vetted floor under them describe %s, not %s; "
-            "a name that first qualified since then has no record in the sweep and "
-            "does not appear here at all."
-            % (lag, scan_as_of, as_of or "this session"))
+    return (base + " - %d days before this session. The sweep is not re-run "
+            "daily, so these figures and the vetted floor under them are as of "
+            "that run, not %s; a name that first qualified since then has no "
+            "record in the sweep and does not appear here at all."
+            % (lag, as_of or "this session"))
 
 
 def compose(as_of, ranked, gw_book, paper, exits, url, scan_as_of):
