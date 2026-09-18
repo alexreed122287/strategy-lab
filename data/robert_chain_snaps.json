@@ -61,8 +61,48 @@
    "date": "2026-09-16",
    "captured": "2026-09-16 11:32 ET",
    "late_min": 107
+  },
+  "TRGP|2026-09-18|X": {
+   "strike": 260.0,
+   "bid": 32.6,
+   "ask": 35.2,
+   "mid": 33.9,
+   "spread_pct": 7.67,
+   "delta": 0.911,
+   "iv": 0.4096,
+   "oi": 74,
+   "volume": 0,
+   "extrinsic_pct": 5.0,
+   "expiry": "2026-10-16",
+   "spot": 292.19,
+   "dte": 28,
+   "occ": "TRGP261016C00260000",
+   "ticker": "TRGP",
+   "side": "X",
+   "date": "2026-09-18",
+   "captured": "2026-09-18 19:54 ET"
+  },
+  "AMAT|2026-09-18|X": {
+   "strike": 380.0,
+   "bid": 65.9,
+   "ask": 72.7,
+   "mid": 69.3,
+   "spread_pct": 9.81,
+   "delta": 0.876,
+   "iv": 0.5233,
+   "oi": 74,
+   "volume": 81,
+   "extrinsic_pct": 6.8,
+   "expiry": "2026-10-16",
+   "spot": 444.57,
+   "dte": 28,
+   "occ": "AMAT261016C00380000",
+   "ticker": "AMAT",
+   "side": "X",
+   "date": "2026-09-18",
+   "captured": "2026-09-18 19:54 ET"
   }
  },
- "updated": "2026-09-16 15:32 UTC",
- "count": 3
+ "updated": "2026-09-18 23:54 UTC",
+ "count": 5
 }

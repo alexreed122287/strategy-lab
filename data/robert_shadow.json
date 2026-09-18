@@ -1,82 +1,5 @@
 {
- "open": [
-  {
-   "t": "ATI",
-   "signal_date": "2026-09-10",
-   "entry_date": "2026-09-11",
-   "entry_px": 202.04,
-   "opt": {
-    "expiry": "2026-10-16",
-    "strike": 185.0,
-    "dte": 35,
-    "sigma": 0.38,
-    "delta": 0.797,
-    "prem_mid": 20.4311,
-    "prem_paid": 20.6865,
-    "basis": "MODEL",
-    "strike_src": "chain",
-    "extrinsic_pct": 16.6,
-    "contracts": 7,
-    "cost": 14480.55
-   }
-  },
-  {
-   "t": "TRGP",
-   "signal_date": "2026-09-14",
-   "entry_date": "2026-09-15",
-   "entry_px": 288.92,
-   "opt": {
-    "expiry": "2026-10-16",
-    "strike": 260.0,
-    "dte": 31,
-    "delta": 0.854,
-    "iv": 0.3143,
-    "sigma": 0.3143,
-    "prem_mid": 30.4,
-    "prem_paid": 30.6079,
-    "spread_e": 8.55,
-    "bid_e": 29.1,
-    "ask_e": 31.7,
-    "oi_e": 28,
-    "vol_e": 0,
-    "extrinsic_pct": 9.8,
-    "captured_e": "2026-09-15 11:41 ET",
-    "basis": "CHAIN",
-    "strike_src": "chain",
-    "f": 0.16,
-    "contracts": 4,
-    "cost": 12243.16
-   }
-  },
-  {
-   "t": "AMAT",
-   "signal_date": "2026-09-15",
-   "entry_date": "2026-09-16",
-   "entry_px": 429.73,
-   "opt": {
-    "expiry": "2026-10-16",
-    "strike": 380.0,
-    "dte": 30,
-    "delta": 0.798,
-    "iv": 0.5218,
-    "sigma": 0.5218,
-    "prem_mid": 53.125,
-    "prem_paid": 53.513,
-    "spread_e": 9.13,
-    "bid_e": 50.7,
-    "ask_e": 55.55,
-    "oi_e": 62,
-    "vol_e": 0,
-    "extrinsic_pct": 18.7,
-    "captured_e": "2026-09-16 11:32 ET",
-    "basis": "CHAIN",
-    "strike_src": "chain",
-    "f": 0.16,
-    "contracts": 2,
-    "cost": 10702.6
-   }
-  }
- ],
+ "open": [],
  "queued": [],
  "closed": [
   {
@@ -468,9 +391,145 @@
      }
     }
    }
+  },
+  {
+   "t": "ATI",
+   "entry_date": "2026-09-11",
+   "exit_date": "2026-09-18",
+   "entry_px": 202.04,
+   "exit_px": 191.63,
+   "bars": 5,
+   "reason": "SMA5",
+   "net": -0.0519,
+   "opt": {
+    "expiry": "2026-10-16",
+    "strike": 185.0,
+    "dte": 35,
+    "sigma": 0.38,
+    "delta": 0.797,
+    "prem_mid": 20.4311,
+    "prem_paid": 20.6865,
+    "basis": "MODEL",
+    "strike_src": "chain",
+    "extrinsic_pct": 16.6,
+    "contracts": 7,
+    "cost": 14480.55,
+    "exit_mid": 11.9177,
+    "exit_recv": 11.6198,
+    "ret": -0.43827,
+    "pnl": -6346.27
+   }
+  },
+  {
+   "t": "TRGP",
+   "entry_date": "2026-09-15",
+   "exit_date": "2026-09-18",
+   "entry_px": 288.92,
+   "exit_px": 292.19,
+   "bars": 3,
+   "reason": "SMA5",
+   "net": 0.01091,
+   "opt": {
+    "expiry": "2026-10-16",
+    "strike": 260.0,
+    "dte": 31,
+    "delta": 0.854,
+    "iv": 0.3143,
+    "sigma": 0.3143,
+    "prem_mid": 30.4,
+    "prem_paid": 30.6079,
+    "spread_e": 8.55,
+    "bid_e": 29.1,
+    "ask_e": 31.7,
+    "oi_e": 28,
+    "vol_e": 0,
+    "extrinsic_pct": 9.8,
+    "captured_e": "2026-09-15 11:41 ET",
+    "basis": "CHAIN",
+    "strike_src": "chain",
+    "f": 0.16,
+    "contracts": 4,
+    "cost": 12243.16,
+    "exit_mid": 33.9,
+    "spread_x": 7.67,
+    "bid_x": 32.6,
+    "ask_x": 35.2,
+    "captured_x": "2026-09-18 19:54 ET",
+    "exit_recv": 33.692,
+    "ret": 0.10076,
+    "pnl": 1233.64,
+    "band": {
+     "0.16": {
+      "ret": 0.10076,
+      "pnl": 1233.62
+     },
+     "0.50": {
+      "ret": 0.07086,
+      "pnl": 880.07
+     },
+     "1.00": {
+      "ret": 0.0284,
+      "pnl": 360.13
+     }
+    }
+   }
+  },
+  {
+   "t": "AMAT",
+   "entry_date": "2026-09-16",
+   "exit_date": "2026-09-18",
+   "entry_px": 429.73,
+   "exit_px": 444.57,
+   "bars": 2,
+   "reason": "SMA5",
+   "net": 0.03412,
+   "opt": {
+    "expiry": "2026-10-16",
+    "strike": 380.0,
+    "dte": 30,
+    "delta": 0.798,
+    "iv": 0.5218,
+    "sigma": 0.5218,
+    "prem_mid": 53.125,
+    "prem_paid": 53.513,
+    "spread_e": 9.13,
+    "bid_e": 50.7,
+    "ask_e": 55.55,
+    "oi_e": 62,
+    "vol_e": 0,
+    "extrinsic_pct": 18.7,
+    "captured_e": "2026-09-16 11:32 ET",
+    "basis": "CHAIN",
+    "strike_src": "chain",
+    "f": 0.16,
+    "contracts": 2,
+    "cost": 10702.6,
+    "exit_mid": 69.3,
+    "spread_x": 9.81,
+    "bid_x": 65.9,
+    "ask_x": 72.7,
+    "captured_x": "2026-09-18 19:54 ET",
+    "exit_recv": 68.7561,
+    "ret": 0.28485,
+    "pnl": 3048.62,
+    "band": {
+     "0.16": {
+      "ret": 0.28485,
+      "pnl": 3048.62
+     },
+     "0.50": {
+      "ret": 0.24408,
+      "pnl": 2652.57
+     },
+     "1.00": {
+      "ret": 0.18633,
+      "pnl": 2070.14
+     }
+    }
+   }
   }
  ],
  "skipped": [],
- "closed_total": 13,
- "last_as_of": "2026-09-17"
+ "closed_total": 16,
+ "last_as_of": "2026-09-18"
 }
