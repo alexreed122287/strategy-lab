@@ -460,7 +460,17 @@ const PAGE = 'file://' + path.resolve(__dirname, '..', 'index.html');
       missing,
       booksWithOpen: Object.values(st).filter(v => (v.open || 0) > 0).length,
       hasMarketEquity: P.equity_at_market !== undefined && P.equity_at_market !== null,
-      equityShown: (P.equity_at_market != null)
+      // BOTH renderings, because the page uses both: the account card prints
+      // this UNROUNDED (`PF.equity_at_market.toLocaleString()`, index.html
+      // ~2562) while the per-book table rounds it (~2632). This check used to
+      // re-derive only the ROUNDED form and demand it, so the substring match
+      // succeeded only while the cents were under .50 - a coin flip every
+      // session. It came up tails on 2026-09-21 and, being the render gate on
+      // BOTH publishing paths, held the public page at the 09-18 build for two
+      // sessions with nothing but this line to say why.
+      equityShownRaw: (P.equity_at_market != null)
+        ? txt.includes(P.equity_at_market.toLocaleString()) : false,
+      equityShownRounded: (P.equity_at_market != null)
         ? txt.includes(Math.round(P.equity_at_market).toLocaleString()) : false,
       costOnlyClaim: /open positions carried at cost, so this moves only as trades close/.test(txt),
       explains: /closed set the winning half by construction|winning half by construction/i.test(txt),
@@ -471,7 +481,20 @@ const PAGE = 'file://' + path.resolve(__dirname, '..', 'index.html');
   t('positions: the account carries a marked-to-market equity, not only cost',
     mark.hasMarketEquity);
   t('positions: the marked equity is the figure actually rendered',
-    !mark.hasMarketEquity || mark.equityShown);
+    !mark.hasMarketEquity || mark.equityShownRaw || mark.equityShownRounded);
+  // Pin the fix with pure logic, so the coin flip cannot come back: the
+  // matcher must accept a page that renders unrounded whichever way the cents
+  // fall, and must still reject a figure that is simply wrong.
+  {
+    const accepts = (pageTxt, v) =>
+      pageTxt.includes(v.toLocaleString()) ||
+      pageTxt.includes(Math.round(v).toLocaleString());
+    t('positions: the equity matcher survives cents >= .50 (the 2026-09-21 outage)',
+      accepts((95758.03).toLocaleString(), 95758.03) &&
+      accepts((95758.63).toLocaleString(), 95758.63) &&
+      accepts((95758.50).toLocaleString(), 95758.50) &&
+      !accepts((12345.00).toLocaleString(), 99999.00));
+  }
   t('positions: the old cost-basis-only claim is gone', !mark.costOnlyClaim);
   t('positions: the page explains why the closed set skews to winners', mark.explains);
 
