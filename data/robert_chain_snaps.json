@@ -101,8 +101,28 @@
    "side": "X",
    "date": "2026-09-18",
    "captured": "2026-09-18 19:54 ET"
+  },
+  "TRGP|2026-09-28|E": {
+   "strike": 250.0,
+   "bid": 29.9,
+   "ask": 33.0,
+   "mid": 31.45,
+   "spread_pct": 9.86,
+   "delta": 0.789,
+   "iv": 0.3669,
+   "oi": 1,
+   "volume": 0,
+   "extrinsic_pct": 18.3,
+   "expiry": "2026-11-20",
+   "spot": 275.705,
+   "dte": 53,
+   "ticker": "TRGP",
+   "side": "E",
+   "date": "2026-09-28",
+   "captured": "2026-09-28 13:38 ET",
+   "late_min": 233
   }
  },
- "updated": "2026-09-18 23:54 UTC",
- "count": 5
+ "updated": "2026-09-28 17:38 UTC",
+ "count": 6
 }
