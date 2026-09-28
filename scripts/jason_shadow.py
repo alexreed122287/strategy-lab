@@ -66,6 +66,15 @@ EARNINGS_WINDOW_DAYS = 21
 MIN_BARS_BETWEEN = 5
 STARTED = "2026-09-12"
 
+# JASON's hand-dispatched captures, keyed like data/jason_chain_snaps.json. A
+# manual run's quote is real, but its capture time is the click, not the
+# ladder's, and the frozen snap row cannot say so. Deliberately separate from
+# robert_shadow.MANUAL_CAPTURES: the stores share the TICKER|DATE|E format, so
+# one map would tag a scheduled JASON entry that happened to share a ticker and
+# day with a manual ROBERT one. Empty until a JASON snap is dispatched by hand;
+# then add its key and name the run, e.g. "jason-entry-snap run #N at HH:MM ET".
+MANUAL_CAPTURES = {}
+
 
 def opt(a, n, d=None):
     return a[a.index(n) + 1] if n in a else d
@@ -467,7 +476,8 @@ def render(st, bk, marks, as_of, new_q, covered, n_uni):
     if marks:
         body = ""
         for m in sorted(marks, key=lambda x: x["entry_date"]):
-            body += (f'<tr><td><b>{m["t"]}</b></td><td>{contract(m["opt"])}</td>'
+            body += (f'<tr><td><b>{m["t"]}</b>{RS.manual_tag(m, MANUAL_CAPTURES)}</td>'
+                     f'<td>{contract(m["opt"])}</td>'
                      f'<td>{m["entry_date"]}</td><td>{m["held"]}</td>'
                      f'<td class="{sgn(m["stock_ret"])}">{pct(100 * m["stock_ret"])}</td>'
                      f'<td>{m["opt"]["prem_paid"]:.2f}</td><td>{m["mark_mid"]:.2f}</td>'
@@ -482,7 +492,8 @@ def render(st, bk, marks, as_of, new_q, covered, n_uni):
         body = ""
         for c in sorted(st["closed"], key=lambda x: x["exit_date"], reverse=True):
             o = c.get("opt") or {}
-            body += (f'<tr><td><b>{c["t"]}</b></td><td>{contract(o) if o else "&mdash;"}</td>'
+            body += (f'<tr><td><b>{c["t"]}</b>{RS.manual_tag(c, MANUAL_CAPTURES)}</td>'
+                     f'<td>{contract(o) if o else "&mdash;"}</td>'
                      f'<td>{c["entry_date"]}</td><td>{c["exit_date"]}</td><td>{c["bars"]}</td>'
                      f'<td>{c["reason"]}</td><td class="{sgn(c["net"])}">{pct(100 * c["net"])}</td>'
                      + (f'<td>{o["prem_paid"]:.2f}</td><td>{o.get("exit_recv", 0):.2f}</td><td>{o["contracts"]}</td>'
@@ -493,6 +504,10 @@ def render(st, bk, marks, as_of, new_q, covered, n_uni):
                    '<div class="tablewrap"><table><tr><th>Ticker</th><th>Contract</th><th>In</th><th>Out</th>'
                    '<th>Bars</th><th>Why</th><th>Stock</th><th>Prem in</th><th>Prem out</th><th>Ctr</th>'
                    f'<th>Option</th><th>P&amp;L</th></tr>{body}</table></div></details>')
+    # Only when there is one: an empty map leaves the section byte-identical.
+    note = RS.manual_note(list(marks or []) + st["closed"], MANUAL_CAPTURES)
+    if note:
+        out.append(note)
     if st["queued"]:
         q = ", ".join(f'{x["t"]} (close {x.get("close", 0):.2f} vs {x.get("threshold", 0):.2f})' for x in st["queued"])
         out.append(f'<p class="small"><b>Queued for the next open:</b> {q}. The 09:45 ET snapshot '
