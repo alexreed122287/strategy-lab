@@ -1,12 +1,27 @@
 {
- "open": [],
- "queued": [
+ "open": [
   {
    "t": "TRGP",
    "signal_date": "2026-09-25",
-   "rsi2": 7.41
+   "entry_date": "2026-09-28",
+   "entry_px": 280.9,
+   "opt": {
+    "expiry": "2026-11-20",
+    "strike": 260.0,
+    "dte": 53,
+    "sigma": 0.2352,
+    "delta": 0.83,
+    "prem_mid": 24.4071,
+    "prem_paid": 24.7122,
+    "basis": "MODEL",
+    "strike_src": "chain",
+    "extrinsic_pct": 14.4,
+    "contracts": 6,
+    "cost": 14827.32
+   }
   }
  ],
+ "queued": [],
  "closed": [
   {
    "t": "GOOGL",
@@ -537,5 +552,5 @@
  ],
  "skipped": [],
  "closed_total": 16,
- "last_as_of": "2026-09-25"
+ "last_as_of": "2026-09-28"
 }
