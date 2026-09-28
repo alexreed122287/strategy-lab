@@ -161,6 +161,31 @@ jstore = json.load(open(os.path.join(ROOT, "data", "jason_chain_snaps.json")))
 t("every JASON MANUAL_CAPTURES key points at a real capture in JASON's store",
   all(k in jstore.get("snaps", {}) for k in JS.MANUAL_CAPTURES))
 
+# ------------------------------------------------ TRGP's corrected entry leg
+# The Mac build of 2026-09-28 froze TRGP on the model beside its captured quote
+# (the wrong-store bug below). On the owner's decision the leg was re-priced
+# from that quote before any exit, keeping the replaced leg. Searched in open
+# AND closed, so these hold for the life of the trade.
+import robert_option_leg as OL  # noqa: E402
+
+trgp = [r for r in led.get("open", []) + led.get("closed", [])
+        if r.get("t") == "TRGP" and r.get("entry_date") == "2026-09-28"]
+leg = (trgp[0].get("opt") or {}) if trgp else {}
+want = OL.quote_leg(snaps[KEY])
+t("TRGP's 09-28 entry is priced from its captured quote, as freeze_entry would",
+  len(trgp) == 1 and all(leg.get(k) == want[k] for k in
+                         ("basis", "expiry", "strike", "prem_mid", "prem_paid",
+                          "contracts", "cost", "captured_e")))
+was = (leg.get("corrected") or {}).get("was") or {}
+t("the replaced model leg is kept in the ledger, not erased",
+  was.get("basis") == "MODEL" and was.get("strike") == 260.0
+  and was.get("prem_paid") == 24.7122)
+t("the page note discloses the correction and what it replaced",
+  "re-priced from this quote" in RS.MANUAL_CAPTURES[KEY]
+  and "260C at 24.71" in RS.MANUAL_CAPTURES[KEY])
+t("the corrected row carries the manual-capture tag",
+  bool(trgp) and RS.manual_tag(trgp[0]) != "")
+
 # ------------------------------------------------- which store the Mac reads
 # A manual capture is only disclosed if the renderer reads the store it is in.
 # On 2026-09-28 the Mac's build ran from $WORK (the dashboard repo) and read a

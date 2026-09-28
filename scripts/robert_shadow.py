@@ -144,7 +144,11 @@ MANUAL_CAPTURES = {
         "robert-entry-snap run #60 at 13:38 ET, 233 minutes after the 09:45 "
         "basis, dispatched by hand because GitHub fired none of this repo's "
         "scheduled workflows that morning; without it the entry would have "
-        "fallen back to the Black-Scholes model"),
+        "fallen back to the Black-Scholes model. The Mac build that evening "
+        "still froze it on the model (Nov20 260C at 24.71) because it read the "
+        "wrong snap store, since fixed; on the owner's decision it was "
+        "re-priced from this quote the same evening, before any exit, and the "
+        "replaced leg is kept in the ledger under opt.corrected"),
 }
 
 
