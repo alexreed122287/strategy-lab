@@ -155,10 +155,16 @@ python3 "$REPO/scripts/robert_scan.py" --bars "$TMP/bars.json" \
   --earnings "$TMP/earnings.json" --page "$REPO/robert.html" \
   --universe "$REPO/robert_universe.txt" --splice
 # 4c3) ROBERT shadow forward book - automatic stock-leg paper ledger.
+#      --snaps is explicit (2026-09-28), like JASON's below: this whole script
+#      runs from $WORK, and without it robert_shadow read its relative default
+#      out of the DASHBOARD repo - silently empty - so TRGP's 09-28 entry was
+#      frozen on the model beside a real captured quote, and ASML's 09-17 exit
+#      quote was saved into the wrong repo.
 python3 "$REPO/scripts/robert_shadow.py" --bars "$TMP/bars.json" \
   --earnings "$TMP/earnings.json" --page "$REPO/robert.html" \
   --universe "$REPO/robert_universe.txt" \
-  --ledger "$REPO/data/robert_shadow.json" --splice
+  --ledger "$REPO/data/robert_shadow.json" \
+  --snaps "$REPO/data/robert_chain_snaps.json" --splice
 # 4c3) JASON paper ledger (2026-09-12): its own state, sleeve and signal;
 #      rule tests fail closed before it may splice.
 #      Earnings seed for the whole JASON universe (FMP key from the engine's
