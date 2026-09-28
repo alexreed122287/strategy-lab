@@ -68,8 +68,10 @@ unless marked UTC/ET.
   drift LADDER; whole-session window, frozen key, earliest in-window firing wins.
   Captures real option quotes into data/*_chain_snaps.json (never rewritten).
   A hand-dispatched run is still a real quote, but its `late_min` is the click,
-  not the ladder: add its key to `MANUAL_CAPTURES` in scripts/robert_shadow.py
-  so robert.html tags the row (first case: TRGP 2026-09-28, run #60).
+  not the ladder: add its key to that book's `MANUAL_CAPTURES` so its page tags
+  the row - scripts/robert_shadow.py for ROBERT (first case: TRGP 2026-09-28,
+  run #60), scripts/jason_shadow.py for JASON. Separate maps on purpose: the
+  two snap stores share the key format, so one map would bleed across books.
 - `robert-chain-gate.yml`: Mondays 13:40/14:40/17:40 UTC. `OI_MIN = 10`; cull
   suspended 08/27, threshold deliberately not moved. Do not change either
   without a reason written beside the constant.

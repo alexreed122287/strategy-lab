@@ -10,6 +10,13 @@ store is frozen per key. robert_shadow.MANUAL_CAPTURES carries that provenance
 instead and the page tags the row. These tests pin the two ways that goes wrong:
 labelling a leg that was NOT priced from the manual quote, and a note that
 points at no real capture.
+
+JASON renders through the same helpers with its OWN map (jason_shadow.
+MANUAL_CAPTURES, keyed against data/jason_chain_snaps.json). The two stores
+share the TICKER|DATE|E format, so the third failure pinned here is bleed: a
+scheduled JASON entry tagged because ROBERT's map holds the same key. These run
+in CI only - jason_shadow_test.py runs inside both publishing builds, and a
+disclosure test has no business being able to block a publish.
 """
 import json
 import os
@@ -88,6 +95,71 @@ t("the TRGP note agrees with the stored capture time",
   and snaps[KEY].get("late_min") == 233)
 t("no note text breaks the HTML it is dropped into",
   not any(c in v for v in RS.MANUAL_CAPTURES.values() for c in "<>&"))
+t("an explicit empty map tags nothing, even ROBERT's own manual key",
+  RS.manual_tag(manual_open, {}) == "" and RS.manual_note([manual_open], {}) == "")
+
+# ------------------------------------------------------------------ JASON
+import jason_shadow as JS  # noqa: E402
+
+
+def jleg(**kw):
+    o = {"expiry": "2026-11-20", "strike": 250.0, "basis": "CHAIN",
+         "captured_e": "2026-09-28 13:38 ET", "prem_paid": 31.70, "contracts": 3}
+    o.update(kw)
+    return o
+
+
+def jrender(open_rows, closed=()):
+    marks = [dict(r, held=1, stock_ret=0.01, mark_mid=r["opt"]["prem_paid"],
+                  contracts=r["opt"]["contracts"], ret=0.0, pnl=0.0)
+             for r in open_rows]
+    st = {"open": list(open_rows), "closed": list(closed), "queued": []}
+    bk = {"n": len(closed), "net": 0.0, "meaningful": False,
+          "win_pct": 100.0, "pf": None, "avg_ret": 0.0}
+    return JS.render(st, bk, marks, "2026-09-29", [], 499, 503)
+
+
+t("JASON keeps its own map, separate from ROBERT's",
+  isinstance(JS.MANUAL_CAPTURES, dict) and JS.MANUAL_CAPTURES is not RS.MANUAL_CAPTURES)
+
+# The exact key ROBERT marks manual, on a JASON row: must NOT be tagged.
+bleed = {"t": "TRGP", "entry_date": "2026-09-28", "opt": jleg()}
+html = jrender([bleed])
+t("a JASON row sharing ROBERT's manual key is not tagged (no cross-book bleed)",
+  "manual capture" not in html and "Captured by hand" not in html)
+
+saved = JS.MANUAL_CAPTURES
+try:
+    JS.MANUAL_CAPTURES = {"CSCO|2026-09-29|E":
+                          "jason-entry-snap run #99 at 12:00 ET, dispatched by hand (test)"}
+    manual_j = {"t": "CSCO", "entry_date": "2026-09-29",
+                "opt": jleg(strike=100.0, captured_e="2026-09-29 12:00 ET")}
+    sched_j = {"t": "AMAT", "entry_date": "2026-09-29",
+               "opt": jleg(strike=380.0, captured_e="2026-09-29 11:30 ET")}
+    html = jrender([manual_j, sched_j])
+    csco = re.search(r"<tr><td><b>CSCO</b>.*?</tr>", html).group(0)
+    amat = re.search(r"<tr><td><b>AMAT</b>.*?</tr>", html).group(0)
+    t("a key in JASON's own map tags that JASON row", "manual capture" in csco)
+    t("...and only that row", "manual capture" not in amat)
+    t("...with one note naming the leg and the run",
+      html.count("Captured by hand") == 1 and "CSCO entry 2026-09-29" in html
+      and "run #99" in html)
+    closed_j = dict(manual_j, exit_date="2026-10-02", bars=3, reason="VAP", net=0.02,
+                    opt=jleg(strike=100.0, captured_e="2026-09-29 12:00 ET",
+                             exit_recv=33.0, ret=0.04, pnl=390.0))
+    html = jrender([], [closed_j])
+    t("the tag follows the JASON row into the closed table",
+      "manual capture" in re.search(r"<tr><td><b>CSCO</b>.*?</tr>", html).group(0))
+finally:
+    JS.MANUAL_CAPTURES = saved
+
+html = jrender([bleed])
+t("with JASON's map empty the section carries no tag and no note",
+  "manual capture" not in html and "Captured by hand" not in html)
+
+jstore = json.load(open(os.path.join(ROOT, "data", "jason_chain_snaps.json")))
+t("every JASON MANUAL_CAPTURES key points at a real capture in JASON's store",
+  all(k in jstore.get("snaps", {}) for k in JS.MANUAL_CAPTURES))
 
 print()
 if fails:

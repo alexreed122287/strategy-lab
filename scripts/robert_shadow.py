@@ -129,6 +129,8 @@ def snap_for(t, day, side):
 # each is real and priced like any CHAIN leg; what differs is WHEN it was taken,
 # so a manual row's timing must never be read as the scheduled ladder's. Add a
 # key only for a capture that really was dispatched by hand, and name the run.
+# ROBERT's store only: JASON keeps its own map in jason_shadow.py, because the
+# two stores share the key format and one map would bleed across books.
 MANUAL_CAPTURES = {
     "TRGP|2026-09-28|E": (
         "robert-entry-snap run #60 at 13:38 ET, 233 minutes after the 09:45 "
@@ -138,38 +140,42 @@ MANUAL_CAPTURES = {
 }
 
 
-def manual_legs(row):
+def manual_legs(row, captures=None):
     """(leg, key) for each of this row's legs that was captured by hand. A key
     only counts when the leg really was priced from that quote - a CHAIN leg
     carrying its capture stamp - so a morning whose capture failed and fell
-    back to the model can never be labelled manual."""
+    back to the model can never be labelled manual. `captures` is the book's
+    own map, keyed against that book's snap store; ROBERT's by default."""
+    captures = MANUAL_CAPTURES if captures is None else captures
     o = row.get("opt") or {}
     if o.get("basis") != "CHAIN":
         return []
     t, legs = row.get("t"), []
     ke = f"{t}|{row.get('entry_date')}|E"
-    if o.get("captured_e") and ke in MANUAL_CAPTURES:
+    if o.get("captured_e") and ke in captures:
         legs.append(("entry", ke))
     kx = f"{t}|{row.get('exit_date')}|X"
-    if row.get("exit_date") and o.get("captured_x") and kx in MANUAL_CAPTURES:
+    if row.get("exit_date") and o.get("captured_x") and kx in captures:
         legs.append(("exit", kx))
     return legs
 
 
-def manual_tag(row):
+def manual_tag(row, captures=None):
     """Inline tag for the ticker cell; empty for a scheduled capture."""
-    return ' <span class="tag">manual capture</span>' if manual_legs(row) else ""
+    return (' <span class="tag">manual capture</span>'
+            if manual_legs(row, captures) else "")
 
 
-def manual_note(rows):
+def manual_note(rows, captures=None):
     """One paragraph naming every hand-captured leg among these rows."""
+    captures = MANUAL_CAPTURES if captures is None else captures
     seen = {}
     for r in rows:
-        for leg, k in manual_legs(r):
+        for leg, k in manual_legs(r, captures):
             seen.setdefault(k, f'{r["t"]} {leg} {k.split("|")[1]}')
     if not seen:
         return ""
-    items = "; ".join(f"{what}: {MANUAL_CAPTURES[k]}" for k, what in seen.items())
+    items = "; ".join(f"{what}: {captures[k]}" for k, what in seen.items())
     return ('<p class="small"><b>Captured by hand, not by the schedule.</b> '
             f'{items}. The quote is real and priced like any other CHAIN leg; '
             'only the moment it was taken differs, so it says nothing about '
