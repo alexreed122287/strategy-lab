@@ -161,6 +161,25 @@ jstore = json.load(open(os.path.join(ROOT, "data", "jason_chain_snaps.json")))
 t("every JASON MANUAL_CAPTURES key points at a real capture in JASON's store",
   all(k in jstore.get("snaps", {}) for k in JS.MANUAL_CAPTURES))
 
+# ------------------------------------------------- which store the Mac reads
+# A manual capture is only disclosed if the renderer reads the store it is in.
+# On 2026-09-28 the Mac's build ran from $WORK (the dashboard repo) and read a
+# relative default out of THAT repo - silently empty - so TRGP was frozen on
+# the model beside its real quote. The default is now anchored to the script.
+import subprocess  # noqa: E402
+
+probe = subprocess.run(
+    [sys.executable, "-c", "import sys; sys.path.insert(0, sys.argv[1]); "
+     "import robert_shadow as RS; print(RS.SNAPS_PATH)", HERE],
+    cwd="/", capture_output=True, text=True)
+store = os.path.join(ROOT, "data", "robert_chain_snaps.json")
+t("run from any directory, the default snap store is THIS repo's store",
+  probe.returncode == 0 and os.path.realpath(probe.stdout.strip()) == os.path.realpath(store))
+sh = open(os.path.join(HERE, "daily_build.sh")).read()
+call = re.search(r'scripts/robert_shadow\.py".*?--splice', sh, re.S)
+t("daily_build.sh hands robert_shadow the repo's store explicitly, as it does JASON",
+  bool(call) and '--snaps "$REPO/data/robert_chain_snaps.json"' in call.group(0))
+
 print()
 if fails:
     sys.exit("FAILURES:\n  " + "\n  ".join(fails))

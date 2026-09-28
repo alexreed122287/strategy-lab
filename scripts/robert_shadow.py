@@ -113,7 +113,15 @@ def sigma_at(seq, entry_date):
 
 _STRIKES = {}
 SNAPS = {"schema": 1, "snaps": {}}
-SNAPS_PATH = "data/robert_chain_snaps.json"
+# Anchored to this file, never to the caller's working directory (2026-09-28).
+# daily_build.sh runs every step from $WORK - the private dashboard repo - and
+# called this script without --snaps, so the old relative default pointed into
+# THAT repo. CS.load returns an empty store for a missing file without a word,
+# so the Mac silently priced with no snaps at all: ASML's 09-17 exit quote was
+# saved into a stray store there instead of this repo's, and TRGP's 09-28 entry
+# was frozen on the model although its real quote was already on main.
+SNAPS_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                          "data", "robert_chain_snaps.json")
 _snaps_dirty = False
 
 
@@ -470,6 +478,15 @@ def main():
 
     global SNAPS, SNAPS_PATH
     SNAPS_PATH = opt(a, "--snaps", SNAPS_PATH)
+    # The store is committed to the repo, so a missing file is always a wrong
+    # path, never "no captures yet" - and CS.load would hide it by returning an
+    # empty store. Say it: every leg below falls to the model, and any quote
+    # captured this run is written to the wrong file.
+    if not os.path.exists(SNAPS_PATH):
+        print(f"WARNING: snapshot store not found at {SNAPS_PATH} - every "
+              "option leg this run falls back to model marks, and any quote "
+              "captured now is saved there, not in the repo's store",
+              file=sys.stderr)
     try:
         SNAPS = CS.load(SNAPS_PATH)
     except Exception as e:

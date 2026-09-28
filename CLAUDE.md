@@ -101,6 +101,12 @@ unless marked UTC/ET.
 - launchd PATH: Homebrew node shadowed the node holding playwright (08/31-09/04).
 - Stale ~/.tradier_token 401'd the Mac build 08/12-08/14 (now self-healed).
 - Dirty tree after a failed run blocked every later Mac pull (fixed 09-17, step 0).
+- daily_build.sh runs from `$WORK` (the dashboard repo), so any path a step
+  leaves relative resolves THERE. robert_shadow read its snap store that way -
+  silently empty (CS.load returns {} for a missing file) - so ASML's 09-17 exit
+  quote went into a stray store in the dashboard repo and TRGP's 09-28 entry was
+  frozen on the model beside its real quote. Fixed 09-28: explicit `--snaps`
+  and a script-anchored default. Pass repo paths explicitly in every step.
 - Commit stamps and earnings --today must use the Chicago date, not UTC.
 - Dot tickers (BRK.B) return empty quotes from Tradier, not errors.
 - `SCAN.as_of` is the sweep run date, not its last bar; age is floored at 0.
