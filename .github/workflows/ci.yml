@@ -18,12 +18,13 @@ name: ci
 #   notify_jason_test (31)     -         yes         yes
 #   notify_robert_test (35)   yes        yes         yes
 #   jason_shadow_test         yes        yes         yes
+#   robert_shadow_manual (13)  -          -          yes   (added 2026-09-28)
 #
 # smoke_test.js is what daily_build.sh calls its RENDER GATE - the thing that
 # refused to publish an unverified page on 09/14 and 09/15, working exactly as
 # designed. The cloud never ran it. So across the twelve days the cloud was the
 # only publisher, the public page shipped with no render verification at all.
-# This workflow runs all six in one place so no path can quietly carry a
+# This workflow runs all of them in one place so no path can quietly carry a
 # narrower standard than another.
 #
 # No secrets, no network beyond the browser install, nothing published. Every
@@ -118,7 +119,7 @@ jobs:
               sys.exit("FAILURES:\n  " + "\n  ".join(bad))
           PY
 
-      # ---- the four stdlib suites. No pip, matching the cloud build's rule
+      # ---- the stdlib suites. No pip, matching the cloud build's rule
       #      that every build script imports nothing beyond the stdlib.
       - name: Rule and mailer suites
         run: |
@@ -127,6 +128,7 @@ jobs:
           python3 scripts/notify_daily_test.py
           python3 scripts/notify_jason_test.py
           python3 scripts/notify_robert_test.py
+          python3 scripts/robert_shadow_manual_test.py
 
       # ---- the two that need a browser. Installed rather than assumed: the
       #      Mac spent 2026-08-19..08-26 refusing to publish because its

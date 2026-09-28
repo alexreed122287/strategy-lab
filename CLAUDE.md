@@ -67,6 +67,9 @@ unless marked UTC/ET.
 - `robert-entry-snap.yml` / `jason-entry-snap.yml`: UTC crons 10:45-14:45 as a
   drift LADDER; whole-session window, frozen key, earliest in-window firing wins.
   Captures real option quotes into data/*_chain_snaps.json (never rewritten).
+  A hand-dispatched run is still a real quote, but its `late_min` is the click,
+  not the ladder: add its key to `MANUAL_CAPTURES` in scripts/robert_shadow.py
+  so robert.html tags the row (first case: TRGP 2026-09-28, run #60).
 - `robert-chain-gate.yml`: Mondays 13:40/14:40/17:40 UTC. `OI_MIN = 10`; cull
   suspended 08/27, threshold deliberately not moved. Do not change either
   without a reason written beside the constant.
@@ -81,6 +84,7 @@ unless marked UTC/ET.
   imports to build-path scripts.
 - Suites (what ci.yml runs): `python3 scripts/jason_shadow_test.py`,
   `notify_daily_test.py`, `notify_jason_test.py`, `notify_robert_test.py`,
+  `robert_shadow_manual_test.py`,
   `notify_test.py`, `node scripts/smoke_test.js` (render gate, needs global
   playwright/playwright-core; set CHROMIUM_PATH if the probe misses).
 - Also: `python3 scripts/robert_chain_snap_test.py`. Run everything from repo root.

@@ -123,6 +123,59 @@ def snap_for(t, day, side):
     return SNAPS.get("snaps", {}).get(f"{t}|{day}|{side}")
 
 
+# Quotes taken by a hand-dispatched run instead of robert-entry-snap's schedule,
+# keyed exactly like the snap store. The store is frozen per key - rewriting a
+# row would restate a trade - so provenance lives here instead. The quote in
+# each is real and priced like any CHAIN leg; what differs is WHEN it was taken,
+# so a manual row's timing must never be read as the scheduled ladder's. Add a
+# key only for a capture that really was dispatched by hand, and name the run.
+MANUAL_CAPTURES = {
+    "TRGP|2026-09-28|E": (
+        "robert-entry-snap run #60 at 13:38 ET, 233 minutes after the 09:45 "
+        "basis, dispatched by hand because GitHub fired none of this repo's "
+        "scheduled workflows that morning; without it the entry would have "
+        "fallen back to the Black-Scholes model"),
+}
+
+
+def manual_legs(row):
+    """(leg, key) for each of this row's legs that was captured by hand. A key
+    only counts when the leg really was priced from that quote - a CHAIN leg
+    carrying its capture stamp - so a morning whose capture failed and fell
+    back to the model can never be labelled manual."""
+    o = row.get("opt") or {}
+    if o.get("basis") != "CHAIN":
+        return []
+    t, legs = row.get("t"), []
+    ke = f"{t}|{row.get('entry_date')}|E"
+    if o.get("captured_e") and ke in MANUAL_CAPTURES:
+        legs.append(("entry", ke))
+    kx = f"{t}|{row.get('exit_date')}|X"
+    if row.get("exit_date") and o.get("captured_x") and kx in MANUAL_CAPTURES:
+        legs.append(("exit", kx))
+    return legs
+
+
+def manual_tag(row):
+    """Inline tag for the ticker cell; empty for a scheduled capture."""
+    return ' <span class="tag">manual capture</span>' if manual_legs(row) else ""
+
+
+def manual_note(rows):
+    """One paragraph naming every hand-captured leg among these rows."""
+    seen = {}
+    for r in rows:
+        for leg, k in manual_legs(r):
+            seen.setdefault(k, f'{r["t"]} {leg} {k.split("|")[1]}')
+    if not seen:
+        return ""
+    items = "; ".join(f"{what}: {MANUAL_CAPTURES[k]}" for k, what in seen.items())
+    return ('<p class="small"><b>Captured by hand, not by the schedule.</b> '
+            f'{items}. The quote is real and priced like any other CHAIN leg; '
+            'only the moment it was taken differs, so it says nothing about '
+            'how late the scheduled captures run.</p>')
+
+
 
 
 def real_strikes(t, expiry, tok):
@@ -739,7 +792,7 @@ def main():
             ch = ("&mdash;" if m["chain_mid"] is None else
                   f'{m["chain_mid"]:.2f} <span class="tag">'
                   + pct(100*m["chain_gap"], 1) + " vs model</span>")
-            body += (f'<tr><td><b>{m["t"]}</b></td><td>{contract(o)}</td>'
+            body += (f'<tr><td><b>{m["t"]}</b>{manual_tag(m)}</td><td>{contract(o)}</td>'
                      f'<td>{m["entry_date"]}</td><td>{m["held"]}</td>'
                      f'<td class="{sgn(m["stock_ret"])}">{pct(100*m["stock_ret"])}</td>'
                      f'<td>{o["prem_paid"]:.2f}</td><td>{m["mark_mid"]:.2f}</td>'
@@ -774,7 +827,7 @@ def main():
                          f'<td class="{sgn(c["net"])}">{pct(100*c["net"])}</td>'
                          '<td colspan="4">&mdash;</td></tr>')
                 continue
-            body += (f'<tr><td><b>{c["t"]}</b></td><td>{contract(o)}</td>'
+            body += (f'<tr><td><b>{c["t"]}</b>{manual_tag(c)}</td><td>{contract(o)}</td>'
                      f'<td>{c["entry_date"]}</td><td>{c["exit_date"]}</td>'
                      f'<td>{c["bars"]}</td><td>{c["reason"]}</td>'
                      f'<td class="{sgn(c["net"])}">{pct(100*c["net"])}</td>'
@@ -790,6 +843,9 @@ def main():
                   '<th>Bars</th><th>Why</th><th>Stock</th><th>Prem in</th>'
                   '<th>Prem out</th><th>Ctr</th><th>Option</th>'
                   f'<th>P&amp;L</th></tr>{body}</table></div></details>')
+
+    # Outside both <details> so it shows without opening either table.
+    rowsh += manual_note(open_marks + st["closed"])
 
     # ---- queue and skips ------------------------------------------------
     if st["queued"] or st["skipped"]:
