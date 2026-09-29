@@ -18,7 +18,7 @@ name: ci
 #   notify_jason_test (31)     -         yes         yes
 #   notify_robert_test (35)   yes        yes         yes
 #   jason_shadow_test         yes        yes         yes
-#   robert_shadow_manual (28)  -          -          yes   (added 2026-09-28)
+#   robert_shadow_manual (32)  -          -          yes   (added 2026-09-28)
 #
 # smoke_test.js is what daily_build.sh calls its RENDER GATE - the thing that
 # refused to publish an unverified page on 09/14 and 09/15, working exactly as

@@ -205,6 +205,39 @@ call = re.search(r'scripts/robert_shadow\.py".*?--splice', sh, re.S)
 t("daily_build.sh hands robert_shadow the repo's store explicitly, as it does JASON",
   bool(call) and '--snaps "$REPO/data/robert_chain_snaps.json"' in call.group(0))
 
+# Both halves of that bug, as invariants over the committed data. WRITE side:
+# ASML's 2026-09-17 exit was priced from a real quote that the Mac then filed
+# in the dashboard repo's stray store, so this ledger carried a CHAIN exit with
+# no measurement behind it until the quote was recovered on 09-28. READ side:
+# TRGP's 09-28 entry quote sat in this store while the build froze the leg on
+# the model. Either one now fails CI on the next push to main.
+for book, led_p, st_p in (("ROBERT", "robert_shadow.json", "robert_chain_snaps.json"),
+                          ("JASON", "jason_shadow.json", "jason_chain_snaps.json")):
+    bl = json.load(open(os.path.join(ROOT, "data", led_p)))
+    bs = json.load(open(os.path.join(ROOT, "data", st_p))).get("snaps", {})
+    brows = bl.get("open", []) + bl.get("closed", [])
+    unfiled = []
+    for r in brows:
+        o = r.get("opt") or {}
+        if o.get("basis") != "CHAIN":
+            continue
+        for side, day, cap, mid in (("E", "entry_date", "captured_e", "prem_mid"),
+                                    ("X", "exit_date", "captured_x", "exit_mid")):
+            if not o.get(cap):
+                continue
+            s = bs.get("%s|%s|%s" % (r["t"], r.get(day), side)) or {}
+            if s.get("captured") != o[cap] or abs((s.get("mid") or 0) - (o.get(mid) or 0)) > 1e-9:
+                unfiled.append("%s %s %s" % (r["t"], r.get(day), side))
+    t(f"{book}: every quoted leg's quote is on file in {st_p} (same mid, same stamp)"
+      + (f" - missing: {unfiled}" if unfiled else ""), not unfiled)
+    unused = []
+    for r in brows:
+        k = "%s|%s|E" % (r["t"], r.get("entry_date"))
+        if k in bs and (r.get("opt") or {}).get("captured_e") != bs[k].get("captured"):
+            unused.append(k)
+    t(f"{book}: every stored entry quote for a ledger row priced that row's leg"
+      + (f" - on the model instead: {unused}" if unused else ""), not unused)
+
 print()
 if fails:
     sys.exit("FAILURES:\n  " + "\n  ".join(fails))

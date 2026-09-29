@@ -115,6 +115,10 @@ unless marked UTC/ET.
   quote went into a stray store in the dashboard repo and TRGP's 09-28 entry was
   frozen on the model beside its real quote. Fixed 09-28: explicit `--snaps`
   and a script-anchored default. Pass repo paths explicitly in every step.
+  ASML's quote was recovered from the Mac and filed 09-28 (the ledger's exit
+  was already priced from it). robert_shadow_manual_test.py now fails CI if a
+  quoted leg's quote is missing from its store or a stored entry quote went
+  unused by its row, in both books.
 - Commit stamps and earnings --today must use the Chicago date, not UTC.
 - Dot tickers (BRK.B) return empty quotes from Tradier, not errors.
 - `SCAN.as_of` is the sweep run date, not its last bar; age is floored at 0.
