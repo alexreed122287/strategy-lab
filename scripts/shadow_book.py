@@ -706,10 +706,18 @@ def main():
             p.update(state="open", entry_date=as_of, entry_px=sig_close)
         led["positions"].append(p)
         if not first_pass:
-            p["note"] = ("late-queued %s: feed was stale when this bar was first "
-                         "processed; fills at the next session open, same as a "
-                         "first-pass queue" % as_of)
-            print("shadow: late-queue %s %s (feed fresh on rerun)"
+            # Say only what this run knows. The 08-14 late-queues were a stale
+            # feed, but a rerun also lands here when its inputs differ from the
+            # first pass's: on 2026-09-28 a manual cloud rebuild's generator
+            # called RSI2 VO a TAKE (RSI(2) 2.63) where the Mac's first-pass
+            # generator had WATCH (12.94), both feeds dated the same bar, and
+            # this line recorded "feed was stale" - a cause nobody observed.
+            p["note"] = ("late-queued %s: not queued when this bar was first "
+                         "processed (a stale feed on that pass, or different "
+                         "inputs since, e.g. another generator run); fills at "
+                         "the next session open, same as a first-pass queue"
+                         % as_of)
+            print("shadow: late-queue %s %s (not queued on this bar's first pass)"
                   % (book, sym), file=sys.stderr)
 
     if (booksig.get("as_of") == as_of):

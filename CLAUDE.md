@@ -64,6 +64,11 @@ unless marked UTC/ET.
   a feed advances (stateless-runner dedupe). Mail differs by path: the cloud
   sends ONE combined mail (`notify_daily.py`) + the subscriber digest; the Mac
   sends `notify_robert.py` + `notify_buys.py` separately and no JASON mail.
+  A manual dispatch always proceeds, even on a day the Mac built. The ROBERT
+  and JASON ledgers are idempotent on a same-bar re-run, but the cloud's own
+  generator replaces SIGNALS and the shadow book late-queues any TAKE it finds
+  that the Mac's missed (RSI2 VO 2026-09-28: Mac RSI(2) 12.94 WATCH, cloud
+  2.63 TAKE; kept on Alex's decision). Treat a dispatch as a publish.
 - `robert-entry-snap.yml` / `jason-entry-snap.yml`: UTC crons 10:45-14:45 as a
   drift LADDER; whole-session window, frozen key, earliest in-window firing wins.
   Captures real option quotes into data/*_chain_snaps.json (never rewritten).

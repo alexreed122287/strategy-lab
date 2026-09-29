@@ -1817,7 +1817,7 @@
    "exit_reason": null,
    "net": null,
    "state": "pending_open",
-   "note": "late-queued 2026-09-28: feed was stale when this bar was first processed; fills at the next session open, same as a first-pass queue"
+   "note": "late-queued 2026-09-28 by the manual cloud rebuild (daily-build run #95, 19:29 CT), not because a feed was stale: the Mac build's generator (15:39 CT) scored VO's RSI(2) at 12.94, a WATCH, so the bar's first pass did not queue it; the cloud generator scored 2.63, a TAKE, the same RSI(2) both builds computed from their Tradier bars. Kept on the owner's decision; fills at the next session open, same as a first-pass queue"
   }
  ],
  "closed": [
