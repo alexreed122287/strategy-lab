@@ -72,6 +72,9 @@ unless marked UTC/ET.
   the row - scripts/robert_shadow.py for ROBERT (first case: TRGP 2026-09-28,
   run #60), scripts/jason_shadow.py for JASON. Separate maps on purpose: the
   two snap stores share the key format, so one map would bleed across books.
+  TRGP's 09-28 leg was re-priced by hand from that quote (owner's decision,
+  before any exit) after the wrong-store bug below froze it on the model; the
+  replaced leg is kept under `opt.corrected.was`. Do not "restore" it.
 - `robert-chain-gate.yml`: Mondays 13:40/14:40/17:40 UTC. `OI_MIN = 10`; cull
   suspended 08/27, threshold deliberately not moved. Do not change either
   without a reason written beside the constant.
