@@ -1801,6 +1801,23 @@
    "exit_reason": null,
    "net": null,
    "state": "pending_open"
+  },
+  {
+   "book": "RSI2",
+   "sym": "VO",
+   "signal_date": "2026-09-28",
+   "basis": "moo",
+   "bars_held": 0,
+   "signal_close": 79.0,
+   "slot_rank": 6,
+   "entry_date": null,
+   "entry_px": null,
+   "exit_date": null,
+   "exit_px": null,
+   "exit_reason": null,
+   "net": null,
+   "state": "pending_open",
+   "note": "late-queued 2026-09-28: feed was stale when this bar was first processed; fills at the next session open, same as a first-pass queue"
   }
  ],
  "closed": [
