@@ -220,9 +220,18 @@ def main():
     t("the digest carries the evidence basis in BOTH parts",
       nb.evidence_basis(scan_as_of, as_of) in text
       and nb.evidence_basis(scan_as_of, as_of) in dhtml)
-    numbered = [r for r in ranked + gw_book + paper if r.get("_rank") is not None]
-    blocked = [r for r in ranked + gw_book + paper
-               if r.get("_rank") is None and r.get("rankable")]
+    # One entry per ROW, as compose_simple builds it: a row can sit in two input
+    # lists at once (2026-09-30: ESI GAPW_RSI14 was both a RANKED signal and a
+    # Gap Widen book row, the same object), and compose_simple keeps it once.
+    # Concatenating the lists counted it twice and read as a duplicate rank 5
+    # while the mailed digest numbered 1..35 correctly, which held the mail.
+    _rows, _ids = [], set()
+    for r in ranked + gw_book + paper:
+        if id(r) not in _ids:
+            _ids.add(id(r))
+            _rows.append(r)
+    numbered = [r for r in _rows if r.get("_rank") is not None]
+    blocked = [r for r in _rows if r.get("_rank") is None and r.get("rankable")]
     t("digest numbers exactly the ranked rows, in the same order",
       [(r["sym"], r["strat"]) for r in sorted(numbered, key=lambda x: x["_rank"])]
       == [(r["sym"], r["strat"]) for r in ranked])
