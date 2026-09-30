@@ -120,20 +120,49 @@
     "cost": 10008.6,
     "slot": 12500.0
    }
+  },
+  {
+   "t": "NUE",
+   "signal_date": "2026-09-29",
+   "entry_date": "2026-09-30",
+   "entry_px": 237.52,
+   "opt": {
+    "expiry": "2026-11-20",
+    "strike": 210.0,
+    "dte": 51,
+    "delta": 0.805,
+    "iv": 0.4002,
+    "sigma": 0.4002,
+    "prem_mid": 31.85,
+    "prem_paid": 31.9861,
+    "spread_e": 5.34,
+    "bid_e": 31.0,
+    "ask_e": 32.7,
+    "oi_e": 0,
+    "vol_e": 0,
+    "extrinsic_pct": 16.0,
+    "captured_e": "2026-09-30 12:30 ET",
+    "basis": "CHAIN",
+    "strike_src": "chain",
+    "f": 0.16,
+    "contracts": 3,
+    "cost": 9595.83,
+    "slot": 12500.0
+   }
   }
  ],
  "queued": [
   {
-   "t": "NUE",
-   "signal_date": "2026-09-29",
-   "close": 236.24,
-   "vap50": 254.884,
-   "atr14": 7.639,
-   "threshold": 243.4254,
-   "rs252": 0.5556,
-   "iv_proxy": 0.3373,
+   "t": "TRGP",
+   "signal_date": "2026-09-30",
+   "close": 270.31,
+   "vap50": 282.3459,
+   "atr14": 7.3266,
+   "threshold": 271.3561,
+   "rs252": 0.4495,
+   "iv_proxy": 0.21,
    "earn_armed": true,
-   "earn_seed": "2026-09-28"
+   "earn_seed": "2026-09-30"
   }
  ],
  "closed": [
@@ -257,7 +286,8 @@
   "STX": "2026-09-15",
   "FDX": "2026-09-17",
   "ROST": "2026-09-17",
-  "NUE": "2026-09-29"
+  "NUE": "2026-09-29",
+  "TRGP": "2026-09-30"
  },
- "last_as_of": "2026-09-29"
+ "last_as_of": "2026-09-30"
 }
