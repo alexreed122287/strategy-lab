@@ -6,35 +6,6 @@
  "slot_dollars": 12500.0,
  "open": [
   {
-   "t": "AMAT",
-   "signal_date": "2026-09-11",
-   "entry_date": "2026-09-14",
-   "entry_px": 422.2,
-   "opt": {
-    "expiry": "2026-10-16",
-    "strike": 380.0,
-    "dte": 32,
-    "delta": 0.809,
-    "iv": 0.5688,
-    "sigma": 0.5688,
-    "prem_mid": 57.375,
-    "prem_paid": 57.6908,
-    "spread_e": 6.88,
-    "bid_e": 55.4,
-    "ask_e": 59.35,
-    "oi_e": 40,
-    "vol_e": 12,
-    "extrinsic_pct": 15.4,
-    "captured_e": "2026-09-14 13:02 ET",
-    "basis": "CHAIN",
-    "strike_src": "chain",
-    "f": 0.16,
-    "contracts": 2,
-    "cost": 11538.16,
-    "slot": 12500.0
-   }
-  },
-  {
    "t": "CAT",
    "signal_date": "2026-09-11",
    "entry_date": "2026-09-14",
@@ -151,7 +122,20 @@
    }
   }
  ],
- "queued": [],
+ "queued": [
+  {
+   "t": "NUE",
+   "signal_date": "2026-09-29",
+   "close": 236.24,
+   "vap50": 254.884,
+   "atr14": 7.639,
+   "threshold": 243.4254,
+   "rs252": 0.5556,
+   "iv_proxy": 0.3373,
+   "earn_armed": true,
+   "earn_seed": "2026-09-28"
+  }
+ ],
  "closed": [
   {
    "t": "STX",
@@ -207,17 +191,73 @@
      }
     }
    }
+  },
+  {
+   "t": "AMAT",
+   "entry_date": "2026-09-14",
+   "exit_date": "2026-09-29",
+   "entry_px": 422.2,
+   "exit_px": 512.01,
+   "bars": 11,
+   "reason": "VAP",
+   "net": 0.21223,
+   "opt": {
+    "expiry": "2026-10-16",
+    "strike": 380.0,
+    "dte": 32,
+    "delta": 0.809,
+    "iv": 0.5688,
+    "sigma": 0.5688,
+    "prem_mid": 57.375,
+    "prem_paid": 57.6908,
+    "spread_e": 6.88,
+    "bid_e": 55.4,
+    "ask_e": 59.35,
+    "oi_e": 40,
+    "vol_e": 12,
+    "extrinsic_pct": 15.4,
+    "captured_e": "2026-09-14 13:02 ET",
+    "basis": "CHAIN",
+    "strike_src": "chain",
+    "f": 0.16,
+    "contracts": 2,
+    "cost": 11538.16,
+    "slot": 12500.0,
+    "exit_mid": 133.0,
+    "spread_x": 4.44,
+    "bid_x": 130.05,
+    "ask_x": 135.95,
+    "captured_x": "2026-09-29 21:04 ET",
+    "exit_recv": 132.5276,
+    "ret": 1.29721,
+    "pnl": 14967.36,
+    "band": {
+     "0.16": {
+      "ret": 1.29721,
+      "pnl": 14967.42
+     },
+     "0.50": {
+      "ret": 1.25359,
+      "pnl": 14464.12
+     },
+     "1.00": {
+      "ret": 1.19124,
+      "pnl": 13744.72
+     }
+    }
+   }
   }
  ],
  "skipped": [],
- "closed_total": 1,
+ "closed_total": 2,
  "last_signal": {
   "AMAT": "2026-09-11",
   "CAT": "2026-09-11",
   "CSCO": "2026-09-14",
   "STX": "2026-09-15",
   "FDX": "2026-09-17",
-  "ROST": "2026-09-17"
+  "ROST": "2026-09-17",
+  "NUE": "2026-09-29"
  },
- "last_as_of": "2026-09-28"
+ "last_as_of": "2026-09-29"
 }
