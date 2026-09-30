@@ -161,8 +161,28 @@
    "side": "X",
    "date": "2026-09-29",
    "captured": "2026-09-29 21:04 ET"
+  },
+  "NUE|2026-09-30|E": {
+   "strike": 210.0,
+   "bid": 31.0,
+   "ask": 32.7,
+   "mid": 31.85,
+   "spread_pct": 5.34,
+   "delta": 0.805,
+   "iv": 0.4002,
+   "oi": 0,
+   "volume": 0,
+   "extrinsic_pct": 16.0,
+   "expiry": "2026-11-20",
+   "spot": 236.75,
+   "dte": 51,
+   "ticker": "NUE",
+   "side": "E",
+   "date": "2026-09-30",
+   "captured": "2026-09-30 12:30 ET",
+   "late_min": 165
   }
  },
- "count": 8,
- "updated": "2026-09-30 01:04 UTC"
+ "count": 9,
+ "updated": "2026-09-30 16:30 UTC"
 }
