@@ -1,53 +1,5 @@
 {
- "open": [
-  {
-   "t": "TRGP",
-   "signal_date": "2026-09-25",
-   "entry_date": "2026-09-28",
-   "entry_px": 280.9,
-   "opt": {
-    "expiry": "2026-11-20",
-    "strike": 250.0,
-    "dte": 53,
-    "delta": 0.789,
-    "iv": 0.3669,
-    "sigma": 0.3669,
-    "prem_mid": 31.45,
-    "prem_paid": 31.6981,
-    "spread_e": 9.86,
-    "bid_e": 29.9,
-    "ask_e": 33.0,
-    "oi_e": 1,
-    "vol_e": 0,
-    "extrinsic_pct": 18.3,
-    "captured_e": "2026-09-28 13:38 ET",
-    "basis": "CHAIN",
-    "strike_src": "chain",
-    "f": 0.16,
-    "contracts": 4,
-    "cost": 12679.24,
-    "corrected": {
-     "on": "2026-09-28",
-     "by": "owner's decision, applied by hand",
-     "why": "The Mac build of 2026-09-28 (a0ffb74) read robert_shadow's snap store from $WORK (the dashboard repo) instead of this repo, and froze this entry on the model although TRGP|2026-09-28|E was already on main. Fixed in PR #105. Re-priced from that captured quote the same evening, before any exit, exactly as freeze_entry would have with the right store.",
-     "was": {
-      "expiry": "2026-11-20",
-      "strike": 260.0,
-      "dte": 53,
-      "sigma": 0.2352,
-      "delta": 0.83,
-      "prem_mid": 24.4071,
-      "prem_paid": 24.7122,
-      "basis": "MODEL",
-      "strike_src": "chain",
-      "extrinsic_pct": 14.4,
-      "contracts": 6,
-      "cost": 14827.32
-     }
-    }
-   }
-  }
- ],
+ "open": [],
  "queued": [],
  "closed": [
   {
@@ -575,9 +527,82 @@
      }
     }
    }
+  },
+  {
+   "t": "TRGP",
+   "entry_date": "2026-09-28",
+   "exit_date": "2026-10-01",
+   "entry_px": 280.9,
+   "exit_px": 279.31,
+   "bars": 3,
+   "reason": "SMA5",
+   "net": -0.00606,
+   "opt": {
+    "expiry": "2026-11-20",
+    "strike": 250.0,
+    "dte": 53,
+    "delta": 0.789,
+    "iv": 0.3669,
+    "sigma": 0.3669,
+    "prem_mid": 31.45,
+    "prem_paid": 31.6981,
+    "spread_e": 9.86,
+    "bid_e": 29.9,
+    "ask_e": 33.0,
+    "oi_e": 1,
+    "vol_e": 0,
+    "extrinsic_pct": 18.3,
+    "captured_e": "2026-09-28 13:38 ET",
+    "basis": "CHAIN",
+    "strike_src": "chain",
+    "f": 0.16,
+    "contracts": 4,
+    "cost": 12679.24,
+    "corrected": {
+     "on": "2026-09-28",
+     "by": "owner's decision, applied by hand",
+     "why": "The Mac build of 2026-09-28 (a0ffb74) read robert_shadow's snap store from $WORK (the dashboard repo) instead of this repo, and froze this entry on the model although TRGP|2026-09-28|E was already on main. Fixed in PR #105. Re-priced from that captured quote the same evening, before any exit, exactly as freeze_entry would have with the right store.",
+     "was": {
+      "expiry": "2026-11-20",
+      "strike": 260.0,
+      "dte": 53,
+      "sigma": 0.2352,
+      "delta": 0.83,
+      "prem_mid": 24.4071,
+      "prem_paid": 24.7122,
+      "basis": "MODEL",
+      "strike_src": "chain",
+      "extrinsic_pct": 14.4,
+      "contracts": 6,
+      "cost": 14827.32
+     }
+    },
+    "exit_mid": 32.85,
+    "spread_x": 9.44,
+    "bid_x": 31.3,
+    "ask_x": 34.4,
+    "captured_x": "2026-10-01 21:30 ET",
+    "exit_recv": 32.6019,
+    "ret": 0.02851,
+    "pnl": 361.52,
+    "band": {
+     "0.16": {
+      "ret": 0.02851,
+      "pnl": 361.54
+     },
+     "0.50": {
+      "ret": -0.00467,
+      "pnl": -60.2
+     },
+     "1.00": {
+      "ret": -0.05154,
+      "pnl": -680.4
+     }
+    }
+   }
   }
  ],
  "skipped": [],
- "closed_total": 16,
- "last_as_of": "2026-09-30"
+ "closed_total": 17,
+ "last_as_of": "2026-10-01"
 }

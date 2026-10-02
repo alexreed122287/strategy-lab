@@ -201,8 +201,28 @@
    "date": "2026-10-01",
    "captured": "2026-10-01 13:08 ET",
    "late_min": 203
+  },
+  "CAT|2026-10-01|X": {
+   "strike": 720.0,
+   "bid": 105.35,
+   "ask": 114.25,
+   "mid": 109.8,
+   "spread_pct": 8.11,
+   "delta": 0.962,
+   "iv": 0.5851,
+   "oi": 56,
+   "volume": 0,
+   "extrinsic_pct": 3.1,
+   "expiry": "2026-10-16",
+   "spot": 826.35,
+   "dte": 15,
+   "occ": "CAT261016C00720000",
+   "ticker": "CAT",
+   "side": "X",
+   "date": "2026-10-01",
+   "captured": "2026-10-01 21:31 ET"
   }
  },
- "count": 10,
- "updated": "2026-10-01 17:08 UTC"
+ "count": 11,
+ "updated": "2026-10-02 01:31 UTC"
 }
