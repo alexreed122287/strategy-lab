@@ -221,8 +221,28 @@
    "side": "X",
    "date": "2026-10-01",
    "captured": "2026-10-01 21:31 ET"
+  },
+  "CNC|2026-10-02|E": {
+   "strike": 55.0,
+   "bid": 7.75,
+   "ask": 9.4,
+   "mid": 8.575,
+   "spread_pct": 19.24,
+   "delta": 0.771,
+   "iv": 0.4666,
+   "oi": 25,
+   "volume": 0,
+   "extrinsic_pct": 13.6,
+   "expiry": "2026-11-20",
+   "spot": 62.41,
+   "dte": 49,
+   "ticker": "CNC",
+   "side": "E",
+   "date": "2026-10-02",
+   "captured": "2026-10-02 12:21 ET",
+   "late_min": 156
   }
  },
- "count": 11,
- "updated": "2026-10-02 01:31 UTC"
+ "count": 12,
+ "updated": "2026-10-02 16:21 UTC"
 }
