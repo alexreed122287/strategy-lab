@@ -149,22 +149,38 @@
     "cost": 12256.0,
     "slot": 12500.0
    }
-  }
- ],
- "queued": [
+  },
   {
    "t": "CNC",
    "signal_date": "2026-10-01",
-   "close": 60.99,
-   "vap50": 64.5246,
-   "atr14": 2.1629,
-   "threshold": 61.2803,
-   "rs252": 0.5625,
-   "iv_proxy": 0.2952,
-   "earn_armed": true,
-   "earn_seed": "2026-09-30"
+   "entry_date": "2026-10-02",
+   "entry_px": 61.0,
+   "opt": {
+    "expiry": "2026-11-20",
+    "strike": 55.0,
+    "dte": 49,
+    "delta": 0.771,
+    "iv": 0.4666,
+    "sigma": 0.4666,
+    "prem_mid": 8.575,
+    "prem_paid": 8.707,
+    "spread_e": 19.24,
+    "bid_e": 7.75,
+    "ask_e": 9.4,
+    "oi_e": 25,
+    "vol_e": 0,
+    "extrinsic_pct": 13.6,
+    "captured_e": "2026-10-02 12:21 ET",
+    "basis": "CHAIN",
+    "strike_src": "chain",
+    "f": 0.16,
+    "contracts": 14,
+    "cost": 12189.8,
+    "slot": 12500.0
+   }
   }
  ],
+ "queued": [],
  "closed": [
   {
    "t": "STX",
@@ -345,5 +361,5 @@
   "TRGP": "2026-09-30",
   "CNC": "2026-10-01"
  },
- "last_as_of": "2026-10-01"
+ "last_as_of": "2026-10-02"
 }
