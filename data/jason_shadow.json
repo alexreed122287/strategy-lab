@@ -6,35 +6,6 @@
  "slot_dollars": 12500.0,
  "open": [
   {
-   "t": "CSCO",
-   "signal_date": "2026-09-14",
-   "entry_date": "2026-09-15",
-   "entry_px": 110.915,
-   "opt": {
-    "expiry": "2026-10-16",
-    "strike": 100.0,
-    "dte": 31,
-    "delta": 0.861,
-    "iv": 0.3704,
-    "sigma": 0.3704,
-    "prem_mid": 11.65,
-    "prem_paid": 11.698,
-    "spread_e": 5.15,
-    "bid_e": 11.35,
-    "ask_e": 11.95,
-    "oi_e": 1089,
-    "vol_e": 1,
-    "extrinsic_pct": 7.3,
-    "captured_e": "2026-09-15 11:40 ET",
-    "basis": "CHAIN",
-    "strike_src": "chain",
-    "f": 0.16,
-    "contracts": 10,
-    "cost": 11698.0,
-    "slot": 12500.0
-   }
-  },
-  {
    "t": "FDX",
    "signal_date": "2026-09-17",
    "entry_date": "2026-09-18",
@@ -118,35 +89,6 @@
     "f": 0.16,
     "contracts": 3,
     "cost": 9595.83,
-    "slot": 12500.0
-   }
-  },
-  {
-   "t": "TRGP",
-   "signal_date": "2026-09-30",
-   "entry_date": "2026-10-01",
-   "entry_px": 268.88,
-   "opt": {
-    "expiry": "2026-11-20",
-    "strike": 250.0,
-    "dte": 50,
-    "delta": 0.784,
-    "iv": 0.3545,
-    "sigma": 0.3545,
-    "prem_mid": 30.4,
-    "prem_paid": 30.64,
-    "spread_e": 9.87,
-    "bid_e": 28.9,
-    "ask_e": 31.9,
-    "oi_e": 1,
-    "vol_e": 0,
-    "extrinsic_pct": 16.0,
-    "captured_e": "2026-10-01 13:08 ET",
-    "basis": "CHAIN",
-    "strike_src": "chain",
-    "f": 0.16,
-    "contracts": 4,
-    "cost": 12256.0,
     "slot": 12500.0
    }
   },
@@ -346,10 +288,120 @@
      }
     }
    }
+  },
+  {
+   "t": "CSCO",
+   "entry_date": "2026-09-15",
+   "exit_date": "2026-10-05",
+   "entry_px": 110.915,
+   "exit_px": 112.82,
+   "bars": 14,
+   "reason": "VAP",
+   "net": 0.01677,
+   "opt": {
+    "expiry": "2026-10-16",
+    "strike": 100.0,
+    "dte": 31,
+    "delta": 0.861,
+    "iv": 0.3704,
+    "sigma": 0.3704,
+    "prem_mid": 11.65,
+    "prem_paid": 11.698,
+    "spread_e": 5.15,
+    "bid_e": 11.35,
+    "ask_e": 11.95,
+    "oi_e": 1089,
+    "vol_e": 1,
+    "extrinsic_pct": 7.3,
+    "captured_e": "2026-09-15 11:40 ET",
+    "basis": "CHAIN",
+    "strike_src": "chain",
+    "f": 0.16,
+    "contracts": 10,
+    "cost": 11698.0,
+    "slot": 12500.0,
+    "exit_mid": 12.975,
+    "spread_x": 5.78,
+    "bid_x": 12.6,
+    "ask_x": 13.35,
+    "captured_x": "2026-10-05 22:17 ET",
+    "exit_recv": 12.915,
+    "ret": 0.10403,
+    "pnl": 1217.0,
+    "band": {
+     "0.16": {
+      "ret": 0.10404,
+      "pnl": 1217.06
+     },
+     "0.50": {
+      "ret": 0.08369,
+      "pnl": 979.01
+     },
+     "1.00": {
+      "ret": 0.0544,
+      "pnl": 636.37
+     }
+    }
+   }
+  },
+  {
+   "t": "TRGP",
+   "entry_date": "2026-10-01",
+   "exit_date": "2026-10-05",
+   "entry_px": 268.88,
+   "exit_px": 287.4,
+   "bars": 2,
+   "reason": "VAP",
+   "net": 0.06845,
+   "opt": {
+    "expiry": "2026-11-20",
+    "strike": 250.0,
+    "dte": 50,
+    "delta": 0.784,
+    "iv": 0.3545,
+    "sigma": 0.3545,
+    "prem_mid": 30.4,
+    "prem_paid": 30.64,
+    "spread_e": 9.87,
+    "bid_e": 28.9,
+    "ask_e": 31.9,
+    "oi_e": 1,
+    "vol_e": 0,
+    "extrinsic_pct": 16.0,
+    "captured_e": "2026-10-01 13:08 ET",
+    "basis": "CHAIN",
+    "strike_src": "chain",
+    "f": 0.16,
+    "contracts": 4,
+    "cost": 12256.0,
+    "slot": 12500.0,
+    "exit_mid": 39.15,
+    "spread_x": 6.9,
+    "bid_x": 37.8,
+    "ask_x": 40.5,
+    "captured_x": "2026-10-05 22:17 ET",
+    "exit_recv": 38.9339,
+    "ret": 0.27069,
+    "pnl": 3317.56,
+    "band": {
+     "0.16": {
+      "ret": 0.27069,
+      "pnl": 3317.58
+     },
+     "0.50": {
+      "ret": 0.23514,
+      "pnl": 2881.88
+     },
+     "1.00": {
+      "ret": 0.18492,
+      "pnl": 2266.38
+     }
+    }
+   }
   }
  ],
  "skipped": [],
- "closed_total": 3,
+ "closed_total": 5,
  "last_signal": {
   "AMAT": "2026-09-11",
   "CAT": "2026-09-11",
@@ -361,5 +413,5 @@
   "TRGP": "2026-09-30",
   "CNC": "2026-10-01"
  },
- "last_as_of": "2026-10-02"
+ "last_as_of": "2026-10-05"
 }

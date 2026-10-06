@@ -241,8 +241,48 @@
    "date": "2026-10-02",
    "captured": "2026-10-02 12:21 ET",
    "late_min": 156
+  },
+  "CSCO|2026-10-05|X": {
+   "strike": 100.0,
+   "bid": 12.6,
+   "ask": 13.35,
+   "mid": 12.975,
+   "spread_pct": 5.78,
+   "delta": 0.991,
+   "iv": 0.6018,
+   "oi": 756,
+   "volume": 5,
+   "extrinsic_pct": 1.2,
+   "expiry": "2026-10-16",
+   "spot": 112.82,
+   "dte": 11,
+   "occ": "CSCO261016C00100000",
+   "ticker": "CSCO",
+   "side": "X",
+   "date": "2026-10-05",
+   "captured": "2026-10-05 22:17 ET"
+  },
+  "TRGP|2026-10-05|X": {
+   "strike": 250.0,
+   "bid": 37.8,
+   "ask": 40.5,
+   "mid": 39.15,
+   "spread_pct": 6.9,
+   "delta": 0.871,
+   "iv": 0.3286,
+   "oi": 1,
+   "volume": 0,
+   "extrinsic_pct": 4.5,
+   "expiry": "2026-11-20",
+   "spot": 287.4,
+   "dte": 46,
+   "occ": "TRGP261120C00250000",
+   "ticker": "TRGP",
+   "side": "X",
+   "date": "2026-10-05",
+   "captured": "2026-10-05 22:17 ET"
   }
  },
- "count": 12,
- "updated": "2026-10-02 16:21 UTC"
+ "count": 14,
+ "updated": "2026-10-06 02:17 UTC"
 }
