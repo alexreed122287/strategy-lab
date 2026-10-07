@@ -281,8 +281,28 @@
    "side": "X",
    "date": "2026-10-05",
    "captured": "2026-10-05 22:17 ET"
+  },
+  "CNC|2026-10-06|X": {
+   "strike": 55.0,
+   "bid": 9.55,
+   "ask": 11.65,
+   "mid": 10.6,
+   "spread_pct": 19.81,
+   "delta": 0.843,
+   "iv": 0.6569,
+   "oi": 25,
+   "volume": 0,
+   "extrinsic_pct": 9.3,
+   "expiry": "2026-11-20",
+   "spot": 64.61,
+   "dte": 45,
+   "occ": "CNC261120C00055000",
+   "ticker": "CNC",
+   "side": "X",
+   "date": "2026-10-06",
+   "captured": "2026-10-06 21:20 ET"
   }
  },
- "count": 14,
- "updated": "2026-10-06 02:17 UTC"
+ "count": 15,
+ "updated": "2026-10-07 01:20 UTC"
 }
