@@ -1,6 +1,22 @@
 {
  "open": [],
- "queued": [],
+ "queued": [
+  {
+   "t": "AMAT",
+   "signal_date": "2026-10-08",
+   "rsi2": 8.44
+  },
+  {
+   "t": "LRCX",
+   "signal_date": "2026-10-08",
+   "rsi2": 6.48
+  },
+  {
+   "t": "SOXX",
+   "signal_date": "2026-10-08",
+   "rsi2": 4.95
+  }
+ ],
  "closed": [
   {
    "t": "GOOGL",
@@ -604,5 +620,5 @@
  ],
  "skipped": [],
  "closed_total": 17,
- "last_as_of": "2026-10-06"
+ "last_as_of": "2026-10-08"
 }
