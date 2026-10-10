@@ -1,20 +1,95 @@
 {
- "open": [],
- "queued": [
+ "open": [
   {
    "t": "AMAT",
    "signal_date": "2026-10-08",
-   "rsi2": 8.44
+   "entry_date": "2026-10-09",
+   "entry_px": 518.378,
+   "opt": {
+    "expiry": "2026-11-20",
+    "strike": 440.0,
+    "dte": 42,
+    "delta": 0.81,
+    "iv": 0.5663,
+    "sigma": 0.5663,
+    "prem_mid": 82.725,
+    "prem_paid": 83.2008,
+    "spread_e": 7.19,
+    "bid_e": 79.75,
+    "ask_e": 85.7,
+    "oi_e": 1298,
+    "vol_e": 0,
+    "extrinsic_pct": 16.6,
+    "captured_e": "2026-10-09 13:12 ET",
+    "basis": "CHAIN",
+    "strike_src": "chain",
+    "f": 0.16,
+    "contracts": 1,
+    "cost": 8320.08
+   }
   },
   {
    "t": "LRCX",
    "signal_date": "2026-10-08",
-   "rsi2": 6.48
+   "entry_date": "2026-10-09",
+   "entry_px": 326.0,
+   "opt": {
+    "expiry": "2026-11-20",
+    "strike": 280.0,
+    "dte": 42,
+    "delta": 0.784,
+    "iv": 0.6046,
+    "sigma": 0.6046,
+    "prem_mid": 49.6,
+    "prem_paid": 49.7198,
+    "spread_e": 3.02,
+    "bid_e": 48.85,
+    "ask_e": 50.35,
+    "oi_e": 658,
+    "vol_e": 1,
+    "extrinsic_pct": 19.7,
+    "captured_e": "2026-10-09 13:12 ET",
+    "basis": "CHAIN",
+    "strike_src": "chain",
+    "f": 0.16,
+    "contracts": 3,
+    "cost": 14915.94
+   }
   },
   {
    "t": "SOXX",
    "signal_date": "2026-10-08",
-   "rsi2": 4.95
+   "entry_date": "2026-10-09",
+   "entry_px": 571.005,
+   "opt": {
+    "expiry": "2026-11-20",
+    "strike": 505.0,
+    "dte": 42,
+    "delta": 0.801,
+    "iv": 0.4259,
+    "sigma": 0.4259,
+    "prem_mid": 65.95,
+    "prem_paid": 66.2782,
+    "spread_e": 6.22,
+    "bid_e": 63.9,
+    "ask_e": 68.0,
+    "oi_e": 123,
+    "vol_e": 0,
+    "extrinsic_pct": 19.0,
+    "captured_e": "2026-10-09 13:12 ET",
+    "basis": "CHAIN",
+    "strike_src": "chain",
+    "f": 0.16,
+    "contracts": 2,
+    "cost": 13255.64
+   }
+  }
+ ],
+ "queued": [
+  {
+   "t": "AMD",
+   "signal_date": "2026-10-09",
+   "rsi2": 9.91
   }
  ],
  "closed": [
@@ -620,5 +695,5 @@
  ],
  "skipped": [],
  "closed_total": 17,
- "last_as_of": "2026-10-08"
+ "last_as_of": "2026-10-09"
 }
