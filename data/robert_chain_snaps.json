@@ -222,8 +222,28 @@
    "date": "2026-10-09",
    "captured": "2026-10-09 13:12 ET",
    "late_min": 207
+  },
+  "AMD|2026-10-12|E": {
+   "strike": 520.0,
+   "bid": 86.9,
+   "ask": 91.05,
+   "mid": 88.975,
+   "spread_pct": 4.66,
+   "delta": 0.807,
+   "iv": 0.5273,
+   "oi": 1937,
+   "volume": 41,
+   "extrinsic_pct": 16.6,
+   "expiry": "2026-11-20",
+   "spot": 594.24,
+   "dte": 39,
+   "ticker": "AMD",
+   "side": "E",
+   "date": "2026-10-12",
+   "captured": "2026-10-12 16:00 ET",
+   "late_min": 375
   }
  },
- "updated": "2026-10-09 17:12 UTC",
- "count": 11
+ "updated": "2026-10-12 20:00 UTC",
+ "count": 12
 }
