@@ -83,13 +83,51 @@
     "contracts": 2,
     "cost": 13255.64
    }
+  },
+  {
+   "t": "AMD",
+   "signal_date": "2026-10-09",
+   "entry_date": "2026-10-12",
+   "entry_px": 599.93,
+   "opt": {
+    "expiry": "2026-11-20",
+    "strike": 520.0,
+    "dte": 39,
+    "delta": 0.807,
+    "iv": 0.5273,
+    "sigma": 0.5273,
+    "prem_mid": 88.975,
+    "prem_paid": 89.3067,
+    "spread_e": 4.66,
+    "bid_e": 86.9,
+    "ask_e": 91.05,
+    "oi_e": 1937,
+    "vol_e": 41,
+    "extrinsic_pct": 16.6,
+    "captured_e": "2026-10-12 16:00 ET",
+    "basis": "CHAIN",
+    "strike_src": "chain",
+    "f": 0.16,
+    "contracts": 1,
+    "cost": 8930.67
+   }
   }
  ],
  "queued": [
   {
-   "t": "AMD",
-   "signal_date": "2026-10-09",
-   "rsi2": 9.91
+   "t": "KLAC",
+   "signal_date": "2026-10-12",
+   "rsi2": 2.34
+  },
+  {
+   "t": "MU",
+   "signal_date": "2026-10-12",
+   "rsi2": 8.75
+  },
+  {
+   "t": "TER",
+   "signal_date": "2026-10-12",
+   "rsi2": 9.36
   }
  ],
  "closed": [
@@ -695,5 +733,5 @@
  ],
  "skipped": [],
  "closed_total": 17,
- "last_as_of": "2026-10-09"
+ "last_as_of": "2026-10-12"
 }
