@@ -301,8 +301,28 @@
    "side": "X",
    "date": "2026-10-06",
    "captured": "2026-10-06 21:20 ET"
+  },
+  "NUE|2026-10-13|X": {
+   "strike": 210.0,
+   "bid": 44.4,
+   "ask": 47.3,
+   "mid": 45.85,
+   "spread_pct": 6.32,
+   "delta": 0.925,
+   "iv": 0.5489,
+   "oi": 4,
+   "volume": 0,
+   "extrinsic_pct": 4.5,
+   "expiry": "2026-11-20",
+   "spot": 253.8,
+   "dte": 38,
+   "occ": "NUE261120C00210000",
+   "ticker": "NUE",
+   "side": "X",
+   "date": "2026-10-13",
+   "captured": "2026-10-13 20:54 ET"
   }
  },
- "count": 15,
- "updated": "2026-10-07 01:20 UTC"
+ "count": 16,
+ "updated": "2026-10-14 00:54 UTC"
 }

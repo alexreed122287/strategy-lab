@@ -62,35 +62,6 @@
     "cost": 10008.6,
     "slot": 12500.0
    }
-  },
-  {
-   "t": "NUE",
-   "signal_date": "2026-09-29",
-   "entry_date": "2026-09-30",
-   "entry_px": 237.52,
-   "opt": {
-    "expiry": "2026-11-20",
-    "strike": 210.0,
-    "dte": 51,
-    "delta": 0.805,
-    "iv": 0.4002,
-    "sigma": 0.4002,
-    "prem_mid": 31.85,
-    "prem_paid": 31.9861,
-    "spread_e": 5.34,
-    "bid_e": 31.0,
-    "ask_e": 32.7,
-    "oi_e": 0,
-    "vol_e": 0,
-    "extrinsic_pct": 16.0,
-    "captured_e": "2026-09-30 12:30 ET",
-    "basis": "CHAIN",
-    "strike_src": "chain",
-    "f": 0.16,
-    "contracts": 3,
-    "cost": 9595.83,
-    "slot": 12500.0
-   }
   }
  ],
  "queued": [],
@@ -424,10 +395,65 @@
      }
     }
    }
+  },
+  {
+   "t": "NUE",
+   "entry_date": "2026-09-30",
+   "exit_date": "2026-10-13",
+   "entry_px": 237.52,
+   "exit_px": 253.8,
+   "bars": 9,
+   "reason": "VAP",
+   "net": 0.06811,
+   "opt": {
+    "expiry": "2026-11-20",
+    "strike": 210.0,
+    "dte": 51,
+    "delta": 0.805,
+    "iv": 0.4002,
+    "sigma": 0.4002,
+    "prem_mid": 31.85,
+    "prem_paid": 31.9861,
+    "spread_e": 5.34,
+    "bid_e": 31.0,
+    "ask_e": 32.7,
+    "oi_e": 0,
+    "vol_e": 0,
+    "extrinsic_pct": 16.0,
+    "captured_e": "2026-09-30 12:30 ET",
+    "basis": "CHAIN",
+    "strike_src": "chain",
+    "f": 0.16,
+    "contracts": 3,
+    "cost": 9595.83,
+    "slot": 12500.0,
+    "exit_mid": 45.85,
+    "spread_x": 6.32,
+    "bid_x": 44.4,
+    "ask_x": 47.3,
+    "captured_x": "2026-10-13 20:54 ET",
+    "exit_recv": 45.6182,
+    "ret": 0.42619,
+    "pnl": 4089.63,
+    "band": {
+     "0.16": {
+      "ret": 0.42619,
+      "pnl": 4089.65
+     },
+     "0.50": {
+      "ret": 0.39815,
+      "pnl": 3820.58
+     },
+     "1.00": {
+      "ret": 0.35782,
+      "pnl": 3433.58
+     }
+    }
+   }
   }
  ],
  "skipped": [],
- "closed_total": 6,
+ "closed_total": 7,
  "last_signal": {
   "AMAT": "2026-09-11",
   "CAT": "2026-09-11",
@@ -439,5 +465,5 @@
   "TRGP": "2026-09-30",
   "CNC": "2026-10-01"
  },
- "last_as_of": "2026-10-12"
+ "last_as_of": "2026-10-13"
 }

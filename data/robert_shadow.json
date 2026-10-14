@@ -111,25 +111,93 @@
     "contracts": 1,
     "cost": 8930.67
    }
-  }
- ],
- "queued": [
+  },
   {
    "t": "KLAC",
    "signal_date": "2026-10-12",
-   "rsi2": 2.34
+   "entry_date": "2026-10-13",
+   "entry_px": 185.415,
+   "opt": {
+    "expiry": "2026-11-20",
+    "strike": 160.0,
+    "dte": 38,
+    "delta": 0.787,
+    "iv": 0.5669,
+    "sigma": 0.5669,
+    "prem_mid": 28.05,
+    "prem_paid": 28.4099,
+    "spread_e": 16.04,
+    "bid_e": 25.8,
+    "ask_e": 30.3,
+    "oi_e": 40,
+    "vol_e": 0,
+    "extrinsic_pct": 19.3,
+    "captured_e": "2026-10-13 13:48 ET",
+    "basis": "CHAIN",
+    "strike_src": "chain",
+    "f": 0.16,
+    "contracts": 5,
+    "cost": 14204.95
+   }
   },
   {
    "t": "MU",
    "signal_date": "2026-10-12",
-   "rsi2": 8.75
+   "entry_date": "2026-10-13",
+   "entry_px": 934.07,
+   "opt": {
+    "expiry": "2026-11-20",
+    "strike": 830.0,
+    "dte": 38,
+    "delta": 0.808,
+    "iv": 0.5067,
+    "sigma": 0.5067,
+    "prem_mid": 128.925,
+    "prem_paid": 129.4727,
+    "spread_e": 5.31,
+    "bid_e": 125.5,
+    "ask_e": 132.35,
+    "oi_e": 559,
+    "vol_e": 0,
+    "extrinsic_pct": 17.2,
+    "captured_e": "2026-10-13 13:48 ET",
+    "basis": "CHAIN",
+    "strike_src": "chain",
+    "f": 0.16,
+    "contracts": 1,
+    "cost": 12947.27
+   }
   },
   {
    "t": "TER",
    "signal_date": "2026-10-12",
-   "rsi2": 9.36
+   "entry_date": "2026-10-13",
+   "entry_px": 371.5,
+   "opt": {
+    "expiry": "2026-11-20",
+    "strike": 320.0,
+    "dte": 38,
+    "delta": 0.789,
+    "iv": 0.714,
+    "sigma": 0.714,
+    "prem_mid": 67.05,
+    "prem_paid": 67.522,
+    "spread_e": 8.8,
+    "bid_e": 64.1,
+    "ask_e": 70.0,
+    "oi_e": 274,
+    "vol_e": 0,
+    "extrinsic_pct": 19.7,
+    "captured_e": "2026-10-13 13:48 ET",
+    "basis": "CHAIN",
+    "strike_src": "chain",
+    "f": 0.16,
+    "contracts": 2,
+    "cost": 13504.4
+   }
   }
  ],
+ "queued": [],
  "closed": [
   {
    "t": "GOOGL",
@@ -733,5 +801,5 @@
  ],
  "skipped": [],
  "closed_total": 17,
- "last_as_of": "2026-10-12"
+ "last_as_of": "2026-10-13"
 }
