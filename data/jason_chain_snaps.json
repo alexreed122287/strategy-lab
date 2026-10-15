@@ -321,8 +321,48 @@
    "side": "X",
    "date": "2026-10-13",
    "captured": "2026-10-13 20:54 ET"
+  },
+  "AMAT|2026-10-15|E": {
+   "strike": 380.0,
+   "bid": 55.85,
+   "ask": 62.75,
+   "mid": 59.3,
+   "spread_pct": 11.64,
+   "delta": 0.781,
+   "iv": 0.5414,
+   "oi": 210,
+   "volume": 0,
+   "extrinsic_pct": 19.7,
+   "expiry": "2026-11-20",
+   "spot": 427.61,
+   "dte": 36,
+   "ticker": "AMAT",
+   "side": "E",
+   "date": "2026-10-15",
+   "captured": "2026-10-15 11:19 ET",
+   "late_min": 94
+  },
+  "MU|2026-10-15|E": {
+   "strike": 810.0,
+   "bid": 123.75,
+   "ask": 132.05,
+   "mid": 127.9,
+   "spread_pct": 6.49,
+   "delta": 0.785,
+   "iv": 0.5258,
+   "oi": 727,
+   "volume": 10,
+   "extrinsic_pct": 19.5,
+   "expiry": "2026-11-20",
+   "spot": 913.0,
+   "dte": 36,
+   "ticker": "MU",
+   "side": "E",
+   "date": "2026-10-15",
+   "captured": "2026-10-15 11:19 ET",
+   "late_min": 94
   }
  },
- "count": 16,
- "updated": "2026-10-14 00:54 UTC"
+ "count": 18,
+ "updated": "2026-10-15 15:19 UTC"
 }
