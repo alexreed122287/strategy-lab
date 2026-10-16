@@ -361,8 +361,28 @@
    "date": "2026-10-15",
    "captured": "2026-10-15 11:19 ET",
    "late_min": 94
+  },
+  "ROST|2026-10-15|X": {
+   "strike": 200.0,
+   "bid": 35.3,
+   "ask": 38.5,
+   "mid": 36.9,
+   "spread_pct": 8.67,
+   "delta": 0.94,
+   "iv": 0.5052,
+   "oi": 9,
+   "volume": 0,
+   "extrinsic_pct": 5.6,
+   "expiry": "2026-11-20",
+   "spot": 234.83,
+   "dte": 36,
+   "occ": "ROST261120C00200000",
+   "ticker": "ROST",
+   "side": "X",
+   "date": "2026-10-15",
+   "captured": "2026-10-15 20:11 ET"
   }
  },
- "count": 18,
- "updated": "2026-10-15 15:19 UTC"
+ "count": 19,
+ "updated": "2026-10-16 00:11 UTC"
 }
