@@ -158,9 +158,12 @@ jobs:
           # --extra: signals-universe names no page blob references, so
           # page_tickers() never sees them (they came in with the 09-04 brain
           # push). Without this they sit in the universe and never get bars.
+          # CRWV left the list 2026-09-28: SCAN has carried it since the 09-17
+          # sweep, so page_tickers() fetches it. If a sweep ever drops it from
+          # SCAN it needs to come back here.
           python3 scripts/dump_closes.py --index index.html \
             --out /tmp/bars.json --days 600 --ohlcv \
-            --extra CRWV,ERIE,NVR
+            --extra ERIE,NVR
           python3 -c "import json;b=json.load(open('/tmp/bars.json'));print('bars for',len(b),'symbols')"
 
       # There is no market-data-brain here, so this used to emit earnings:0 -
