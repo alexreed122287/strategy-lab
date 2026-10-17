@@ -251,13 +251,41 @@
     "contracts": 2,
     "cost": 11265.38
    }
+  },
+  {
+   "t": "SNX",
+   "signal_date": "2026-10-15",
+   "entry_date": "2026-10-16",
+   "entry_px": 253.0,
+   "opt": {
+    "expiry": "2026-11-20",
+    "strike": 230.0,
+    "dte": 35,
+    "delta": 0.791,
+    "iv": 0.381,
+    "sigma": 0.381,
+    "prem_mid": 26.8,
+    "prem_paid": 27.0399,
+    "spread_e": 11.19,
+    "bid_e": 25.3,
+    "ask_e": 28.3,
+    "oi_e": 5,
+    "vol_e": 0,
+    "extrinsic_pct": 17.6,
+    "captured_e": "2026-10-16 11:01 ET",
+    "basis": "CHAIN",
+    "strike_src": "chain",
+    "f": 0.16,
+    "contracts": 5,
+    "cost": 13519.95
+   }
   }
  ],
  "queued": [
   {
-   "t": "SNX",
-   "signal_date": "2026-10-15",
-   "rsi2": 7.11
+   "t": "ASML",
+   "signal_date": "2026-10-16",
+   "rsi2": 9.4
   }
  ],
  "closed": [
@@ -863,5 +891,5 @@
  ],
  "skipped": [],
  "closed_total": 17,
- "last_as_of": "2026-10-15"
+ "last_as_of": "2026-10-16"
 }
