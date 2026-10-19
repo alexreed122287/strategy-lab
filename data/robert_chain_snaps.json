@@ -362,8 +362,28 @@
    "date": "2026-10-16",
    "captured": "2026-10-16 11:01 ET",
    "late_min": 76
+  },
+  "ASML|2026-10-19|E": {
+   "strike": 1530.0,
+   "bid": 164.2,
+   "ask": 175.5,
+   "mid": 169.85,
+   "spread_pct": 6.65,
+   "delta": 0.81,
+   "iv": 0.3952,
+   "oi": 5,
+   "volume": 5,
+   "extrinsic_pct": 19.0,
+   "expiry": "2026-11-20",
+   "spot": 1667.58,
+   "dte": 32,
+   "ticker": "ASML",
+   "side": "E",
+   "date": "2026-10-19",
+   "captured": "2026-10-19 13:10 ET",
+   "late_min": 205
   }
  },
- "updated": "2026-10-16 15:01 UTC",
- "count": 18
+ "updated": "2026-10-19 17:10 UTC",
+ "count": 19
 }
