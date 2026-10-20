@@ -279,15 +279,37 @@
     "contracts": 5,
     "cost": 13519.95
    }
-  }
- ],
- "queued": [
+  },
   {
    "t": "ASML",
    "signal_date": "2026-10-16",
-   "rsi2": 9.4
+   "entry_date": "2026-10-19",
+   "entry_px": 1679.31,
+   "opt": {
+    "expiry": "2026-11-20",
+    "strike": 1530.0,
+    "dte": 32,
+    "delta": 0.81,
+    "iv": 0.3952,
+    "sigma": 0.3952,
+    "prem_mid": 169.85,
+    "prem_paid": 170.7536,
+    "spread_e": 6.65,
+    "bid_e": 164.2,
+    "ask_e": 175.5,
+    "oi_e": 5,
+    "vol_e": 5,
+    "extrinsic_pct": 19.0,
+    "captured_e": "2026-10-19 13:10 ET",
+    "basis": "CHAIN",
+    "strike_src": "chain",
+    "f": 0.16,
+    "contracts": 1,
+    "cost": 17075.36
+   }
   }
  ],
+ "queued": [],
  "closed": [
   {
    "t": "GOOGL",
@@ -891,5 +913,5 @@
  ],
  "skipped": [],
  "closed_total": 17,
- "last_as_of": "2026-10-16"
+ "last_as_of": "2026-10-19"
 }
