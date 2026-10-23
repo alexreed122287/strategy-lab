@@ -522,8 +522,28 @@
    "side": "X",
    "date": "2026-10-21",
    "captured": "2026-10-21 20:34 ET"
+  },
+  "PANW|2026-10-22|X": {
+   "strike": 320.0,
+   "bid": 43.8,
+   "ask": 49.4,
+   "mid": 46.6,
+   "spread_pct": 12.02,
+   "delta": 0.751,
+   "iv": 0.6412,
+   "oi": 1147,
+   "volume": 4,
+   "extrinsic_pct": 25.1,
+   "expiry": "2026-11-20",
+   "spot": 354.92,
+   "dte": 29,
+   "occ": "PANW261120C00320000",
+   "ticker": "PANW",
+   "side": "X",
+   "date": "2026-10-22",
+   "captured": "2026-10-22 20:30 ET"
   }
  },
- "updated": "2026-10-22 00:34 UTC",
- "count": 26
+ "updated": "2026-10-23 00:30 UTC",
+ "count": 27
 }
