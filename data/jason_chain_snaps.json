@@ -401,8 +401,48 @@
    "date": "2026-10-19",
    "captured": "2026-10-19 13:09 ET",
    "late_min": 204
+  },
+  "FCX|2026-10-27|E": {
+   "strike": 55.0,
+   "bid": 11.05,
+   "ask": 12.8,
+   "mid": 11.925,
+   "spread_pct": 14.68,
+   "delta": 0.869,
+   "iv": 0.5094,
+   "oi": 2168,
+   "volume": 25,
+   "extrinsic_pct": 5.0,
+   "expiry": "2026-12-18",
+   "spot": 66.33,
+   "dte": 52,
+   "ticker": "FCX",
+   "side": "E",
+   "date": "2026-10-27",
+   "captured": "2026-10-27 12:01 ET",
+   "late_min": 136
+  },
+  "TGT|2026-10-27|E": {
+   "strike": 135.0,
+   "bid": 16.5,
+   "ask": 18.15,
+   "mid": 17.325,
+   "spread_pct": 9.52,
+   "delta": 0.781,
+   "iv": 0.3662,
+   "oi": 423,
+   "volume": 0,
+   "extrinsic_pct": 18.2,
+   "expiry": "2026-12-18",
+   "spot": 149.17,
+   "dte": 52,
+   "ticker": "TGT",
+   "side": "E",
+   "date": "2026-10-27",
+   "captured": "2026-10-27 12:01 ET",
+   "late_min": 136
   }
  },
- "count": 20,
- "updated": "2026-10-19 17:09 UTC"
+ "count": 22,
+ "updated": "2026-10-27 16:01 UTC"
 }
