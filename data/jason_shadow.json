@@ -91,38 +91,34 @@
     "cost": 12856.41,
     "slot": 12500.0
    }
-  },
-  {
-   "t": "PANW",
-   "signal_date": "2026-10-16",
-   "entry_date": "2026-10-19",
-   "entry_px": 356.0,
-   "opt": {
-    "expiry": "2026-11-20",
-    "strike": 305.0,
-    "dte": 32,
-    "delta": 0.819,
-    "iv": 0.5563,
-    "sigma": 0.5563,
-    "prem_mid": 51.825,
-    "prem_paid": 52.3971,
-    "spread_e": 13.8,
-    "bid_e": 48.25,
-    "ask_e": 55.4,
-    "oi_e": 0,
-    "vol_e": 0,
-    "extrinsic_pct": 17.1,
-    "captured_e": "2026-10-19 13:09 ET",
-    "basis": "CHAIN",
-    "strike_src": "chain",
-    "f": 0.16,
-    "contracts": 2,
-    "cost": 10479.42,
-    "slot": 12500.0
-   }
   }
  ],
- "queued": [],
+ "queued": [
+  {
+   "t": "FCX",
+   "signal_date": "2026-10-26",
+   "close": 65.16,
+   "vap50": 72.2962,
+   "atr14": 2.4468,
+   "threshold": 68.626,
+   "rs252": 0.4411,
+   "iv_proxy": 0.4066,
+   "earn_armed": true,
+   "earn_seed": "2026-09-30"
+  },
+  {
+   "t": "TGT",
+   "signal_date": "2026-10-26",
+   "close": 148.53,
+   "vap50": 157.6747,
+   "atr14": 4.468,
+   "threshold": 150.9727,
+   "rs252": 0.4366,
+   "iv_proxy": 0.3288,
+   "earn_armed": true,
+   "earn_seed": "2026-09-30"
+  }
+ ],
  "closed": [
   {
    "t": "STX",
@@ -563,10 +559,47 @@
      }
     }
    }
+  },
+  {
+   "t": "PANW",
+   "entry_date": "2026-10-19",
+   "exit_date": "2026-10-23",
+   "entry_px": 356.0,
+   "exit_px": 380.55,
+   "bars": 4,
+   "reason": "VAP",
+   "net": 0.06853,
+   "opt": {
+    "expiry": "2026-11-20",
+    "strike": 305.0,
+    "dte": 32,
+    "delta": 0.819,
+    "iv": 0.5563,
+    "sigma": 0.5563,
+    "prem_mid": 51.825,
+    "prem_paid": 52.3971,
+    "spread_e": 13.8,
+    "bid_e": 48.25,
+    "ask_e": 55.4,
+    "oi_e": 0,
+    "vol_e": 0,
+    "extrinsic_pct": 17.1,
+    "captured_e": "2026-10-19 13:09 ET",
+    "basis": "CHAIN",
+    "strike_src": "chain",
+    "f": 0.16,
+    "contracts": 2,
+    "cost": 10479.42,
+    "slot": 12500.0,
+    "exit_mid": 77.9631,
+    "exit_recv": 76.014,
+    "ret": 0.32384,
+    "pnl": 4723.38
+   }
   }
  ],
  "skipped": [],
- "closed_total": 8,
+ "closed_total": 9,
  "last_signal": {
   "AMAT": "2026-10-14",
   "CAT": "2026-09-11",
@@ -578,7 +611,9 @@
   "TRGP": "2026-09-30",
   "CNC": "2026-10-01",
   "MU": "2026-10-14",
-  "PANW": "2026-10-16"
+  "PANW": "2026-10-16",
+  "FCX": "2026-10-26",
+  "TGT": "2026-10-26"
  },
- "last_as_of": "2026-10-22"
+ "last_as_of": "2026-10-26"
 }
