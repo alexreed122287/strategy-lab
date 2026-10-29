@@ -35,35 +35,6 @@
    }
   },
   {
-   "t": "MU",
-   "signal_date": "2026-10-14",
-   "entry_date": "2026-10-15",
-   "entry_px": 871.575,
-   "opt": {
-    "expiry": "2026-11-20",
-    "strike": 810.0,
-    "dte": 36,
-    "delta": 0.785,
-    "iv": 0.5258,
-    "sigma": 0.5258,
-    "prem_mid": 127.9,
-    "prem_paid": 128.5641,
-    "spread_e": 6.49,
-    "bid_e": 123.75,
-    "ask_e": 132.05,
-    "oi_e": 727,
-    "vol_e": 10,
-    "extrinsic_pct": 19.5,
-    "captured_e": "2026-10-15 11:19 ET",
-    "basis": "CHAIN",
-    "strike_src": "chain",
-    "f": 0.16,
-    "contracts": 1,
-    "cost": 12856.41,
-    "slot": 12500.0
-   }
-  },
-  {
    "t": "FCX",
    "signal_date": "2026-10-26",
    "entry_date": "2026-10-27",
@@ -655,10 +626,65 @@
      }
     }
    }
+  },
+  {
+   "t": "MU",
+   "entry_date": "2026-10-15",
+   "exit_date": "2026-10-28",
+   "entry_px": 871.575,
+   "exit_px": 983.23,
+   "bars": 9,
+   "reason": "VAP",
+   "net": 0.12766,
+   "opt": {
+    "expiry": "2026-11-20",
+    "strike": 810.0,
+    "dte": 36,
+    "delta": 0.785,
+    "iv": 0.5258,
+    "sigma": 0.5258,
+    "prem_mid": 127.9,
+    "prem_paid": 128.5641,
+    "spread_e": 6.49,
+    "bid_e": 123.75,
+    "ask_e": 132.05,
+    "oi_e": 727,
+    "vol_e": 10,
+    "extrinsic_pct": 19.5,
+    "captured_e": "2026-10-15 11:19 ET",
+    "basis": "CHAIN",
+    "strike_src": "chain",
+    "f": 0.16,
+    "contracts": 1,
+    "cost": 12856.41,
+    "slot": 12500.0,
+    "exit_mid": 180.45,
+    "spread_x": 4.77,
+    "bid_x": 176.15,
+    "ask_x": 184.75,
+    "captured_x": "2026-10-28 21:33 ET",
+    "exit_recv": 179.7614,
+    "ret": 0.39822,
+    "pnl": 5119.73,
+    "band": {
+     "0.16": {
+      "ret": 0.39822,
+      "pnl": 5119.68
+     },
+     "0.50": {
+      "ret": 0.37179,
+      "pnl": 4779.88
+     },
+     "1.00": {
+      "ret": 0.33393,
+      "pnl": 4293.14
+     }
+    }
+   }
   }
  ],
  "skipped": [],
- "closed_total": 10,
+ "closed_total": 11,
  "last_signal": {
   "AMAT": "2026-10-14",
   "CAT": "2026-09-11",
@@ -674,5 +700,5 @@
   "FCX": "2026-10-26",
   "TGT": "2026-10-26"
  },
- "last_as_of": "2026-10-27"
+ "last_as_of": "2026-10-28"
 }
