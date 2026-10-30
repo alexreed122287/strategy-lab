@@ -481,8 +481,28 @@
    "side": "X",
    "date": "2026-10-28",
    "captured": "2026-10-28 21:33 ET"
+  },
+  "INTC|2026-10-30|E": {
+   "strike": 55.0,
+   "bid": 11.45,
+   "ask": 11.8,
+   "mid": 11.625,
+   "spread_pct": 3.01,
+   "delta": 0.819,
+   "iv": 0.5947,
+   "oi": 32311,
+   "volume": 328,
+   "extrinsic_pct": 18.9,
+   "expiry": "2026-12-18",
+   "spot": 64.4329,
+   "dte": 49,
+   "ticker": "INTC",
+   "side": "E",
+   "date": "2026-10-30",
+   "captured": "2026-10-30 12:49 ET",
+   "late_min": 184
   }
  },
- "count": 24,
- "updated": "2026-10-29 01:33 UTC"
+ "count": 25,
+ "updated": "2026-10-30 16:49 UTC"
 }
