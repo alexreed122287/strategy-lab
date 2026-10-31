@@ -91,22 +91,38 @@
     "cost": 12219.83,
     "slot": 12500.0
    }
-  }
- ],
- "queued": [
+  },
   {
    "t": "INTC",
    "signal_date": "2026-10-29",
-   "close": 92.07,
-   "vap50": 102.5579,
-   "atr14": 5.0831,
-   "threshold": 94.9333,
-   "rs252": 1.0972,
-   "iv_proxy": 0.5516,
-   "earn_armed": true,
-   "earn_seed": "2026-09-30"
+   "entry_date": "2026-10-30",
+   "entry_px": 68.36,
+   "opt": {
+    "expiry": "2026-12-18",
+    "strike": 55.0,
+    "dte": 49,
+    "delta": 0.819,
+    "iv": 0.5947,
+    "sigma": 0.5947,
+    "prem_mid": 11.625,
+    "prem_paid": 11.653,
+    "spread_e": 3.01,
+    "bid_e": 11.45,
+    "ask_e": 11.8,
+    "oi_e": 32311,
+    "vol_e": 328,
+    "extrinsic_pct": 18.9,
+    "captured_e": "2026-10-30 12:49 ET",
+    "basis": "CHAIN",
+    "strike_src": "chain",
+    "f": 0.16,
+    "contracts": 10,
+    "cost": 11653.0,
+    "slot": 12500.0
+   }
   }
  ],
+ "queued": [],
  "closed": [
   {
    "t": "STX",
@@ -714,5 +730,5 @@
   "TGT": "2026-10-26",
   "INTC": "2026-10-29"
  },
- "last_as_of": "2026-10-29"
+ "last_as_of": "2026-10-30"
 }
