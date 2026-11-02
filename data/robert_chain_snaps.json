@@ -562,8 +562,28 @@
    "side": "X",
    "date": "2026-10-27",
    "captured": "2026-10-27 21:04 ET"
+  },
+  "SNX|2026-11-02|E": {
+   "strike": 200.0,
+   "bid": 28.3,
+   "ask": 30.3,
+   "mid": 29.3,
+   "spread_pct": 6.83,
+   "delta": 0.833,
+   "iv": 0.3614,
+   "oi": 7,
+   "volume": 1,
+   "extrinsic_pct": 17.3,
+   "expiry": "2026-12-18",
+   "spot": 224.23,
+   "dte": 46,
+   "ticker": "SNX",
+   "side": "E",
+   "date": "2026-11-02",
+   "captured": "2026-11-02 15:31 ET",
+   "late_min": 346
   }
  },
- "updated": "2026-10-28 01:04 UTC",
- "count": 28
+ "updated": "2026-11-02 20:31 UTC",
+ "count": 29
 }
