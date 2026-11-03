@@ -64,35 +64,6 @@
    }
   },
   {
-   "t": "TGT",
-   "signal_date": "2026-10-26",
-   "entry_date": "2026-10-27",
-   "entry_px": 148.37,
-   "opt": {
-    "expiry": "2026-12-18",
-    "strike": 135.0,
-    "dte": 52,
-    "delta": 0.781,
-    "iv": 0.3662,
-    "sigma": 0.3662,
-    "prem_mid": 17.325,
-    "prem_paid": 17.4569,
-    "spread_e": 9.52,
-    "bid_e": 16.5,
-    "ask_e": 18.15,
-    "oi_e": 423,
-    "vol_e": 0,
-    "extrinsic_pct": 18.2,
-    "captured_e": "2026-10-27 12:01 ET",
-    "basis": "CHAIN",
-    "strike_src": "chain",
-    "f": 0.16,
-    "contracts": 7,
-    "cost": 12219.83,
-    "slot": 12500.0
-   }
-  },
-  {
    "t": "INTC",
    "signal_date": "2026-10-29",
    "entry_date": "2026-10-30",
@@ -710,10 +681,65 @@
      }
     }
    }
+  },
+  {
+   "t": "TGT",
+   "entry_date": "2026-10-27",
+   "exit_date": "2026-11-02",
+   "entry_px": 148.37,
+   "exit_px": 158.38,
+   "bars": 4,
+   "reason": "VAP",
+   "net": 0.06704,
+   "opt": {
+    "expiry": "2026-12-18",
+    "strike": 135.0,
+    "dte": 52,
+    "delta": 0.781,
+    "iv": 0.3662,
+    "sigma": 0.3662,
+    "prem_mid": 17.325,
+    "prem_paid": 17.4569,
+    "spread_e": 9.52,
+    "bid_e": 16.5,
+    "ask_e": 18.15,
+    "oi_e": 423,
+    "vol_e": 0,
+    "extrinsic_pct": 18.2,
+    "captured_e": "2026-10-27 12:01 ET",
+    "basis": "CHAIN",
+    "strike_src": "chain",
+    "f": 0.16,
+    "contracts": 7,
+    "cost": 12219.83,
+    "slot": 12500.0,
+    "exit_mid": 25.375,
+    "spread_x": 6.11,
+    "bid_x": 24.6,
+    "ask_x": 26.15,
+    "captured_x": "2026-11-02 22:24 ET",
+    "exit_recv": 25.251,
+    "ret": 0.44648,
+    "pnl": 5455.87,
+    "band": {
+     "0.16": {
+      "ret": 0.44647,
+      "pnl": 5455.79
+     },
+     "0.50": {
+      "ret": 0.40875,
+      "pnl": 4994.86
+     },
+     "1.00": {
+      "ret": 0.35539,
+      "pnl": 4342.81
+     }
+    }
+   }
   }
  ],
  "skipped": [],
- "closed_total": 11,
+ "closed_total": 12,
  "last_signal": {
   "AMAT": "2026-10-14",
   "CAT": "2026-09-11",
@@ -730,5 +756,5 @@
   "TGT": "2026-10-26",
   "INTC": "2026-10-29"
  },
- "last_as_of": "2026-10-30"
+ "last_as_of": "2026-11-02"
 }

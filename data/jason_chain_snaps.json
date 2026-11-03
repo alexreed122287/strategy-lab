@@ -501,8 +501,28 @@
    "date": "2026-10-30",
    "captured": "2026-10-30 12:49 ET",
    "late_min": 184
+  },
+  "TGT|2026-11-02|X": {
+   "strike": 135.0,
+   "bid": 24.6,
+   "ask": 26.15,
+   "mid": 25.375,
+   "spread_pct": 6.11,
+   "delta": 0.865,
+   "iv": 0.4727,
+   "oi": 416,
+   "volume": 3,
+   "extrinsic_pct": 7.9,
+   "expiry": "2026-12-18",
+   "spot": 158.38,
+   "dte": 46,
+   "occ": "TGT261218C00135000",
+   "ticker": "TGT",
+   "side": "X",
+   "date": "2026-11-02",
+   "captured": "2026-11-02 22:24 ET"
   }
  },
- "count": 25,
- "updated": "2026-10-30 16:49 UTC"
+ "count": 26,
+ "updated": "2026-11-03 03:24 UTC"
 }

@@ -1,10 +1,44 @@
 {
- "open": [],
- "queued": [
+ "open": [
   {
    "t": "SNX",
    "signal_date": "2026-10-30",
-   "rsi2": 6.14
+   "entry_date": "2026-11-02",
+   "entry_px": 237.44,
+   "opt": {
+    "expiry": "2026-12-18",
+    "strike": 200.0,
+    "dte": 46,
+    "delta": 0.833,
+    "iv": 0.3614,
+    "sigma": 0.3614,
+    "prem_mid": 29.3,
+    "prem_paid": 29.4601,
+    "spread_e": 6.83,
+    "bid_e": 28.3,
+    "ask_e": 30.3,
+    "oi_e": 7,
+    "vol_e": 1,
+    "extrinsic_pct": 17.3,
+    "captured_e": "2026-11-02 15:31 ET",
+    "basis": "CHAIN",
+    "strike_src": "chain",
+    "f": 0.16,
+    "contracts": 5,
+    "cost": 14730.05
+   }
+  }
+ ],
+ "queued": [
+  {
+   "t": "EWT",
+   "signal_date": "2026-11-02",
+   "rsi2": 8.89
+  },
+  {
+   "t": "PANW",
+   "signal_date": "2026-11-02",
+   "rsi2": 5.49
   }
  ],
  "closed": [
@@ -1168,5 +1202,5 @@
  ],
  "skipped": [],
  "closed_total": 28,
- "last_as_of": "2026-10-30"
+ "last_as_of": "2026-11-02"
 }
