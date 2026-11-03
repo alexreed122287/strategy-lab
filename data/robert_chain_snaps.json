@@ -582,8 +582,48 @@
    "date": "2026-11-02",
    "captured": "2026-11-02 15:31 ET",
    "late_min": 346
+  },
+  "EWT|2026-11-03|E": {
+   "strike": 87.0,
+   "bid": 12.4,
+   "ask": 16.0,
+   "mid": 14.2,
+   "spread_pct": 25.35,
+   "delta": 0.75,
+   "iv": 0.5545,
+   "oi": 4,
+   "volume": 0,
+   "extrinsic_pct": 18.4,
+   "expiry": "2026-12-18",
+   "spot": 98.585,
+   "dte": 45,
+   "ticker": "EWT",
+   "side": "E",
+   "date": "2026-11-03",
+   "captured": "2026-11-03 13:03 ET",
+   "late_min": 198
+  },
+  "PANW|2026-11-03|E": {
+   "strike": 295.0,
+   "bid": 68.35,
+   "ask": 73.8,
+   "mid": 71.075,
+   "spread_pct": 7.67,
+   "delta": 0.822,
+   "iv": 0.6838,
+   "oi": 329,
+   "volume": 0,
+   "extrinsic_pct": 18.0,
+   "expiry": "2026-12-18",
+   "spot": 353.2725,
+   "dte": 45,
+   "ticker": "PANW",
+   "side": "E",
+   "date": "2026-11-03",
+   "captured": "2026-11-03 13:03 ET",
+   "late_min": 198
   }
  },
- "updated": "2026-11-02 20:31 UTC",
- "count": 29
+ "updated": "2026-11-03 18:03 UTC",
+ "count": 31
 }
