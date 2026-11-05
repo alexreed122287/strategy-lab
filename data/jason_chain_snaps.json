@@ -521,8 +521,28 @@
    "side": "X",
    "date": "2026-11-02",
    "captured": "2026-11-02 22:24 ET"
+  },
+  "VLO|2026-11-05|E": {
+   "strike": 320.0,
+   "bid": 50.8,
+   "ask": 53.7,
+   "mid": 52.25,
+   "spread_pct": 5.55,
+   "delta": 0.771,
+   "iv": 0.5597,
+   "oi": 4648,
+   "volume": 19,
+   "extrinsic_pct": 19.6,
+   "expiry": "2026-12-18",
+   "spot": 362.02,
+   "dte": 43,
+   "ticker": "VLO",
+   "side": "E",
+   "date": "2026-11-05",
+   "captured": "2026-11-05 13:16 ET",
+   "late_min": 211
   }
  },
- "count": 26,
- "updated": "2026-11-03 03:24 UTC"
+ "count": 27,
+ "updated": "2026-11-05 18:16 UTC"
 }
