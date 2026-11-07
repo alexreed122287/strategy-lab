@@ -120,46 +120,96 @@
     "cost": 10496.4,
     "slot": 12500.0
    }
-  }
- ],
- "queued": [
+  },
   {
    "t": "MPC",
    "signal_date": "2026-11-05",
-   "close": 377.32,
-   "vap50": 417.2034,
-   "atr14": 22.1483,
-   "threshold": 383.981,
-   "rs252": 0.9676,
-   "iv_proxy": 0.5064,
-   "earn_armed": false,
-   "earn_seed": "2026-09-30"
+   "entry_date": "2026-11-06",
+   "entry_px": 379.62,
+   "opt": {
+    "expiry": "2026-12-18",
+    "strike": 330.0,
+    "dte": 42,
+    "delta": 0.783,
+    "iv": 0.5304,
+    "sigma": 0.5304,
+    "prem_mid": 52.85,
+    "prem_paid": 53.146,
+    "spread_e": 7.0,
+    "bid_e": 51.0,
+    "ask_e": 54.7,
+    "oi_e": 214,
+    "vol_e": 20,
+    "extrinsic_pct": 17.4,
+    "captured_e": "2026-11-06 12:40 ET",
+    "basis": "CHAIN",
+    "strike_src": "chain",
+    "f": 0.16,
+    "contracts": 2,
+    "cost": 10629.2,
+    "slot": 12500.0
+   }
   },
   {
    "t": "PSX",
    "signal_date": "2026-11-05",
-   "close": 247.04,
-   "vap50": 266.978,
-   "atr14": 11.6912,
-   "threshold": 249.4412,
-   "rs252": 0.7343,
-   "iv_proxy": 0.436,
-   "earn_armed": true,
-   "earn_seed": "2026-09-30"
+   "entry_date": "2026-11-06",
+   "entry_px": 248.69,
+   "opt": {
+    "expiry": "2026-12-18",
+    "strike": 220.0,
+    "dte": 42,
+    "delta": 0.805,
+    "iv": 0.455,
+    "sigma": 0.455,
+    "prem_mid": 32.55,
+    "prem_paid": 32.7659,
+    "spread_e": 8.29,
+    "bid_e": 31.2,
+    "ask_e": 33.9,
+    "oi_e": 888,
+    "vol_e": 2,
+    "extrinsic_pct": 13.0,
+    "captured_e": "2026-11-06 12:40 ET",
+    "basis": "CHAIN",
+    "strike_src": "chain",
+    "f": 0.16,
+    "contracts": 3,
+    "cost": 9829.77,
+    "slot": 12500.0
+   }
   },
   {
    "t": "TRGP",
    "signal_date": "2026-11-05",
-   "close": 271.82,
-   "vap50": 289.7329,
-   "atr14": 10.4532,
-   "threshold": 274.053,
-   "rs252": 0.673,
-   "iv_proxy": 0.4471,
-   "earn_armed": true,
-   "earn_seed": "2026-09-30"
+   "entry_date": "2026-11-06",
+   "entry_px": 273.06,
+   "opt": {
+    "expiry": "2026-12-18",
+    "strike": 240.0,
+    "dte": 42,
+    "delta": 0.867,
+    "iv": 0.3523,
+    "sigma": 0.3523,
+    "prem_mid": 34.35,
+    "prem_paid": 34.566,
+    "spread_e": 7.86,
+    "bid_e": 33.0,
+    "ask_e": 35.7,
+    "oi_e": 53,
+    "vol_e": 0,
+    "extrinsic_pct": 12.8,
+    "captured_e": "2026-11-06 12:40 ET",
+    "basis": "CHAIN",
+    "strike_src": "chain",
+    "f": 0.16,
+    "contracts": 3,
+    "cost": 10369.8,
+    "slot": 12500.0
+   }
   }
  ],
+ "queued": [],
  "closed": [
   {
    "t": "STX",
@@ -825,5 +875,5 @@
   "MPC": "2026-11-05",
   "PSX": "2026-11-05"
  },
- "last_as_of": "2026-11-05"
+ "last_as_of": "2026-11-06"
 }
