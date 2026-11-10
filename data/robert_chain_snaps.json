@@ -642,8 +642,48 @@
    "date": "2026-11-06",
    "captured": "2026-11-06 12:42 ET",
    "late_min": 177
+  },
+  "SNX|2026-11-09|X": {
+   "strike": 200.0,
+   "bid": 30.5,
+   "ask": 34.2,
+   "mid": 32.35,
+   "spread_pct": 11.44,
+   "delta": 0.84,
+   "iv": 0.4146,
+   "oi": 6,
+   "volume": 0,
+   "extrinsic_pct": 12.4,
+   "expiry": "2026-12-18",
+   "spot": 228.33,
+   "dte": 39,
+   "occ": "SNX261218C00200000",
+   "ticker": "SNX",
+   "side": "X",
+   "date": "2026-11-09",
+   "captured": "2026-11-09 23:07 ET"
+  },
+  "EWT|2026-11-09|X": {
+   "strike": 87.0,
+   "bid": 9.1,
+   "ask": 13.2,
+   "mid": 11.15,
+   "spread_pct": 36.77,
+   "delta": 0.72,
+   "iv": 0.5113,
+   "oi": 125,
+   "volume": 1,
+   "extrinsic_pct": 22.4,
+   "expiry": "2026-12-18",
+   "spot": 95.65,
+   "dte": 39,
+   "occ": "EWT261218C00087000",
+   "ticker": "EWT",
+   "side": "X",
+   "date": "2026-11-09",
+   "captured": "2026-11-09 23:07 ET"
   }
  },
- "updated": "2026-11-06 17:42 UTC",
- "count": 32
+ "updated": "2026-11-10 04:07 UTC",
+ "count": 34
 }
