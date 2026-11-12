@@ -601,8 +601,28 @@
    "date": "2026-11-06",
    "captured": "2026-11-06 12:40 ET",
    "late_min": 175
+  },
+  "TRGP|2026-11-11|X": {
+   "strike": 240.0,
+   "bid": 51.4,
+   "ask": 54.6,
+   "mid": 53.0,
+   "spread_pct": 6.04,
+   "delta": 0.952,
+   "iv": 0.536,
+   "oi": 53,
+   "volume": 0,
+   "extrinsic_pct": 2.3,
+   "expiry": "2026-12-18",
+   "spot": 291.78,
+   "dte": 37,
+   "occ": "TRGP261218C00240000",
+   "ticker": "TRGP",
+   "side": "X",
+   "date": "2026-11-11",
+   "captured": "2026-11-11 21:53 ET"
   }
  },
- "count": 30,
- "updated": "2026-11-06 17:40 UTC"
+ "count": 31,
+ "updated": "2026-11-12 02:53 UTC"
 }

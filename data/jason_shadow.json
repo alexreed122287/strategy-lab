@@ -178,35 +178,6 @@
     "cost": 9829.77,
     "slot": 12500.0
    }
-  },
-  {
-   "t": "TRGP",
-   "signal_date": "2026-11-05",
-   "entry_date": "2026-11-06",
-   "entry_px": 273.06,
-   "opt": {
-    "expiry": "2026-12-18",
-    "strike": 240.0,
-    "dte": 42,
-    "delta": 0.867,
-    "iv": 0.3523,
-    "sigma": 0.3523,
-    "prem_mid": 34.35,
-    "prem_paid": 34.566,
-    "spread_e": 7.86,
-    "bid_e": 33.0,
-    "ask_e": 35.7,
-    "oi_e": 53,
-    "vol_e": 0,
-    "extrinsic_pct": 12.8,
-    "captured_e": "2026-11-06 12:40 ET",
-    "basis": "CHAIN",
-    "strike_src": "chain",
-    "f": 0.16,
-    "contracts": 3,
-    "cost": 10369.8,
-    "slot": 12500.0
-   }
   }
  ],
  "queued": [],
@@ -852,10 +823,65 @@
      }
     }
    }
+  },
+  {
+   "t": "TRGP",
+   "entry_date": "2026-11-06",
+   "exit_date": "2026-11-11",
+   "entry_px": 273.06,
+   "exit_px": 291.78,
+   "bars": 3,
+   "reason": "VAP",
+   "net": 0.06813,
+   "opt": {
+    "expiry": "2026-12-18",
+    "strike": 240.0,
+    "dte": 42,
+    "delta": 0.867,
+    "iv": 0.3523,
+    "sigma": 0.3523,
+    "prem_mid": 34.35,
+    "prem_paid": 34.566,
+    "spread_e": 7.86,
+    "bid_e": 33.0,
+    "ask_e": 35.7,
+    "oi_e": 53,
+    "vol_e": 0,
+    "extrinsic_pct": 12.8,
+    "captured_e": "2026-11-06 12:40 ET",
+    "basis": "CHAIN",
+    "strike_src": "chain",
+    "f": 0.16,
+    "contracts": 3,
+    "cost": 10369.8,
+    "slot": 12500.0,
+    "exit_mid": 53.0,
+    "spread_x": 6.04,
+    "bid_x": 51.4,
+    "ask_x": 54.6,
+    "captured_x": "2026-11-11 21:53 ET",
+    "exit_recv": 52.7439,
+    "ret": 0.52589,
+    "pnl": 5453.37,
+    "band": {
+     "0.16": {
+      "ret": 0.52589,
+      "pnl": 5453.37
+     },
+     "0.50": {
+      "ret": 0.49036,
+      "pnl": 5084.94
+     },
+     "1.00": {
+      "ret": 0.43976,
+      "pnl": 4560.22
+     }
+    }
+   }
   }
  ],
  "skipped": [],
- "closed_total": 12,
+ "closed_total": 13,
  "last_signal": {
   "AMAT": "2026-10-14",
   "CAT": "2026-09-11",
@@ -875,5 +901,5 @@
   "MPC": "2026-11-05",
   "PSX": "2026-11-05"
  },
- "last_as_of": "2026-11-10"
+ "last_as_of": "2026-11-11"
 }
