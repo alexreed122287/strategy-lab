@@ -1,6 +1,12 @@
 {
  "open": [],
- "queued": [],
+ "queued": [
+  {
+   "t": "PANW",
+   "signal_date": "2026-11-17",
+   "rsi2": 6.18
+  }
+ ],
  "closed": [
   {
    "t": "GOOGL",
@@ -1378,5 +1384,5 @@
  ],
  "skipped": [],
  "closed_total": 32,
- "last_as_of": "2026-11-13"
+ "last_as_of": "2026-11-17"
 }
