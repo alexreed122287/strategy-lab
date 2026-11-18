@@ -722,8 +722,28 @@
    "side": "X",
    "date": "2026-11-11",
    "captured": "2026-11-11 21:51 ET"
+  },
+  "PANW|2026-11-18|E": {
+   "strike": 290.0,
+   "bid": 52.35,
+   "ask": 56.75,
+   "mid": 54.55,
+   "spread_pct": 8.07,
+   "delta": 0.767,
+   "iv": 0.7826,
+   "oi": 185,
+   "volume": 0,
+   "extrinsic_pct": 19.6,
+   "expiry": "2026-12-18",
+   "spot": 333.87,
+   "dte": 30,
+   "ticker": "PANW",
+   "side": "E",
+   "date": "2026-11-18",
+   "captured": "2026-11-18 14:06 ET",
+   "late_min": 261
   }
  },
- "updated": "2026-11-12 02:51 UTC",
- "count": 36
+ "updated": "2026-11-18 19:06 UTC",
+ "count": 37
 }
