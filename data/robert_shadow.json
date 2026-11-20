@@ -1,35 +1,12 @@
 {
- "open": [
+ "open": [],
+ "queued": [
   {
-   "t": "PANW",
-   "signal_date": "2026-11-17",
-   "entry_date": "2026-11-18",
-   "entry_px": 313.75,
-   "opt": {
-    "expiry": "2026-12-18",
-    "strike": 290.0,
-    "dte": 30,
-    "delta": 0.767,
-    "iv": 0.7826,
-    "sigma": 0.7826,
-    "prem_mid": 54.55,
-    "prem_paid": 54.9022,
-    "spread_e": 8.07,
-    "bid_e": 52.35,
-    "ask_e": 56.75,
-    "oi_e": 185,
-    "vol_e": 0,
-    "extrinsic_pct": 19.6,
-    "captured_e": "2026-11-18 14:06 ET",
-    "basis": "CHAIN",
-    "strike_src": "chain",
-    "f": 0.16,
-    "contracts": 2,
-    "cost": 10980.44
-   }
+   "t": "TRGP",
+   "signal_date": "2026-11-19",
+   "rsi2": 6.97
   }
  ],
- "queued": [],
  "closed": [
   {
    "t": "GOOGL",
@@ -1403,9 +1380,63 @@
      }
     }
    }
+  },
+  {
+   "t": "PANW",
+   "entry_date": "2026-11-18",
+   "exit_date": "2026-11-19",
+   "entry_px": 313.75,
+   "exit_px": 361.73,
+   "bars": 1,
+   "reason": "SMA5",
+   "net": 0.15246,
+   "opt": {
+    "expiry": "2026-12-18",
+    "strike": 290.0,
+    "dte": 30,
+    "delta": 0.767,
+    "iv": 0.7826,
+    "sigma": 0.7826,
+    "prem_mid": 54.55,
+    "prem_paid": 54.9022,
+    "spread_e": 8.07,
+    "bid_e": 52.35,
+    "ask_e": 56.75,
+    "oi_e": 185,
+    "vol_e": 0,
+    "extrinsic_pct": 19.6,
+    "captured_e": "2026-11-18 14:06 ET",
+    "basis": "CHAIN",
+    "strike_src": "chain",
+    "f": 0.16,
+    "contracts": 2,
+    "cost": 10980.44,
+    "exit_mid": 77.45,
+    "spread_x": 8.26,
+    "bid_x": 74.25,
+    "ask_x": 80.65,
+    "captured_x": "2026-11-19 21:46 ET",
+    "exit_recv": 76.9382,
+    "ret": 0.40137,
+    "pnl": 4407.2,
+    "band": {
+     "0.16": {
+      "ret": 0.40137,
+      "pnl": 4407.21
+     },
+     "0.50": {
+      "ret": 0.36298,
+      "pnl": 4040.02
+     },
+     "1.00": {
+      "ret": 0.30837,
+      "pnl": 3500.04
+     }
+    }
+   }
   }
  ],
  "skipped": [],
- "closed_total": 32,
- "last_as_of": "2026-11-18"
+ "closed_total": 33,
+ "last_as_of": "2026-11-19"
 }

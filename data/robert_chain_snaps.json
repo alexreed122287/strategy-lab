@@ -742,8 +742,28 @@
    "date": "2026-11-18",
    "captured": "2026-11-18 14:06 ET",
    "late_min": 261
+  },
+  "PANW|2026-11-19|X": {
+   "strike": 290.0,
+   "bid": 74.25,
+   "ask": 80.65,
+   "mid": 77.45,
+   "spread_pct": 8.26,
+   "delta": 0.9,
+   "iv": 0.6763,
+   "oi": 185,
+   "volume": 4,
+   "extrinsic_pct": 7.4,
+   "expiry": "2026-12-18",
+   "spot": 361.73,
+   "dte": 29,
+   "occ": "PANW261218C00290000",
+   "ticker": "PANW",
+   "side": "X",
+   "date": "2026-11-19",
+   "captured": "2026-11-19 21:46 ET"
   }
  },
- "updated": "2026-11-18 19:06 UTC",
- "count": 37
+ "updated": "2026-11-20 02:46 UTC",
+ "count": 38
 }
