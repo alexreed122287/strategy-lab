@@ -1,12 +1,35 @@
 {
- "open": [],
- "queued": [
+ "open": [
   {
    "t": "TRGP",
    "signal_date": "2026-11-19",
-   "rsi2": 6.97
+   "entry_date": "2026-11-20",
+   "entry_px": 282.71,
+   "opt": {
+    "expiry": "2027-01-15",
+    "strike": 250.0,
+    "dte": 56,
+    "delta": 0.835,
+    "iv": 0.3561,
+    "sigma": 0.3561,
+    "prem_mid": 37.55,
+    "prem_paid": 37.7501,
+    "spread_e": 6.66,
+    "bid_e": 36.3,
+    "ask_e": 38.8,
+    "oi_e": 147,
+    "vol_e": 0,
+    "extrinsic_pct": 15.4,
+    "captured_e": "2026-11-20 13:51 ET",
+    "basis": "CHAIN",
+    "strike_src": "chain",
+    "f": 0.16,
+    "contracts": 3,
+    "cost": 11325.03
+   }
   }
  ],
+ "queued": [],
  "closed": [
   {
    "t": "GOOGL",
@@ -1438,5 +1461,5 @@
  ],
  "skipped": [],
  "closed_total": 33,
- "last_as_of": "2026-11-19"
+ "last_as_of": "2026-11-20"
 }
